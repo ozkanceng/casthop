@@ -1,0 +1,48 @@
+# --- Genel / General ---
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+*.iml
+*.log
+
+# --- Gizli bilgiler / Secrets (asla commit etme / never commit) ---
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+keystore.properties
+signing.properties
+local.properties
+.env
+.env.*
+
+# --- Android / Gradle ---
+android/.gradle/
+android/build/
+android/**/build/
+android/.kotlin/
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+tools/**/build/
+tools/**/.gradle/
+
+# --- Receiver (C++/CMake) ---
+receiver/build*/
+receiver/cmake-build-*/
+receiver/debian/.debhelper/
+receiver/debian/yansit-receiver/
+receiver/debian/files
+receiver/debian/*.substvars
+receiver/debian/*.debhelper.log
+receiver/debian/debhelper-build-stamp
+*.deb
+*.AppImage
+compile_commands.json
+
+# --- Ölçüm çıktıları / Measurement outputs ---
+tools/**/out/

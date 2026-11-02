@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Version=1.5
+Name=Yansıt Alıcı
+Name[en]=Yansıt Receiver
+GenericName=Kablosuz Ekran Yansıtma
+GenericName[en]=Wireless Screen Mirroring
+Comment=Tabletin ekranını bu tahtaya yansıtın
+Comment[en]=Mirror a tablet's screen to this board
+Exec=yansit-receiver
+Icon=io.github.ozkanceng.yansit.receiver
+Terminal=false
+Categories=Education;AudioVideo;Video;
+Keywords=yansıt;yansıtma;ekran;tahta;tablet;mirror;cast;screen;
+StartupNotify=true
+SingleMainWindow=true

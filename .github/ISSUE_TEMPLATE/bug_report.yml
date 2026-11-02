@@ -1,0 +1,45 @@
+name: Hata bildirimi / Bug report
+description: Bir şey beklendiği gibi çalışmıyor / Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: Ne oldu? / What happened?
+      description: Ne yaptınız, ne bekliyordunuz, ne oldu? / Steps, expected, actual.
+    validations:
+      required: true
+  - type: input
+    id: tablet
+    attributes:
+      label: Tablet modeli ve Android sürümü / Tablet model and Android version
+      placeholder: "Samsung Galaxy Tab S9, Android 16"
+    validations:
+      required: true
+  - type: input
+    id: board
+    attributes:
+      label: Tahta / Pardus sürümü / Board and Pardus version
+      placeholder: "Vestel 75\" ETAP 23.4"
+  - type: input
+    id: versions
+    attributes:
+      label: Yansıt sürümleri (uygulama ve alıcı) / Yansıt versions
+      placeholder: "app 0.1.0, receiver 0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: network
+    attributes:
+      label: Ağ / Network
+      options:
+        - Okul Wi-Fi / School Wi-Fi
+        - Tablet hotspot
+        - Ev / ofis Wi-Fi / Home or office Wi-Fi
+        - Diğer / Other
+  - type: textarea
+    id: logs
+    attributes:
+      label: Günlükler / Logs
+      description: "Alıcı: `yansit-receiver --verbose` çıktısı; Android: Ayarlar → Tanılama → Günlüğü paylaş."
+      render: text

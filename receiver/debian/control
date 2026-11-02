@@ -1,0 +1,38 @@
+Source: yansit-receiver
+Section: video
+Priority: optional
+Maintainer: Yansıt Authors <yansit@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.25),
+               ninja-build,
+               pkg-config,
+               qt6-base-dev (>= 6.4),
+               qt6-declarative-dev (>= 6.4),
+               qt6-tools-dev,
+               qt6-tools-dev-tools,
+               qt6-l10n-tools,
+               libgl-dev,
+               libgtest-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/ozkanceng/yansit
+Vcs-Browser: https://github.com/ozkanceng/yansit
+Vcs-Git: https://github.com/ozkanceng/yansit.git
+Rules-Requires-Root: no
+
+Package: yansit-receiver
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         qml6-module-qtqml,
+         qml6-module-qtquick,
+         qml6-module-qtquick-controls,
+         qml6-module-qtquick-layouts,
+         qml6-module-qtquick-window,
+         qml6-module-qtquick-templates,
+         qml6-module-qtqml-workerscript
+Description: Wireless screen mirroring receiver for interactive whiteboards
+ Yansıt receives the screen and audio of an Android tablet over the local
+ network and shows it full screen on a Pardus ETAP interactive whiteboard.
+ .
+ Yansıt, bir Android tabletin ekranını ve sesini yerel ağ üzerinden alıp
+ Pardus ETAP akıllı tahtada tam ekran gösterir.

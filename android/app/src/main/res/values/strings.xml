@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Yansıt</string>
+    <string name="home_tagline">Tablet ekranını sınıftaki akıllı tahtaya kablosuz yansıtın.</string>
+    <string name="home_dev_notice">Geliştirme sürümü. Bağlantı özelliği henüz bu sürümde yok.</string>
+    <string name="home_version">Sürüm %1$s</string>
+</resources>

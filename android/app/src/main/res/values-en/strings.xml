@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Yansıt</string>
+    <string name="home_tagline">Wirelessly mirror your tablet screen to the classroom whiteboard.</string>
+    <string name="home_dev_notice">Development build. Connecting is not available in this build yet.</string>
+    <string name="home_version">Version %1$s</string>
+</resources>

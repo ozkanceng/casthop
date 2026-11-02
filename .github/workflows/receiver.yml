@@ -1,0 +1,61 @@
+name: Receiver
+
+on:
+  push:
+    branches: [main]
+    paths: ["receiver/**", "protocol/**", ".github/workflows/receiver.yml"]
+  pull_request:
+    paths: ["receiver/**", "protocol/**", ".github/workflows/receiver.yml"]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: receiver-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build + test (Debian 12, ${{ matrix.variant }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container: debian:12
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [release, sanitize]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install dependencies
+        run: receiver/ci/install-deps.sh
+
+      - name: Build and test
+        run: |
+          if [ "${{ matrix.variant }}" = sanitize ]; then
+            receiver/ci/build-and-test.sh receiver/build-${{ matrix.variant }} -DYANSIT_SANITIZE=ON
+          else
+            receiver/ci/build-and-test.sh receiver/build-${{ matrix.variant }}
+          fi
+
+  package:
+    name: Debian package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container: debian:12
+    needs: build
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install dependencies
+        run: receiver/ci/install-deps.sh
+
+      - name: Build .deb
+        run: receiver/ci/build-deb.sh out
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: receiver-deb
+          path: out/*.deb
+          retention-days: 14
