@@ -20,7 +20,11 @@ jobs:
     name: Build + test (Debian 12, ${{ matrix.variant }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    container: debian:12
+    container:
+      image: debian:12
+      # ASan (GCC 12) yüksek mmap ASLR entropisinde (runner çekirdeği) DEADLYSIGNAL ile kilitlenir;
+      # sysctl ayarı için ayrıcalık gerekir.
+      options: --privileged
     strategy:
       fail-fast: false
       matrix:
@@ -30,6 +34,10 @@ jobs:
 
       - name: Install dependencies
         run: receiver/ci/install-deps.sh
+
+      - name: Lower mmap ASLR entropy for ASan
+        if: matrix.variant == 'sanitize'
+        run: sysctl -w vm.mmap_rnd_bits=28
 
       - name: Build and test
         run: |
