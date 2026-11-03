@@ -52,6 +52,6 @@ keyPassword=...
    git tag -a vX.Y.Z -m "Yansıt X.Y.Z"
    git push origin vX.Y.Z
    ```
-3. `Release` iş akışı: imzalı APK (`yansit-X.Y.Z.apk`), `.deb`, `SHA256SUMS` dosyalarını GitHub Releases'a yükler. Etiket `-` içeriyorsa (ör. `v0.1.0-rc1`) ön sürüm olarak işaretlenir.
+3. `Release` iş akışı önce uçtan uca testleri (`integration.yml`) koşar; geçerse imzalı APK (`yansit-X.Y.Z.apk`), `.deb`, taşınabilir paket (`yansit-receiver-X.Y.Z-x86_64.tar.gz`, temiz Debian 12'de denenir) ve `SHA256SUMS` dosyalarını GitHub Releases'a yükler. Etiket `-` içeriyorsa (ör. `v0.1.0-rc1`) ön sürüm olarak işaretlenir.
 
 Android `versionCode` = `MAJOR*10000 + MINOR*100 + PATCH`; `.deb` sürümü etiketle aynıdır (`-rc1` → `~rc1`).

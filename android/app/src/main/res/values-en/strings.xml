@@ -124,4 +124,8 @@
     <string name="quality_good">Connection: good</string>
     <string name="quality_fair">Connection: fair</string>
     <string name="quality_poor">Connection: poor — try \"Weak network\" in Settings</string>
+    <string name="settings_latency">Latency measurement</string>
+    <string name="settings_latency_desc">Open this screen while mirroring: the board shows the time between the tablet drawing a frame and the board displaying it.</string>
+    <string name="settings_latency_open">Open measurement screen</string>
+    <string name="latency_hint">The board shows \"end-to-end … ms\" in its info bar. Manual method: photograph the tablet and the board together; the difference between the two clocks is the latency.</string>
 </resources>

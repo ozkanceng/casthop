@@ -49,6 +49,8 @@ private const val USAGE = """fake-sender — Yansıt test göndericisi
   --pairing-key F     paired: kayıtlı eşleştirme (JSON); --request-pairing ile WELCOME'daki anahtar buraya yazılır
   --input F           H.264/H.265 Annex-B dosyası (akış için)
   --codec C           h264 | h265  (varsayılan h264)
+  --report-csv F      (mirror) saniyede bir: süre, gecikme (alıcı c2d), fps, bit hızı, atılan kare
+  --pattern-base US   (raw) dosyadaki gecikme deseninin ilk damgası; saat ofseti buna göre kaydırılır
   --fps N             gönderim hızı (varsayılan 60)
   --frames N          gönderilecek kare (0 = dosyanın tamamı; dosya kısaysa başa sarar)
   --device-name S     HELLO cihaz adı
@@ -87,6 +89,8 @@ private data class Options(
     val pairingKey: File?,
     val audioInput: File?,
     val codec: Int,
+    val patternBaseUs: Long?,
+    val reportCsv: File?,
     val port: Int?,
     val rotateInput: File?,
     val rotateAfter: Int,
@@ -150,6 +154,8 @@ private fun parseArgs(args: Array<String>): Options {
         engine = (m["--engine"] ?: "raw").also { if (it != "raw" && it != "mirror") usage("--engine: raw | mirror") },
         pairingKey = m["--pairing-key"]?.let(::File),
         audioInput = m["--audio-input"]?.let(::File),
+        patternBaseUs = m["--pattern-base"]?.toLongOrNull(),
+        reportCsv = m["--report-csv"]?.let(::File),
         codec = when (m["--codec"] ?: "h264") {
             "h264" -> Codec.H264
             "h265" -> Codec.H265
@@ -205,6 +211,8 @@ private fun stream(o: Options, session: Session, result: StreamResult) {
     val stopped = AtomicBoolean(false)
     val skipToKeyframe = AtomicBoolean(false)
     val clock = ClockSync()
+    // Desen damgaları (BASE + i·aralık) gönderim anlarına (başlangıç + i·aralık) hizalansın diye bildirilen ofset kaydırılır.
+    val patternShift = AtomicLong(0)
 
     val reader = Thread({
         try {
@@ -246,7 +254,7 @@ private fun stream(o: Options, session: Session, result: StreamResult) {
         var id = 0L
         try {
             while (!stopped.get()) {
-                control.send(ControlMessage.Ping(id++, MonotonicClock.nowUs(), clock.offsetUs))
+                control.send(ControlMessage.Ping(id++, MonotonicClock.nowUs(), clock.offsetUs?.let { it + patternShift.get() }))
                 Thread.sleep(if (id < 4) 100 else 1000) // ilk ofset hızlı oturur
             }
         } catch (_: IOException) {
@@ -260,6 +268,7 @@ private fun stream(o: Options, session: Session, result: StreamResult) {
 
     val intervalNs = 1_000_000_000L / o.fps
     val start = System.nanoTime()
+    o.patternBaseUs?.let { patternShift.set(start / 1000 - it) }
     var discontinuity = false
     for (i in 0 until total) {
         if (stopped.get()) break
@@ -305,6 +314,8 @@ private fun streamWithMirrorSession(
     val endReason = AtomicReference<SessionEnd?>()
     val lastStats = AtomicReference<MirrorStats?>()
     val latencySamples = java.util.Collections.synchronizedList(ArrayList<Int>())
+    val csv = o.reportCsv?.printWriter()?.also { it.println("t_s,latency_ms,fps,bitrate_bps,sender_dropped,resumes") }
+    val csvStart = MonotonicClock.nowUs()
     val linkEvents = java.util.Collections.synchronizedList(ArrayList<Pair<LinkState, Long>>())
     val planA = StreamPlan("file", o.codec, false, 1280, 720, o.fps, 8_000_000, 2_000_000, 12_000_000)
     val planB = planA.copy(width = o.rotateSize.first, height = o.rotateSize.second)
@@ -330,6 +341,13 @@ private fun streamWithMirrorSession(
         onStats = { st ->
             lastStats.set(st)
             st.latencyMs?.let(latencySamples::add)
+            csv?.let { w ->
+                synchronized(w) {
+                    w.println("%.1f,%s,%.1f,%d,%d,%d".format(java.util.Locale.ROOT, (MonotonicClock.nowUs() - csvStart) / 1e6,
+                        st.latencyMs?.toString() ?: "", st.fps, st.bitrateBps, st.droppedFrames, mirror.resumeCount.get()))
+                    w.flush()
+                }
+            }
         },
         onEnd = { endReason.set(it); ended.countDown() },
         onLink = { state ->
@@ -348,6 +366,7 @@ private fun streamWithMirrorSession(
         return false
     }
     val finished = ended.await(total * 1000L / o.fps + o.holdMs + 30_000, TimeUnit.MILLISECONDS)
+    csv?.close()
     val end = endReason.get()
     summary["engine"] = JsonPrimitive("mirror")
     summary["frames_sent"] = JsonPrimitive(source.framesProduced.get())

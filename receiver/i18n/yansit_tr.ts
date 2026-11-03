@@ -83,7 +83,7 @@
     </message>
     <message>
         <source>Start Yansıt when the board starts</source>
-        <translation>Tahta açılınca Yansıt'ı başlat</translation>
+        <translation>Tahta açılınca Yansıt&apos;ı başlat</translation>
     </message>
     <message>
         <source>Paired tablets</source>
@@ -127,6 +127,10 @@
     <message>
         <source>Screenshot</source>
         <translation>Ekran görüntüsü</translation>
+    </message>
+    <message>
+        <source>end-to-end %1 ms (p95 %2)</source>
+        <translation>uçtan uca %1 ms (p95 %2)</translation>
     </message>
 </context>
 <context>

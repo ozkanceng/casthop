@@ -9,6 +9,7 @@
 #include <QLoggingCategory>
 
 #include <algorithm>
+#include <vector>
 
 Q_LOGGING_CATEGORY(lcAudio, "yansit.audio")
 
@@ -51,6 +52,8 @@ std::optional<int> opusChannels(const Bytes& head) {
 }
 
 constexpr std::uint64_t kLateMarginUs = 5'000;
+constexpr std::uint64_t kArrivalMarginUs = 10'000;
+constexpr std::size_t kArrivalWindow = 250; // ≈ 5 sn Opus
 constexpr std::uint64_t kLatencyApplyThresholdNs = 10'000'000;
 
 } // namespace
@@ -71,8 +74,15 @@ void AudioPipeline::setClockOffset(std::optional<std::int64_t> offsetUs) {
     m_offsetUs = offsetUs;
 }
 
-void AudioPipeline::setTargetLatencyUs(std::uint64_t us) {
-    m_targetUs = std::clamp(us, kMinTargetLatencyUs, kMaxTargetLatencyUs);
+void AudioPipeline::setTargetLatencyUs(std::uint64_t videoUs) {
+    std::uint64_t audioNeed = 0;
+    if (m_arrivalUs.size() >= 10) {
+        std::vector<std::uint32_t> v(m_arrivalUs.begin(), m_arrivalUs.end());
+        const std::size_t k = v.size() * 95 / 100;
+        std::nth_element(v.begin(), v.begin() + std::ptrdiff_t(k), v.end());
+        audioNeed = std::uint64_t(v[k]) + kArrivalMarginUs;
+    }
+    m_targetUs = std::clamp(std::max(videoUs, audioNeed), kMinTargetLatencyUs, kMaxTargetLatencyUs);
 }
 
 void AudioPipeline::reset() {
@@ -80,6 +90,7 @@ void AudioPipeline::reset() {
     m_codec = 0;
     m_config.clear();
     m_targetUs = kMinTargetLatencyUs;
+    m_arrivalUs.clear();
     m_totalReceived = 0;
     m_totalLate = 0;
     m_totalPlayed = 0;
@@ -132,26 +143,30 @@ bool AudioPipeline::build(std::uint8_t codec, const Bytes& config) {
 
     GstElement* pipeline = gst_pipeline_new("yansit-audio");
     GstElement* src = gst_element_factory_make("appsrc", "src");
+    // Hedef gecikme kadar tampon gerekir: kuyruk olmadan sink gecikmeyi karşılayamaz ("please add queues").
+    GstElement* queue = gst_element_factory_make("queue", nullptr);
     GstElement* dec = gst_element_factory_make(decoderName, "decoder");
     GstElement* conv = gst_element_factory_make("audioconvert", nullptr);
     GstElement* res = gst_element_factory_make("audioresample", nullptr);
     GstElement* sink = gst_element_factory_make(sinkFactory(m_mode), "sink");
-    if (!src || !dec || !conv || !res || !sink) {
+    if (!src || !queue || !dec || !conv || !res || !sink) {
         qCWarning(lcAudio) << "ses öğeleri oluşturulamadı";
-        for (GstElement* e : {src, dec, conv, res, sink})
+        for (GstElement* e : {src, queue, dec, conv, res, sink})
             if (e)
                 gst_object_unref(e);
         gst_object_unref(pipeline);
         gst_caps_unref(caps);
         return false;
     }
-    g_object_set(src, "caps", caps, "is-live", TRUE, "format", GST_FORMAT_TIME, "do-timestamp", FALSE, nullptr);
+    g_object_set(src, "caps", caps, "is-live", TRUE, "format", GST_FORMAT_TIME, "do-timestamp", FALSE, "min-latency",
+                 gint64(0), "max-latency", gint64(kMaxTargetLatencyUs * 2 * 1000), nullptr);
+    g_object_set(queue, "max-size-buffers", 0u, "max-size-bytes", 0u, "max-size-time", guint64(GST_SECOND), nullptr);
     gst_caps_unref(caps);
     if (m_mode == SinkMode::Fake)
         g_object_set(sink, "sync", TRUE, nullptr);
 
-    gst_bin_add_many(GST_BIN(pipeline), src, dec, conv, res, sink, nullptr);
-    if (!gst_element_link_many(src, dec, conv, res, sink, nullptr)) {
+    gst_bin_add_many(GST_BIN(pipeline), src, queue, dec, conv, res, sink, nullptr);
+    if (!gst_element_link_many(src, queue, dec, conv, res, sink, nullptr)) {
         qCWarning(lcAudio) << "ses öğeleri bağlanamadı";
         gst_object_unref(pipeline);
         return false;
@@ -234,6 +249,9 @@ void AudioPipeline::pushFrame(const FrameHeader& header, Bytes&& payload, std::u
         return;
     }
     const std::int64_t captureLocalUs = std::int64_t(header.ptsUs) + *offset;
+    m_arrivalUs.push_back(std::uint32_t(std::clamp<std::int64_t>(std::int64_t(recvUs) - captureLocalUs, 0, 1'000'000)));
+    if (m_arrivalUs.size() > kArrivalWindow)
+        m_arrivalUs.pop_front();
     const std::uint64_t target = m_targetUs.load();
     if (captureLocalUs + std::int64_t(target) < std::int64_t(recvUs + kLateMarginUs)) {
         ++m_totalLate;

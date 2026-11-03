@@ -1,6 +1,6 @@
 find_package(OpenSSL 3.0 REQUIRED COMPONENTS Crypto)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GST REQUIRED IMPORTED_TARGET gstreamer-1.0>=1.22 gstreamer-app-1.0>=1.22)
+pkg_check_modules(GST REQUIRED IMPORTED_TARGET gstreamer-1.0>=1.22 gstreamer-app-1.0>=1.22 gstreamer-video-1.0>=1.22)
 pkg_check_modules(QRENCODE REQUIRED IMPORTED_TARGET libqrencode)
 pkg_check_modules(AVAHI REQUIRED IMPORTED_TARGET avahi-client)
 
@@ -41,6 +41,8 @@ add_library(yansit_core STATIC
     common/Clock.h
     media/AudioPipeline.cpp
     media/AudioPipeline.h
+    media/LatencyPattern.cpp
+    media/LatencyPattern.h
     media/VideoPipeline.cpp
     media/VideoPipeline.h
     net/Connection.cpp

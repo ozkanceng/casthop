@@ -1,10 +1,12 @@
 #include "media/VideoPipeline.h"
 
 #include "common/Clock.h"
+#include "media/LatencyPattern.h"
 #include "protocol/Control.h"
 
 #include <gst/app/gstappsrc.h>
 #include <gst/gst.h>
+#include <gst/video/video.h>
 
 #include <QLoggingCategory>
 
@@ -39,6 +41,13 @@ GstPadProbeReturn sinkProbe(GstPad*, GstPadProbeInfo* info, gpointer self) {
     return GST_PAD_PROBE_OK;
 }
 
+GstPadProbeReturn decodedProbe(GstPad*, GstPadProbeInfo* info, gpointer self) {
+    static_cast<VideoPipeline*>(self)->handleDecodedProbe(info);
+    return GST_PAD_PROBE_OK;
+}
+
+constexpr std::size_t kMaxE2eSamples = 3600; // ≈ 1 dk @ 60 fps
+
 constexpr std::uint64_t kKeyframeRequestIntervalUs = 200'000;
 constexpr std::uint64_t kMinRebuildIntervalUs = 1'000'000;
 
@@ -70,7 +79,11 @@ VideoPipeline::VideoPipeline(SinkMode mode, QObject* parent) : QObject(parent), 
     connect(&m_busTimer, &QTimer::timeout, this, &VideoPipeline::pollBus);
 }
 
-VideoPipeline::~VideoPipeline() { teardown(); }
+VideoPipeline::~VideoPipeline() {
+    teardown();
+    if (m_decodedInfo)
+        gst_video_info_free(m_decodedInfo);
+}
 
 void VideoPipeline::setClockOffset(std::optional<std::int64_t> offsetUs) {
     std::lock_guard lock(m_mutex);
@@ -92,12 +105,20 @@ void VideoPipeline::reset() {
     m_totalRendered = 0;
     m_totalDropped = 0;
     m_totalReceived = 0;
-    std::lock_guard lock(m_mutex);
-    m_stats = {};
-    m_inFlight.clear();
-    m_basePtsUs.reset();
-    m_offsetUs.reset();
-    m_width = m_height = 0;
+    {
+        std::lock_guard lock(m_mutex);
+        m_stats = {};
+        m_inFlight.clear();
+        m_basePtsUs.reset();
+        m_offsetUs.reset();
+        m_width = m_height = 0;
+        m_patternByPts.clear();
+        m_decodedInfoValid = false;
+    }
+    std::lock_guard e2e(m_e2eMutex);
+    m_e2eSamples.clear();
+    m_e2eSessionSumUs = 0;
+    m_e2eSessionCount = 0;
 }
 
 void VideoPipeline::stop() { teardown(); }
@@ -202,6 +223,13 @@ bool VideoPipeline::build() {
         qCCritical(lcVideo) << "GStreamer öğeleri bağlanamadı";
         gst_object_unref(pipeline);
         return false;
+    }
+
+    // Gecikme deseni çözücü çıkışında (sistem belleği) okunur; GL dokusu okunamaz.
+    if (GstPad* decPad = gst_element_get_static_pad(dec, "src")) {
+        gst_pad_add_probe(decPad, GstPadProbeType(GST_PAD_PROBE_TYPE_BUFFER | GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM),
+                          decodedProbe, this, nullptr);
+        gst_object_unref(decPad);
     }
 
     GstPad* pad = gst_element_get_static_pad(sink, "sink");
@@ -411,9 +439,22 @@ void VideoPipeline::handleSinkProbe(GstPadProbeInfo* info) {
         GstBuffer* buf = GST_PAD_PROBE_INFO_BUFFER(info);
         const std::uint64_t now = monotonicUs();
         const GstClockTime pts = GST_BUFFER_PTS(buf);
+        std::optional<std::uint32_t> e2e;
         {
             std::lock_guard lock(m_mutex);
             ++m_stats.framesRendered;
+            // Bu karede gecikme deseni okunduysa uçtan uca süre (tablette çizim → tahtada çizim).
+            while (!m_patternByPts.empty() && m_patternByPts.front().first < pts)
+                m_patternByPts.pop_front();
+            if (!m_patternByPts.empty() && m_patternByPts.front().first == pts && m_offsetUs) {
+                const std::int64_t d = std::int64_t(now) - (std::int64_t(m_patternByPts.front().second) + *m_offsetUs);
+                m_patternByPts.pop_front();
+                if (d > 0 && d < 10'000'000) {
+                    e2e = std::uint32_t(d);
+                    m_stats.e2eSumUs += std::uint64_t(d);
+                    ++m_stats.e2eCount;
+                }
+            }
             if (GST_CLOCK_TIME_IS_VALID(pts)) {
                 while (!m_inFlight.empty() && m_inFlight.front() <= pts)
                     m_inFlight.pop_front();
@@ -426,6 +467,14 @@ void VideoPipeline::handleSinkProbe(GstPadProbeInfo* info) {
                     }
                 }
             }
+        }
+        if (e2e) {
+            std::lock_guard lock(m_e2eMutex);
+            m_e2eSamples.push_back(*e2e);
+            if (m_e2eSamples.size() > kMaxE2eSamples)
+                m_e2eSamples.pop_front();
+            m_e2eSessionSumUs += *e2e;
+            ++m_e2eSessionCount;
         }
         ++m_totalRendered;
         if (!m_firstRendered.exchange(true))
@@ -451,6 +500,63 @@ void VideoPipeline::handleSinkProbe(GstPadProbeInfo* info) {
     }
     QMetaObject::invokeMethod(
         this, [this, w, h] { emit videoSizeChanged(w, h); }, Qt::QueuedConnection);
+}
+
+void VideoPipeline::handleDecodedProbe(GstPadProbeInfo* info) {
+    if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM) {
+        GstEvent* event = GST_PAD_PROBE_INFO_EVENT(info);
+        if (!event || GST_EVENT_TYPE(event) != GST_EVENT_CAPS)
+            return;
+        GstCaps* caps = nullptr;
+        gst_event_parse_caps(event, &caps);
+        std::lock_guard lock(m_mutex);
+        if (!m_decodedInfo)
+            m_decodedInfo = gst_video_info_new();
+        m_decodedInfoValid = caps && gst_video_info_from_caps(m_decodedInfo, caps);
+        // VAMemory/DMABuf gibi özel bellek türleri ucuza okunamaz: ölçüm yalnız sistem belleğinde.
+        const GstCapsFeatures* f = caps ? gst_caps_get_features(caps, 0) : nullptr;
+        m_decodedSysmem = !f || gst_caps_features_is_any(f) ||
+                          gst_caps_features_contains(f, GST_CAPS_FEATURE_MEMORY_SYSTEM_MEMORY);
+        return;
+    }
+    GstBuffer* buf = GST_PAD_PROBE_INFO_BUFFER(info);
+    if (!buf || !GST_BUFFER_PTS_IS_VALID(buf))
+        return;
+    GstVideoInfo vinfo;
+    {
+        std::lock_guard lock(m_mutex);
+        if (!m_decodedInfoValid || !m_decodedSysmem || !GST_VIDEO_INFO_IS_YUV(m_decodedInfo))
+            return;
+        vinfo = *m_decodedInfo;
+    }
+    GstVideoFrame frame;
+    if (!gst_video_frame_map(&frame, &vinfo, buf, GST_MAP_READ))
+        return;
+    const auto ts = LatencyPattern::decodeLuma(static_cast<const std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&frame, 0)),
+                                               GST_VIDEO_FRAME_WIDTH(&frame), GST_VIDEO_FRAME_HEIGHT(&frame),
+                                               GST_VIDEO_FRAME_PLANE_STRIDE(&frame, 0));
+    gst_video_frame_unmap(&frame);
+    if (!ts)
+        return;
+    std::lock_guard lock(m_mutex);
+    m_patternByPts.emplace_back(GST_BUFFER_PTS(buf), *ts);
+    while (m_patternByPts.size() > 16)
+        m_patternByPts.pop_front();
+}
+
+std::uint64_t VideoPipeline::e2eP95Us() const {
+    std::lock_guard lock(m_e2eMutex);
+    if (m_e2eSamples.empty())
+        return 0;
+    std::vector<std::uint32_t> v(m_e2eSamples.begin(), m_e2eSamples.end());
+    const std::size_t k = std::min(v.size() - 1, v.size() * 95 / 100);
+    std::nth_element(v.begin(), v.begin() + std::ptrdiff_t(k), v.end());
+    return v[k];
+}
+
+std::uint64_t VideoPipeline::e2eAvgUs() const {
+    std::lock_guard lock(m_e2eMutex);
+    return m_e2eSessionCount ? m_e2eSessionSumUs / m_e2eSessionCount : 0;
 }
 
 VideoPipeline::Stats VideoPipeline::takeStats() {

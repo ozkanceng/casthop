@@ -2,7 +2,7 @@
 
 > Android tablet ekranını (ve sesini) Pardus ETAP akıllı tahtalarına kablosuz, düşük gecikmeyle yansıtan açık kaynaklı sistem.
 >
-> Durum: plan 2026-11-03'te onaylandı. Tamamlanan kilometre taşları: **M0–M6** (M3–M6 gerçek cihaz denetimi bekliyor) (ayrıntı: [CHANGELOG](../CHANGELOG.md)). Gerçek cihaz denetimleri: [TESTING.md](TESTING.md).
+> Durum: plan 2026-11-03'te onaylandı. Tamamlanan kilometre taşları: **M0–M7** (M3–M7 gerçek cihaz denetimi bekliyor) (ayrıntı: [CHANGELOG](../CHANGELOG.md)). Gerçek cihaz denetimleri: [TESTING.md](TESTING.md).
 
 ## 0. Ad ve kimlikler
 
@@ -114,8 +114,8 @@ Her taş sonunda: derle → test → kabul kriterlerini kontrol et → commit + 
 
 ### M8 — Paketleme ve yayın
 - `receiver/debian/` (debhelper, `${shlibs:Depends}` + GStreamer eklenti bağımlılıkları), masaüstü kısayolu, ikon, otomatik başlatma seçeneği.
-- Taşınabilir sürüm: AppImage (Qt + GStreamer gömülü, VA sürücüleri sistemden).
-- APK imzalama (GitHub Secrets), tag → GitHub Releases (APK + .deb + AppImage + SHA256SUMS).
+- Taşınabilir sürüm: Qt + GStreamer gömülü `tar.gz` + yönetici yetkisiz `install-user.sh` (VA sürücüleri, GL ve ses sistemden). *Not: AppImage yerine — `appimagetool` sabitlenebilir (sürümlü) bir yayın sunmadığından CI'da sağlama toplamıyla doğrulanamıyordu; aynı amaç dış araç olmadan karşılandı.*
+- APK imzalama (GitHub Secrets), tag → GitHub Releases (APK + .deb + taşınabilir tar.gz + SHA256SUMS); yayın uçtan uca testlere ve taşınabilir paketin temiz sistem denemesine bağlı.
 - README TR/EN tam (ekran görüntüleri/GIF, öğretmen için adım adım kurulum, sorun giderme).
 - `v0.1.0` etiketi.
 

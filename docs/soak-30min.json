@@ -1,0 +1,21 @@
+{
+  "duration_min": 30.0,
+  "latency_mean_ms": 0.7,
+  "latency_p95_ms": 1.0,
+  "latency_slope_ms_per_min": 0.037,
+  "rss_start_mb": 77.5,
+  "rss_end_mb": 77.5,
+  "rss_growth_percent": 0.0,
+  "frames_sent": 107903,
+  "frames_rendered": 107885,
+  "frames_dropped": 0,
+  "audio_late": 49,
+  "sender_dropped": 18,
+  "checks": {
+    "latency_slope": true,
+    "rss_growth": true,
+    "no_receiver_loss": true,
+    "sender_drops_under_0_5_percent": true,
+    "audio_late_under_1_percent": true
+  }
+}

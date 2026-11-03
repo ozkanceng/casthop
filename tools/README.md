@@ -5,8 +5,8 @@
 | `fake-sender` | ✅ M2 | H.264 Annex-B dosyasını protokol üzerinden gerçek zaman hızında yollar. `--engine mirror`: Android uygulamasının gönderici çekirdeğiyle (`android/sender`) |
 | `integration` | ✅ M2 | Sahte gönderici ↔ alıcı uçtan uca senaryoları (CI: `integration.yml`) |
 | `fake-receiver` | ✅ M3 | Ayrı araç gerekmedi: `yansit-receiver --headless` (Linux veya `receiver/ci/Dockerfile`) bir dizüstünde tahtasız alıcıdır; bkz. TESTING.md M3 |
-| `latency` | M7 | Zaman damgalı test deseni + ölçüm |
-| `soak` | M7 | 30 dk uzun süre testi |
+| `latency` | ✅ M7 | Zaman damgalı test deseni (tablette Ayarlar → Gecikme ölçümü) + alıcıda otomatik ölçüm; bkz. [latency/README.md](latency/README.md) |
+| `soak` | ✅ M7 | Uzun süre testi: gecikme eğimi, RSS, kayıp → CSV + SVG (CI: `soak.yml`, her gece 30 dk) |
 
 ## fake-sender
 
@@ -32,3 +32,15 @@ YANSIT_IT_GUI=1 tools/integration/run.sh receiver/build/src/yansit-receiver \
 ```
 
 Senaryolar ve kabul ölçütleri `run.sh` başında ve `check.py` içinde.
+
+## soak
+
+Debian 12'de (veya `yansit-deb12` imajında), **ASan'sız** alıcıyla:
+
+```bash
+tools/integration/install-deps.sh
+tools/soak/run.sh receiver/build/src/yansit-receiver tools/fake-sender/build/install/fake-sender/bin/fake-sender 30 soak-work
+```
+
+`soak-work/summary.json` kabul ölçütleri: dakikalık ortanca gecikmenin eğimi ≤ 0,5 ms/dk, alıcı belleği (RSS) artışı
+< %5, alıcıda kare kaybı yok, göndericinin bilinçli attığı kareler ≤ %0,5, geç ses ≤ %1. Grafik: `soak-work/soak.svg`.

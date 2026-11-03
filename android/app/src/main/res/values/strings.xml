@@ -125,4 +125,8 @@
     <string name="quality_good">Bağlantı: iyi</string>
     <string name="quality_fair">Bağlantı: orta</string>
     <string name="quality_poor">Bağlantı: zayıf — Ayarlar\'dan \"Zayıf ağ\"ı deneyin</string>
+    <string name="settings_latency">Gecikme ölçümü</string>
+    <string name="settings_latency_desc">Yansıtırken bu ekranı açın: tahta, tabletin çizdiği an ile kendi ekranına geldiği an arasındaki süreyi gösterir.</string>
+    <string name="settings_latency_open">Ölçüm ekranını aç</string>
+    <string name="latency_hint">Tahtada yansıtma bilgi çubuğunda \"uçtan uca … ms\" görünür. Elle ölçüm: tableti ve tahtayı aynı fotoğrafta çekin; iki saat arasındaki fark gecikmedir.</string>
 </resources>

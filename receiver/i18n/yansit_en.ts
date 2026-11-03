@@ -55,7 +55,7 @@
     </message>
     <message>
         <source>Play the tablet&apos;s sound</source>
-        <translation>Play the tablet's sound</translation>
+        <translation>Play the tablet&apos;s sound</translation>
     </message>
     <message>
         <source>Picture</source>
@@ -127,6 +127,10 @@
     <message>
         <source>Screenshot</source>
         <translation>Screenshot</translation>
+    </message>
+    <message>
+        <source>end-to-end %1 ms (p95 %2)</source>
+        <translation>end-to-end %1 ms (p95 %2)</translation>
     </message>
 </context>
 <context>

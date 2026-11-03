@@ -36,6 +36,7 @@ import io.github.ozkanceng.yansit.ui.AppPermissions
 import io.github.ozkanceng.yansit.ui.DiscoverScreen
 import io.github.ozkanceng.yansit.ui.PinScreen
 import io.github.ozkanceng.yansit.ui.HomeActions
+import io.github.ozkanceng.yansit.ui.LatencyScreen
 import io.github.ozkanceng.yansit.ui.HomeScreen
 import io.github.ozkanceng.yansit.ui.PermissionScreen
 import io.github.ozkanceng.yansit.ui.ScannerScreen
@@ -53,7 +54,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { HOME, PERMISSIONS, SCANNER, SETTINGS, DISCOVER, PIN }
+private enum class Screen { HOME, PERMISSIONS, SCANNER, SETTINGS, DISCOVER, PIN, LATENCY }
 
 @Composable
 private fun YansitApp() {
@@ -218,6 +219,7 @@ private fun YansitApp() {
                 onBack = { screen = Screen.HOME },
             )
         } ?: run { screen = Screen.HOME }
+        Screen.LATENCY -> LatencyScreen(onBack = { screen = Screen.SETTINGS })
         Screen.SCANNER -> ScannerScreen(
             onResult = { qr ->
                 screen = Screen.HOME
@@ -244,6 +246,7 @@ private fun YansitApp() {
                 hevcAvailable = remember { AndroidEncoderCaps.hevcHardwareEncoders().isNotEmpty() },
                 hevcEnabled = settings.hevcEnabled,
                 onHevcChange = { settings.hevcEnabled = it },
+                onLatency = { screen = Screen.LATENCY },
                 onChange = { p, o ->
                     settings.preset = p
                     settings.overrides = o

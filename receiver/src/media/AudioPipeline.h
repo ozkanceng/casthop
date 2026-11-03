@@ -6,6 +6,7 @@
 #include <QTimer>
 
 #include <atomic>
+#include <deque>
 #include <cstdint>
 #include <mutex>
 #include <optional>
@@ -49,8 +50,13 @@ public:
     void reset();
     void stop();
     void setClockOffset(std::optional<std::int64_t> offsetUs);
-    /** Video gecikmesine göre çağrılır; [kMinTargetLatencyUs, kMaxTargetLatencyUs] aralığına sıkıştırılır. */
-    void setTargetLatencyUs(std::uint64_t us);
+    /**
+     * Video gecikmesine göre çağrılır. Asıl hedef = max(görüntü gecikmesi, sesin kendi varış gecikmesinin p95'i
+     * + pay): ses görüntüden önce çalınabilecekse görüntüye hizalanır; ses yolu daha yavaşsa paketler geç kalmasın
+     * diye sesin varış gecikmesine göre ayarlanır (ses görüntüden biraz sonra gelir; algıda daha az rahatsız edicidir).
+     * Sonuç [kMinTargetLatencyUs, kMaxTargetLatencyUs] aralığına sıkıştırılır.
+     */
+    void setTargetLatencyUs(std::uint64_t videoUs);
     std::uint64_t targetLatencyUs() const { return m_targetUs.load(); }
 
     void pushFrame(const protocol::FrameHeader& header, protocol::Bytes&& payload, std::uint64_t recvUs);
@@ -75,6 +81,7 @@ private:
     std::uint8_t m_codec = 0;
     protocol::Bytes m_config;
     std::atomic<std::uint64_t> m_targetUs{kMinTargetLatencyUs};
+    std::deque<std::uint32_t> m_arrivalUs; ///< son paketlerin yakalama→varış süresi (yalnız GUI iş parçacığı)
     std::atomic<std::uint64_t> m_appliedLatencyNs{0};
 
     std::mutex m_mutex;

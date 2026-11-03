@@ -191,3 +191,23 @@ satırları), 3. ve 10. adımlardaki gözlem.
 
 **Sonuç bildirimi:** `vainfo` çıktısında HEVC satırları; `avahi-browse -rt _yansit._tcp` çıktısı (tahtada veya aynı
 ağdaki bir Linux bilgisayarda); 3. ve 5. adımların fotoğrafı.
+
+---
+
+## M7 — Gecikme ölçümü ve uzun süre
+
+CI her gece 30 dk'lık uzun süre testini koşar (`soak.yml`; gecikme eğimi, bellek, kayıp). Gecikme deseninin okunması
+ve ölçümü her değişiklikte entegrasyon testinde denetlenir. Burada **gerçek donanımda** uçtan uca gecikme ölçülür.
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | 5 GHz Wi-Fi, **En iyi kalite**, yansıtma başlasın; tablette Ayarlar → **Gecikme ölçümü → Ölçüm ekranını aç** | Tablette üstte siyah-beyaz bant ve büyük saat | ☐ |
+| 2 | Tahtada ekrana dokunun | Bilgi çubuğunda `uçtan uca … ms (p95 …)`; hedef ≤ 80 ms, kabul ≤ 120 ms | ☐ |
+| 3 | 1 dk bekleyip değeri not edin | ortalama: ____ ms, p95: ____ ms | ☐ |
+| 4 | Telefonla tableti ve tahtayı aynı karede 10 kez fotoğraflayın | İki saat arasındaki farkların ortancası: ____ ms (panel gecikmesi dahil) | ☐ |
+| 5 | 2. ve 4. adımların farkı | ≈ tahta panelinin gecikmesi (RISKS R8); büyükse tahtada "oyun modu"/düşük gecikme ayarı aranır | ☐ |
+| 6 | 30 dk yansıtma (ölçüm ekranı açık) | Değer giderek artmaz; tahtada `ps -o rss= -C yansit-receiver` başta/sonda: ____ / ____ MB | ☐ |
+| 7 | Aynı ölçümü **Dengeli** ve 2,4 GHz ağda tekrarlayın | sonuç: ____ ms | ☐ |
+
+**Sonuç bildirimi:** tablet modeli, tahta modeli (CPU, `vainfo`), Wi-Fi bandı/kanalı, ölçülen değerler ve fotoğraflar.
+README'deki "Ölçülen performans" tablosu bu sonuçlarla güncellenir.

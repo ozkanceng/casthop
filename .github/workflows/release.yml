@@ -8,7 +8,12 @@ permissions:
   contents: write
 
 jobs:
+  # Yayın, uçtan uca testler geçmeden yapılmaz.
+  integration:
+    uses: ./.github/workflows/integration.yml
+
   android:
+    needs: integration
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -60,8 +65,9 @@ jobs:
           path: dist/
 
   receiver:
+    needs: integration
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     container: debian:12
     steps:
       - uses: actions/checkout@v7
@@ -75,14 +81,32 @@ jobs:
       - name: Build .deb
         run: receiver/ci/build-deb.sh dist
 
+      - name: Build portable package
+        run: receiver/ci/build-portable.sh dist "${GITHUB_REF_NAME#v}"
+
       - uses: actions/upload-artifact@v7
         with:
           name: dist-receiver
           path: dist/
 
+  # Taşınabilir paket, geliştirme paketleri olmayan temiz bir Debian 12'de açılabilmeli.
+  portable-test:
+    needs: receiver
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container: debian:12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist-receiver
+          path: dist
+      - name: Test on a clean system
+        run: receiver/ci/test-portable.sh dist/yansit-receiver-*.tar.gz
+
   publish:
     runs-on: ubuntu-latest
-    needs: [android, receiver]
+    needs: [android, receiver, portable-test]
     steps:
       - uses: actions/download-artifact@v8
         with:

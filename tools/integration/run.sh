@@ -16,6 +16,7 @@
 #   4h. Görüntü + Opus ses; 4i. görüntü + AAC ses: paketler çalınır, ses görüntüyle senkron (±60 ms)
 #   4j. H.265 akışı (CI'da yazılım çözücü YANSIT_ALLOW_SW_HEVC=1 ile sunulur)
 #   4k. PIN ile bağlanma (mDNS ile bulunan tahtanın akışı; QR yok)
+#   4l. Gecikme deseni: alıcı karedeki damgayı okuyup uçtan uca gecikmeyi ölçer (tools/latency)
 #   5. SIGTERM → alıcı düzgün kapanır
 #   5b. Alıcı yeniden başlatılınca eşleştirme geçerli (trusted.json kalıcı)
 #   6. (YANSIT_IT_GUI=1) Arayüz modu Xvfb + Mesa OpenGL'de: qml6glsink yolu 300 kareyi çizer
@@ -73,6 +74,13 @@ gst-launch-1.0 -q videotestsrc num-buffers=300 pattern=ball ! video/x-raw,width=
     ! x265enc tune=zerolatency speed-preset=ultrafast key-int-max=30 bitrate=3000 \
     ! video/x-h265,stream-format=byte-stream ! filesink location="$WORK/test.h265"
 [ -s "$WORK/test.h265" ] || fail "H.265 test videosu üretilemedi"
+python3 -I "$HERE/make_pattern.py" "$WORK/pattern.yuv" 180 640 360 1000000 16667
+gst-launch-1.0 -q filesrc location="$WORK/pattern.yuv" \
+    ! rawvideoparse width=640 height=360 format=i420 framerate=60/1 \
+    ! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=30 bframes=0 bitrate=3000 \
+    ! video/x-h264,stream-format=byte-stream,profile=high ! filesink location="$WORK/pattern.h264"
+rm -f "$WORK/pattern.yuv"
+[ -s "$WORK/pattern.h264" ] || fail "desen videosu üretilemedi"
 
 log "Alıcı başlatılıyor (port $PORT)"
 rm -f "$WORK/pairing.json" "$WORK/stats.jsonl"
@@ -203,6 +211,11 @@ log "4k. PIN ile bağlanma"
 wait_sessions 11
 "$SENDER" --pairing-file "$WORK/pairing.json" --auth bad-pin --expect reject:AUTH_FAILED --result "$WORK/s4k2.json" \
     || fail "senaryo 4k: yanlış PIN reddedilmeli"
+
+log "4l. Gecikme deseni"
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth qr --input "$WORK/pattern.h264" --fps 60 --frames 180 \
+    --pattern-base 1000000 --device-name "Tablet L" --result "$WORK/s4l.json" || fail "senaryo 4l"
+wait_sessions 12
 
 log "5. Düzgün kapanış"
 kill -TERM "$RPID"

@@ -14,7 +14,7 @@ def expect(cond, msg):
 
 
 stats = [json.loads(l) for l in (work / "stats.jsonl").read_text().splitlines() if l.strip()]
-expect(len(stats) == 11, f"on bir oturum istatistiği (bulunan: {len(stats)})")
+expect(len(stats) == 12, f"on iki oturum istatistiği (bulunan: {len(stats)})")
 s = stats[0] if stats else {}
 m = stats[1] if len(stats) > 1 else {}
 s2 = json.loads((work / "s2.json").read_text())
@@ -106,6 +106,13 @@ expect(hv_r.get("frames_rendered") == hv.get("frames_sent") and hv_r.get("frames
        f"H.265: tüm kareler çizildi ({hv_r.get('frames_rendered')}/{hv.get('frames_sent')})")
 
 expect(load("s4k.json").get("ok") is True, "PIN: doğru kodla bağlanıldı")
+
+lat = stats[11] if len(stats) > 11 else {}
+print(f"gecikme deseni: {lat}")
+e2e, p95 = lat.get("e2e_avg_ms"), lat.get("e2e_p95_ms")
+# Aynı makinede yazılım çözme: uçtan uca (gönderim → çizim) birkaç ms; desen her karede okunmalı.
+expect(e2e is not None and 0 < e2e < 100 and p95 is not None and p95 < 150,
+       f"gecikme deseni okundu ve ölçüldü (ort. {e2e} ms, p95 {p95} ms)")
 
 gui = work / "stats-gui.jsonl"
 if gui.exists():

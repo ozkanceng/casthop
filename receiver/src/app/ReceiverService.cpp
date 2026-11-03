@@ -469,6 +469,9 @@ void ReceiverService::sendReport() {
     map.insert(QStringLiteral("decoder"), m_video->decoderName());
     map.insert(QStringLiteral("hardware"), m_video->hardwareDecoding());
     map.insert(QStringLiteral("width"), m_videoWidth);
+    // Gecikme deseni ekrandaysa (tools/latency) gerçek uçtan uca ölçüm.
+    map.insert(QStringLiteral("e2eMs"), st.e2eCount ? int(st.e2eSumUs / st.e2eCount / 1000) : -1);
+    map.insert(QStringLiteral("e2eP95Ms"), int(m_video->e2eP95Us() / 1000));
     map.insert(QStringLiteral("height"), m_videoHeight);
     m_statsMap = map;
     emit statsChanged();
@@ -489,6 +492,10 @@ void ReceiverService::finishSessionStats() {
                                : QJsonValue());
     o.insert(QStringLiteral("decoder"), m_video->decoderName());
     o.insert(QStringLiteral("hardware"), m_video->hardwareDecoding());
+    if (const auto e2e = m_video->e2eAvgUs()) {
+        o.insert(QStringLiteral("e2e_avg_ms"), double(e2e) / 1000.0);
+        o.insert(QStringLiteral("e2e_p95_ms"), double(m_video->e2eP95Us()) / 1000.0);
+    }
     o.insert(QStringLiteral("audio_received"), qint64(m_audio->totalReceived()));
     o.insert(QStringLiteral("audio_played"), qint64(m_audio->totalPlayed()));
     o.insert(QStringLiteral("audio_late"), qint64(m_audio->totalLate()));

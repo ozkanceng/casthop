@@ -81,6 +81,16 @@ Item {
             }
 
             Text {
+                // Gecikme deseni ekrandaysa (tools/latency) gerçek uçtan uca ölçüm.
+                visible: root.stats.e2eMs !== undefined && root.stats.e2eMs >= 0
+                text: qsTr("end-to-end %1 ms (p95 %2)").arg(root.stats.e2eMs).arg(root.stats.e2eP95Ms)
+                color: Theme.primary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontCaption
+                font.weight: Font.DemiBold
+            }
+
+            Text {
                 visible: root.stats.latencyMs !== undefined && root.stats.latencyMs >= 0
                 text: qsTr("%1 ms · %2 fps · %3 Mbps")
                       .arg(root.stats.latencyMs)

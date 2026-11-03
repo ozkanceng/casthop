@@ -17,6 +17,7 @@
 
 typedef struct _GstElement GstElement;
 typedef struct _GstPadProbeInfo GstPadProbeInfo;
+typedef struct _GstVideoInfo GstVideoInfo;
 
 namespace yansit::media {
 
@@ -62,6 +63,9 @@ public:
         std::uint64_t c2dSumUs = 0;
         std::uint32_t c2dCount = 0;
         std::uint16_t backlog = 0;
+        /// Gecikme test deseni görüldüyse (tools/latency): tablette çizim → tahtada çizim.
+        std::uint64_t e2eSumUs = 0;
+        std::uint32_t e2eCount = 0;
     };
 
     explicit VideoPipeline(SinkMode mode, QObject* parent = nullptr);
@@ -90,6 +94,12 @@ public:
 
     /// İç kullanım: sink pad sondası (akış iş parçacığında çağrılır).
     void handleSinkProbe(GstPadProbeInfo* info);
+    /// İç kullanım: çözücü çıkışı sondası; gecikme desenini okur.
+    void handleDecodedProbe(GstPadProbeInfo* info);
+
+    /// Oturum boyunca ölçülen uçtan uca gecikmenin 95. yüzdeliği (µs); ölçüm yoksa 0.
+    std::uint64_t e2eP95Us() const;
+    std::uint64_t e2eAvgUs() const;
 
 signals:
     /// Göndericiden anahtar kare istenmeli (KeyframeReason).
@@ -139,6 +149,16 @@ private:
     std::uint32_t m_totalReceived = 0;
     int m_width = 0;
     int m_height = 0;
+
+    // Gecikme deseni (akış iş parçacıkları; m_mutex ile).
+    GstVideoInfo* m_decodedInfo = nullptr;
+    bool m_decodedInfoValid = false;
+    bool m_decodedSysmem = false;
+    std::deque<std::pair<std::uint64_t, std::uint64_t>> m_patternByPts; ///< (PTS ns, tablet damgası µs)
+    mutable std::mutex m_e2eMutex;
+    std::deque<std::uint32_t> m_e2eSamples; ///< son N ölçüm (µs), yüzdelik için
+    std::uint64_t m_e2eSessionSumUs = 0;
+    std::uint64_t m_e2eSessionCount = 0;
 };
 
 } // namespace yansit::media

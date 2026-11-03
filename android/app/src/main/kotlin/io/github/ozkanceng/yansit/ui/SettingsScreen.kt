@@ -18,6 +18,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -58,6 +59,7 @@ fun SettingsScreen(
     onChange: (Preset, StreamOverrides) -> Unit,
     onAudioChange: (Boolean) -> Unit,
     onHevcChange: (Boolean) -> Unit,
+    onLatency: () -> Unit,
     onBack: () -> Unit,
 ) {
     var audio by remember { mutableStateOf(audioEnabled) }
@@ -158,6 +160,17 @@ fun SettingsScreen(
                 adv.maxBitrateBps,
                 { stringResourceFor(R.string.option_mbps, (it / 1_000_000).toInt()) },
             ) { update(o = adv.copy(maxBitrateBps = it)) }
+            HorizontalDivider(width)
+            Text(stringResource(R.string.settings_latency), style = MaterialTheme.typography.titleMedium, modifier = width)
+            Text(
+                stringResource(R.string.settings_latency_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = width,
+            )
+            OutlinedButton(onClick = onLatency, modifier = Modifier.heightIn(min = 56.dp)) {
+                Text(stringResource(R.string.settings_latency_open))
+            }
         }
     }
 }
