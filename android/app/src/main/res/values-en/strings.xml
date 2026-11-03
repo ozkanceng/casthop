@@ -100,4 +100,14 @@
     <string name="board_forget">Forget</string>
     <string name="board_forget_desc">Forget %1$s</string>
     <string name="action_scan_qr">New board with QR</string>
+    <string name="perm_audio">Sound (optional)</string>
+    <string name="perm_audio_reason">To play the tablet\'s sound (videos, app sounds) on the board. Android requires this permission, but the microphone is not recorded.</string>
+    <string name="audio_on">Sound is playing on the board.</string>
+    <string name="audio_off_setting">Sound is off (Settings).</string>
+    <string name="audio_off_board">Sound is off on the board; it plays on the tablet.</string>
+    <string name="audio_off_permission">Sound is not shared: permission not granted.</string>
+    <string name="audio_unsupported">Sound cannot be shared between this tablet and board.</string>
+    <string name="audio_failed">Sound could not be shared; video continues.</string>
+    <string name="settings_audio">Play sound on the board</string>
+    <string name="settings_audio_desc">Video and app sounds play from the board\'s speakers. Some apps (e.g. calls, some video apps) do not allow their sound to be shared.</string>
 </resources>

@@ -48,6 +48,7 @@ object AppPermissions {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(Item(Manifest.permission.POST_NOTIFICATIONS, R.string.perm_notifications, R.string.perm_notifications_reason, required = false))
         }
+        add(Item(Manifest.permission.RECORD_AUDIO, R.string.perm_audio, R.string.perm_audio_reason, required = false))
     }
 
     fun missing(context: Context): List<Item> =

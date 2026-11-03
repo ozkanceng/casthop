@@ -31,6 +31,7 @@ Derleme seçenekleri: `-DYANSIT_SANITIZE=ON` (ASan + UBSan), `-DYANSIT_BUILD_TES
 | `--stats-file F` | Her oturum sonunda istatistik satırı (JSON Lines) |
 | `--approval-timeout MS` | İkinci tablet için tahta onayı süresi (varsayılan 20000) |
 | `--qr-host IP` | QR'a konacak adres (tekrarlanabilir; varsayılan: otomatik) |
+| `--no-audio` | Tabletin sesini çalma (WELCOME `audio_enabled=0`) |
 
 Ortam değişkenleri: `YANSIT_DECODER=avdec_h264` çözücüyü zorlar; `YANSIT_VA_DMABUF=1` VA → GL sıfır kopya yolunu
 dener (GStreamer 1.22'de sürücüye bağlı, bkz. RISKS R6).

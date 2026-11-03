@@ -57,6 +57,7 @@ private const val USAGE = """fake-sender — Yansıt test göndericisi
   --expect-pending    tahta onayı beklemesi (PENDING_APPROVAL) zorunlu
   --hold-ms N         son kareden sonra BYE'dan önce bekleme (varsayılan 1500)
   --result F          sonuç özeti (JSON)
+  --audio-input F     (mirror) Ogg/Opus veya ADTS/AAC ses dosyası; tahta kabul ederse ses de gönderilir
   --port N            URI'deki port yerine bu port (ör. ağ benzetim vekili)
   --rotate-input F    (mirror) --rotate-after kareden sonra bu dosyaya geç ve kodlayıcıyı yeniden yapılandır
   --rotate-after N    (mirror) döndürme benzetiminin karesi
@@ -83,6 +84,7 @@ private data class Options(
     val result: File?,
     val engine: String,
     val pairingKey: File?,
+    val audioInput: File?,
     val port: Int?,
     val rotateInput: File?,
     val rotateAfter: Int,
@@ -142,6 +144,7 @@ private fun parseArgs(args: Array<String>): Options {
         result = m["--result"]?.let(::File),
         engine = (m["--engine"] ?: "raw").also { if (it != "raw" && it != "mirror") usage("--engine: raw | mirror") },
         pairingKey = m["--pairing-key"]?.let(::File),
+        audioInput = m["--audio-input"]?.let(::File),
         port = m["--port"]?.toIntOrNull()?.takeIf { it in 1..65535 } ?: if ("--port" in m) usage("--port") else null,
         rotateInput = m["--rotate-input"]?.let(::File),
         rotateAfter = m["--rotate-after"]?.toIntOrNull() ?: 0,
@@ -325,10 +328,12 @@ private fun streamWithMirrorSession(
         },
     )
     mirror.start()
+    val audioSource = o.audioInput?.let { FileAudioSource(AudioFiles.parse(it.readBytes())) }
     try {
         mirror.startVideo(planA, source)
+        audioSource?.let { mirror.startAudio(it) }
     } catch (e: IOException) {
-        System.err.println("video bağlantısı: $e")
+        System.err.println("medya bağlantısı: $e")
         mirror.stop(ByeReason.ERROR)
         return false
     }
@@ -342,6 +347,10 @@ private fun streamWithMirrorSession(
     summary["restarts"] = JsonPrimitive(source.starts.get() - 1)
     summary["resume_count"] = JsonPrimitive(mirror.resumeCount.get())
     summary["drain_count"] = JsonPrimitive(mirror.drainCount.get())
+    audioSource?.let {
+        summary["audio_packets_sent"] = JsonPrimitive(it.packetsProduced.get())
+        summary["audio_dropped"] = JsonPrimitive(mirror.audioDropped)
+    }
     // Kopma → yeniden bağlanma süreleri (ms).
     val outages = synchronized(linkEvents) {
         linkEvents.zipWithNext().filter { (a, b) -> a.first == LinkState.RECONNECTING && b.first == LinkState.CONNECTED }

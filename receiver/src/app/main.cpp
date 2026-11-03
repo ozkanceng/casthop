@@ -96,13 +96,14 @@ struct CommonOptions {
                               QStringLiteral("Address to put into the QR code (repeatable; default: auto)"),
                               QStringLiteral("ip")};
     QCommandLineOption verbose{QStringLiteral("verbose"), QStringLiteral("Detailed log output")};
+    QCommandLineOption noAudio{QStringLiteral("no-audio"), QStringLiteral("Do not play the tablet's sound")};
     QCommandLineOption windowed{QStringLiteral("windowed"), QStringLiteral("Start windowed instead of full screen")};
     QCommandLineOption exitAfter{QStringLiteral("exit-after"),
                                  QStringLiteral("Quit after N ms (automated tests)"), QStringLiteral("ms")};
 
     void addTo(QCommandLineParser& p) const {
         p.addOptions({port, name, dataDir, headless, pairingFile, statsFile, approvalTimeout, qrHost, verbose,
-                      windowed, exitAfter});
+                      noAudio, windowed, exitAfter});
     }
 };
 
@@ -128,6 +129,7 @@ std::optional<ReceiverService::Options> serviceOptions(const QCommandLineParser&
     opt.pairingFile = p.value(o.pairingFile);
     opt.statsFile = p.value(o.statsFile);
     opt.qrHosts = p.values(o.qrHost);
+    opt.audio = !p.isSet(o.noAudio);
     return opt;
 }
 

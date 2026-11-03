@@ -36,6 +36,8 @@ add_library(yansit_core STATIC
     app/ReceiverService.cpp
     app/ReceiverService.h
     common/Clock.h
+    media/AudioPipeline.cpp
+    media/AudioPipeline.h
     media/VideoPipeline.cpp
     media/VideoPipeline.h
     net/Connection.cpp

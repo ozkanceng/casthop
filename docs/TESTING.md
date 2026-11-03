@@ -146,3 +146,26 @@ dar bant, kalıcı eşleştirme); burada yalnız gerçek donanımın davranış�
 
 **Sonuç bildirimi:** `adb logcat -s YansitMirror YansitEncoder YansitService` çıktısı ve alıcının `--verbose`
 günlüğü; 1 ve 3. adımlarda ölçülen süreler.
+
+---
+
+## M5 — Ses
+
+CI'da Opus ve AAC akışları gerçek alıcıda çalınır ve ses–görüntü sapması ölçülür (başsız modda ≈ 22 ms). Burada
+tahtanın hoparlöründen gerçek ses ve dudak senkronu denetlenir.
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | İzin ekranında "Ses (isteğe bağlı)" iznini verin, bağlanın | Ana ekranda "Ses tahtadan çalıyor." | ☐ |
+| 2 | Tablette YouTube veya bir video dosyası oynatın | Ses tahtanın hoparlöründen; tabletten ses gelmez | ☐ |
+| 3 | Konuşan bir kişinin olduğu video | Dudak ile ses arasında fark edilir kayma yok (≤ ±60 ms; şüphede M7 ölçüm aracı) | ☐ |
+| 4 | **Duraklat** | Tahtada ses de durur | ☐ |
+| 5 | **Devam et** | Ses ≤ 1 sn içinde geri gelir | ☐ |
+| 6 | Ayarlar → "Sesi tahtaya aktar" kapalı, yeniden bağlanın | Ses tabletten çalar; ana ekranda "Ses kapalı (Ayarlar)." | ☐ |
+| 7 | Ses iznini reddedip bağlanın | Görüntü normal; "Ses aktarılmıyor: ses izni verilmedi." | ☐ |
+| 8 | Tahtada `yansit-receiver --no-audio` | Tablette "Tahtada ses kapalı; ses tabletten çalar." | ☐ |
+| 9 | Wi-Fi'ı 2 sn kesip açın | Görüntüyle birlikte ses de geri gelir | ☐ |
+| 10 | 10 dk yansıtma (video oynatırken) | Ses kesilmez, giderek kaymaz | ☐ |
+
+**Sonuç bildirimi:** `adb logcat -s YansitAudio YansitMirror` ve alıcının `--verbose` günlüğü (`yansit.audio`
+satırları), 3. ve 10. adımlardaki gözlem.

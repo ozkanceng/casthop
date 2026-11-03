@@ -34,6 +34,11 @@ class AppSettings(context: Context) {
         get() = prefs.getString(KEY_PRESET, null)?.let { runCatching { Preset.valueOf(it) }.getOrNull() } ?: Preset.BEST
         set(value) = prefs.edit { putString(KEY_PRESET, value.name) }
 
+    /** Tabletin sesini tahtaya aktar (AudioPlaybackCapture). */
+    var audioEnabled: Boolean
+        get() = prefs.getBoolean(KEY_AUDIO, true)
+        set(value) = prefs.edit { putBoolean(KEY_AUDIO, value) }
+
     var overrides: StreamOverrides
         get() = StreamOverrides(
             longSide = prefs.getInt(KEY_LONG_SIDE, 0).takeIf { it > 0 },
@@ -49,6 +54,7 @@ class AppSettings(context: Context) {
     private companion object {
         const val KEY_DEVICE_ID = "device_id"
         const val KEY_PRESET = "preset"
+        const val KEY_AUDIO = "audio"
         const val KEY_LONG_SIDE = "override_long_side"
         const val KEY_FPS = "override_fps"
         const val KEY_MAX_BITRATE = "override_max_bitrate"

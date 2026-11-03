@@ -14,7 +14,7 @@ def expect(cond, msg):
 
 
 stats = [json.loads(l) for l in (work / "stats.jsonl").read_text().splitlines() if l.strip()]
-expect(len(stats) == 7, f"yedi oturum istatistiği (bulunan: {len(stats)})")
+expect(len(stats) == 9, f"dokuz oturum istatistiği (bulunan: {len(stats)})")
 s = stats[0] if stats else {}
 m = stats[1] if len(stats) > 1 else {}
 s2 = json.loads((work / "s2.json").read_text())
@@ -81,6 +81,23 @@ p4f, p4g, p5b = load("s4f.json"), load("s4g.json"), load("s5b.json")
 expect(p4f.get("paired") is True, "eşleştirme: QR bağlantısında anahtar verildi")
 expect(p4g.get("ok") is True and p4g.get("paired") is False, "eşleştirme: QR'sız bağlanıldı (yeni anahtar istenmedi)")
 expect(p5b.get("ok") is True, "eşleştirme: alıcı yeniden başladıktan sonra da geçerli")
+
+for idx, name, label in [(7, "s4h.json", "Opus"), (8, "s4i.json", "AAC")]:
+    snd, rcv = load(name), (stats[idx] if len(stats) > idx else {})
+    print(f"ses ({label}): gönderici {snd} / alıcı {rcv}")
+    sent = snd.get("audio_packets_sent", 0)
+    got, played, late = rcv.get("audio_received", 0), rcv.get("audio_played", 0), rcv.get("audio_late", 0)
+    expect(snd.get("ok") is True and sent > 100, f"ses ({label}): gönderildi ({sent} paket)")
+    expect(got >= 0.95 * sent, f"ses ({label}): alıcıya ulaştı ({got}/{sent})")
+    expect(played >= 0.9 * got and late <= 0.05 * got, f"ses ({label}): çalındı ({played}), geç {late}")
+    a, v = rcv.get("audio_latency_ms"), rcv.get("c2d_avg_ms")
+    # Görüntü çizildiği anda + bir ekran karesi sonra ekranda; ses o ana hizalanır (en az 40 ms tampon).
+    if a is not None and v is not None:
+        skew = a - (v + 1000 / 60)
+        expect(abs(skew) <= 60, f"ses ({label}): dudak senkronu sapması {skew:.1f} ms (≤ ±60)")
+    else:
+        expect(False, f"ses ({label}): gecikme ölçülemedi (ses {a}, görüntü {v})")
+    expect(rcv.get("frames_dropped") == 0, f"ses ({label}): görüntü kaybı yok ({rcv.get('frames_dropped')})")
 
 gui = work / "stats-gui.jsonl"
 if gui.exists():

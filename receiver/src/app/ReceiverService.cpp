@@ -62,6 +62,10 @@ bool writeJsonFile(const QString& path, const QByteArray& data, bool privateFile
 
 ReceiverService::ReceiverService(Options options, QObject* parent) : QObject(parent), m_options(std::move(options)) {
     m_video = new media::VideoPipeline(m_options.sinkMode, this);
+    m_audio = new media::AudioPipeline(m_options.sinkMode == media::VideoPipeline::SinkMode::Gl
+                                           ? media::AudioPipeline::SinkMode::Device
+                                           : media::AudioPipeline::SinkMode::Fake,
+                                       this);
     connect(m_video, &media::VideoPipeline::keyframeNeeded, this, [this](std::uint8_t reason) {
         KeyframeRequest r;
         r.reason = reason;
@@ -106,7 +110,13 @@ session::ReceiverInfo ReceiverService::receiverInfo() const {
         flags |= CodecSupport::Hardware;
     if (!decoders.empty())
         info.videoDecoders.push_back({Codec::H264, flags});
-    info.audioEnabled = false; // ses M5'te
+    const auto audioMode = m_options.sinkMode == media::VideoPipeline::SinkMode::Gl ? media::AudioPipeline::SinkMode::Device
+                                                                                   : media::AudioPipeline::SinkMode::Fake;
+    if (media::AudioPipeline::opusAvailable(audioMode))
+        info.audioDecoders.push_back({Codec::Opus, CodecSupport::Preferred});
+    if (media::AudioPipeline::aacAvailable(audioMode))
+        info.audioDecoders.push_back({Codec::AacLc, 0});
+    info.audioEnabled = m_options.audio && !info.audioDecoders.empty();
     return info;
 }
 
@@ -165,6 +175,7 @@ void ReceiverService::shutdown() {
     if (m_server)
         m_server->close();
     m_video->stop();
+    m_audio->stop();
 }
 
 void ReceiverService::setError(const QString& message) {
@@ -288,8 +299,10 @@ void ReceiverService::onSessionMessage(net::Connection& c, ControlMessage&& msg,
                 p.t1Us = recvUs;
                 p.t2Us = monotonicUs();
                 c.sendControl(p);
-                if (m.offsetUs)
+                if (m.offsetUs) {
                     m_video->setClockOffset(*m.offsetUs);
+                    m_audio->setClockOffset(*m.offsetUs);
+                }
             } else if constexpr (std::is_same_v<T, StreamConfig>) {
                 qCInfo(lcRecv) << "akış:" << m.streamKind << "codec" << m.codec << m.width.value_or(0) << "x"
                                << m.height.value_or(0) << "@" << m.fps.value_or(0);
@@ -310,9 +323,11 @@ void ReceiverService::onSessionMessage(net::Connection& c, ControlMessage&& msg,
 }
 
 void ReceiverService::onMedia(net::Connection& c, const FrameHeader& header, Bytes&& payload, std::uint64_t recvUs) {
-    if (m_sessions->mediaSlotOf(c.id()) == SessionManager::MediaSlot::Video && header.type == FrameType::Video)
+    const auto slot = m_sessions->mediaSlotOf(c.id());
+    if (slot == SessionManager::MediaSlot::Video && header.type == FrameType::Video)
         m_video->pushFrame(header, std::move(payload), recvUs);
-    // AUDIO: M5.
+    else if (slot == SessionManager::MediaSlot::Audio && header.type == FrameType::Audio)
+        m_audio->pushFrame(header, std::move(payload), recvUs);
 }
 
 void ReceiverService::onClosed(net::Connection& c) {
@@ -350,9 +365,11 @@ void ReceiverService::refreshState() {
             finishSessionStats();
         m_sessionId = current;
         m_video->reset();
+        m_audio->reset();
         m_firstFrameUs.reset();
         m_paused = false;
         m_sessionC2dSumUs = m_sessionC2dCount = 0;
+        m_sessionAudioLatencySumUs = m_sessionAudioLatencyCount = 0;
         m_senderBitrate = 0;
         m_senderFpsX100 = 0;
         m_videoWidth = m_videoHeight = 0;
@@ -401,6 +418,12 @@ void ReceiverService::sendReport() {
     const std::uint64_t intervalUs = std::max<std::uint64_t>(now - m_lastReportUs, 1);
     m_lastReportUs = now;
     const media::VideoPipeline::Stats st = m_video->takeStats();
+    const media::AudioPipeline::Stats at = m_audio->takeStats();
+    // Dudak senkronu: ses, görüntünün ekrana çıktığı anda çalınsın (çizim gecikmesi + bir ekran karesi).
+    if (st.c2dCount > 0) {
+        const std::uint64_t frameUs = 1'000'000 / std::max<std::uint8_t>(m_options.displayRefresh, 1);
+        m_audio->setTargetLatencyUs(st.c2dSumUs / st.c2dCount + frameUs);
+    }
     if (!m_sessions || !m_sessions->session() || !m_sessions->session()->control)
         return;
 
@@ -415,7 +438,9 @@ void ReceiverService::sendReport() {
     r.c2rMaxUs = st.c2rMaxUs;
     r.c2dAvgUs = st.c2dCount ? std::uint32_t(std::min<std::uint64_t>(st.c2dSumUs / st.c2dCount, 0xFFFFFFFF)) : 0;
     r.decodeBacklog = st.backlog;
-    r.audioLate = 0;
+    r.audioLate = std::uint16_t(std::min<std::uint32_t>(at.late, 0xFFFF));
+    m_sessionAudioLatencySumUs += at.latencySumUs;
+    m_sessionAudioLatencyCount += at.latencyCount;
     sendToControl(r);
 
     m_sessionC2dSumUs += st.c2dSumUs;
@@ -449,6 +474,13 @@ void ReceiverService::finishSessionStats() {
                                : QJsonValue());
     o.insert(QStringLiteral("decoder"), m_video->decoderName());
     o.insert(QStringLiteral("hardware"), m_video->hardwareDecoding());
+    o.insert(QStringLiteral("audio_received"), qint64(m_audio->totalReceived()));
+    o.insert(QStringLiteral("audio_played"), qint64(m_audio->totalPlayed()));
+    o.insert(QStringLiteral("audio_late"), qint64(m_audio->totalLate()));
+    o.insert(QStringLiteral("audio_latency_ms"),
+             m_sessionAudioLatencyCount
+                 ? QJsonValue(double(m_sessionAudioLatencySumUs) / double(m_sessionAudioLatencyCount) / 1000.0)
+                 : QJsonValue());
     QFile f(m_options.statsFile);
     if (f.open(QIODevice::Append | QIODevice::WriteOnly)) {
         f.write(QJsonDocument(o).toJson(QJsonDocument::Compact));

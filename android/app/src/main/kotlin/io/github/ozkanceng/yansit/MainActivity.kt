@@ -170,10 +170,12 @@ private fun YansitApp() {
                 preset = settings.preset,
                 overrides = settings.overrides,
                 options = options,
+                audioEnabled = settings.audioEnabled,
                 onChange = { p, o ->
                     settings.preset = p
                     settings.overrides = o
                 },
+                onAudioChange = { settings.audioEnabled = it },
                 onBack = { screen = Screen.HOME },
             )
         }

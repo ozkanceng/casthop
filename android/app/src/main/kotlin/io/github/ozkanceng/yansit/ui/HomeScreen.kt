@@ -39,6 +39,7 @@ import io.github.ozkanceng.yansit.R
 import io.github.ozkanceng.yansit.data.RememberedBoard
 import io.github.ozkanceng.yansit.protocol.Bytes
 import io.github.ozkanceng.yansit.sender.MirrorStats
+import io.github.ozkanceng.yansit.stream.AudioState
 import io.github.ozkanceng.yansit.stream.MirrorError
 import io.github.ozkanceng.yansit.stream.MirrorState
 import io.github.ozkanceng.yansit.ui.theme.YansitTheme
@@ -221,6 +222,14 @@ private fun MirroringCard(state: MirrorState.Mirroring, modifier: Modifier) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            if (!state.reconnecting) {
+                Text(
+                    stringResource(audioText(state.audio)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (state.audio == AudioState.ON) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.secondary,
+                )
+            }
             Text(
                 stringResource(R.string.mirroring_hint),
                 style = MaterialTheme.typography.bodyMedium,
@@ -250,6 +259,15 @@ private fun EndedCard(error: MirrorError?, modifier: Modifier) {
             }
         }
     }
+}
+
+private fun audioText(a: AudioState): Int = when (a) {
+    AudioState.ON -> R.string.audio_on
+    AudioState.OFF_SETTING -> R.string.audio_off_setting
+    AudioState.OFF_BOARD -> R.string.audio_off_board
+    AudioState.OFF_PERMISSION -> R.string.audio_off_permission
+    AudioState.UNSUPPORTED -> R.string.audio_unsupported
+    AudioState.FAILED -> R.string.audio_failed
 }
 
 /** Hata türü → (başlık, açıklama). Açıklama öğretmenin ne yapacağını söyler. */

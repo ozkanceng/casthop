@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -20,6 +21,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -50,9 +52,12 @@ fun SettingsScreen(
     preset: Preset,
     overrides: StreamOverrides,
     options: SettingsOptions,
+    audioEnabled: Boolean,
     onChange: (Preset, StreamOverrides) -> Unit,
+    onAudioChange: (Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
+    var audio by remember { mutableStateOf(audioEnabled) }
     BackHandler(onBack = onBack)
     var current by remember { mutableStateOf(preset) }
     var adv by remember { mutableStateOf(overrides) }
@@ -84,6 +89,27 @@ fun SettingsScreen(
                 PresetRow(Preset.BEST, R.string.preset_best, R.string.preset_best_desc, current) { update(p = it) }
                 PresetRow(Preset.BALANCED, R.string.preset_balanced, R.string.preset_balanced_desc, current) { update(p = it) }
                 PresetRow(Preset.WEAK_NETWORK, R.string.preset_weak, R.string.preset_weak_desc, current) { update(p = it) }
+            }
+            HorizontalDivider(width)
+            Row(
+                width
+                    .heightIn(min = 64.dp)
+                    .toggleable(value = audio, role = Role.Switch, onValueChange = {
+                        audio = it
+                        onAudioChange(it)
+                    }),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_audio), style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        stringResource(R.string.settings_audio_desc),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Switch(checked = audio, onCheckedChange = null)
             }
             HorizontalDivider(width)
             Text(stringResource(R.string.settings_advanced), style = MaterialTheme.typography.titleMedium, modifier = width)

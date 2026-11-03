@@ -1,7 +1,9 @@
 package io.github.ozkanceng.yansit.stream
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.projection.MediaProjection
@@ -74,6 +76,9 @@ enum class MirrorError {
     INTERNAL,
 }
 
+/** Sesin durumu (arayüzde bilgi satırı). */
+enum class AudioState { ON, OFF_SETTING, OFF_BOARD, OFF_PERMISSION, UNSUPPORTED, FAILED }
+
 sealed interface MirrorState {
     data object Idle : MirrorState
     data class Connecting(val board: String) : MirrorState
@@ -87,6 +92,7 @@ sealed interface MirrorState {
         val paused: Boolean = false,
         /** Ağ koptu, oturum sürdürülmeye çalışılıyor (görüntü tahtada donuk kalır). */
         val reconnecting: Boolean = false,
+        val audio: AudioState = AudioState.OFF_SETTING,
     ) : MirrorState
     /** Bitti; [error] `null` ise kullanıcı kendisi durdurdu. */
     data class Ended(val board: String, val error: MirrorError?) : MirrorState
@@ -270,6 +276,7 @@ object MirrorController {
         onEnd = ::onSessionEnd,
         onLink = ::onLink,
         fallbackPlan = ::lowerPlan,
+        onAudioIssue = ::onAudioIssue,
     )
 
     /** Sistem ekran paylaşımı onay ekranının sonucu. */
@@ -330,7 +337,7 @@ object MirrorController {
             }
             s.startVideo(plan, encoder)
             watchRotation(service)
-            _state.value = MirrorState.Mirroring(board, null)
+            _state.value = MirrorState.Mirroring(board, null, audio = startAudio(service, projection, s))
             Log.i(TAG, "yansıtma: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName})")
         } catch (e: IOException) {
             Log.w(TAG, "video bağlantısı kurulamadı", e)
@@ -341,6 +348,35 @@ object MirrorController {
             synchronized(lock) { if (capture?.encoder == null) encoder.release() }
             fail(MirrorError.ENCODER_FAILED)
         }
+    }
+
+    /** Ses (isteğe bağlı): ayar, tahta desteği, izin ve kodlayıcı varsa. Başarısızlık görüntüyü etkilemez. */
+    private fun startAudio(context: Context, projection: MediaProjection, s: MirrorSession): AudioState {
+        if (!AppSettings(context).audioEnabled) return AudioState.OFF_SETTING
+        if (!s.welcome.audioEnabled) return AudioState.OFF_BOARD
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            return AudioState.OFF_PERMISSION
+        }
+        val capture = AudioCapture.create(projection, s.welcome.audioDecoders) ?: return AudioState.UNSUPPORTED
+        return try {
+            s.startAudio(capture)
+            AudioState.ON
+        } catch (e: IOException) {
+            Log.w(TAG, "ses bağlantısı kurulamadı", e)
+            AudioState.FAILED
+        } catch (e: RuntimeException) {
+            // AudioRecord/MediaCodec yapılandırma hataları.
+            Log.w(TAG, "ses başlatılamadı", e)
+            AudioState.FAILED
+        } catch (e: SecurityException) {
+            AudioState.OFF_PERMISSION
+        }
+    }
+
+    private fun onAudioIssue(e: Throwable) {
+        Log.w(TAG, "ses durdu", e)
+        val st = _state.value
+        if (st is MirrorState.Mirroring) _state.value = st.copy(audio = AudioState.FAILED)
     }
 
     /**
@@ -541,10 +577,11 @@ object MirrorController {
         try {
             // Önceki oturum kodlayıcıyı durdurdu; aynı Surface ve VirtualDisplay ile yeniden başlar.
             s.startVideo(plan, encoder)
+            val audio = startAudio(c.service, c.projection, s)
             val cur = _state.value
             if (cur is MirrorState.Mirroring) {
                 if (cur.paused) c.display?.surface = encoder.inputSurface
-                _state.value = cur.copy(reconnecting = false, paused = false)
+                _state.value = cur.copy(reconnecting = false, paused = false, audio = audio)
             }
             Log.i(TAG, "eşleştirmeyle yeniden bağlanıldı")
         } catch (e: IOException) {

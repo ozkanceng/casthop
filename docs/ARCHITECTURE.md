@@ -69,7 +69,9 @@ Tek dinleme portu, üç TLS bağlantısı (CONTROL, VIDEO, AUDIO). İlk bağlant
 
 **BitrateController** (saf mantık, birim testli): girdiler = gönderici kuyruk gecikmesi, alıcı raporu (tahmini tek yön gecikme eğimi, geç kare oranı, alınan bit hızı). AIMD: tıkanıklık → ×0,7 (en sık 500 ms'de bir); 2 sn kararlı → +%8/sn tavana kadar. Ayrıntı: [PROTOCOL.md §7.6](PROTOCOL.md).
 
-**Ses:** `AudioPlaybackCaptureConfiguration` (USAGE_MEDIA, USAGE_GAME, USAGE_UNKNOWN) + `AudioRecord` 48 kHz stereo PCM16 → `MediaCodec` Opus (API 29 yazılım kodlayıcısı; çalışma anında doğrulanır) 20 ms paket, 128 kbps; yoksa AAC-LC. Zaman damgası `AudioRecord.getTimestamp(TIMEBASE_MONOTONIC)` → videoyla aynı `CLOCK_MONOTONIC` tabanı.
+**Ses:** `AudioPlaybackCaptureConfiguration` (USAGE_MEDIA, USAGE_GAME, USAGE_UNKNOWN) + `AudioRecord` 48 kHz stereo PCM16 → `MediaCodec` Opus (API 29 yazılım kodlayıcısı; çalışma anında doğrulanır) 20 ms paket, 128 kbps; yoksa AAC-LC. Zaman damgası `AudioRecord.getTimestamp(TIMEBASE_MONOTONIC)` → videoyla aynı `CLOCK_MONOTONIC` tabanı. CONFIG yükü (OpusHead / AudioSpecificConfig) kodlayıcının özel CSD biçimine bağlı kalmamak için parametrelerden üretilir.
+
+**Alıcıda ses zamanlaması:** ses boru hattı sistem monotonik saatini ve sıfır temel zamanı kullanır (çalışma zamanı = `CLOCK_MONOTONIC`); paketin PTS'i göndericideki yakalama anı + saat ofsetidir, boru hattı gecikmesi = hedef ses gecikmesi. Hedef, görüntünün yakalama→çizim ortalaması + bir ekran karesi olarak her raporda güncellenir (en az 40, en çok 250 ms) → ses, görüntü ekrana çıktığında çalar. Zamanında çalınamayacak paket atılır ve RECEIVER_REPORT `audio_late` ile bildirilir. Saat ofsetinin hızla oturması için gönderici ilk PING'leri 50 ms aralıkla yollar.
 
 **Servis ve yaşam döngüsü:** onay sonucu → `MirrorService` başlat → `ServiceCompat.startForeground(..., FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)` → `getMediaProjection()` → `registerCallback()` → `createVirtualDisplay()` (bir kez). `onStop()` → kaynakları bırak, alıcıya `BYE(reason=projection_stopped)`, arayüzde "Yansıtma durdu — tekrar başlat".
 

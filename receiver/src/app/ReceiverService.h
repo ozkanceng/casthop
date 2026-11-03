@@ -1,5 +1,6 @@
 #pragma once
 
+#include "media/AudioPipeline.h"
 #include "media/VideoPipeline.h"
 #include "net/Identity.h"
 #include "session/PairingManager.h"
@@ -67,6 +68,8 @@ public:
         std::uint16_t displayWidth = 1920;
         std::uint16_t displayHeight = 1080;
         std::uint8_t displayRefresh = 60;
+        /** Göndericinin sesini tahtadan çal (PROTOCOL.md WELCOME audio_enabled). */
+        bool audio = true;
     };
 
     explicit ReceiverService(Options options, QObject* parent = nullptr);
@@ -136,6 +139,7 @@ private:
     net::Server* m_server = nullptr;
     NetInfo* m_net = nullptr;
     media::VideoPipeline* m_video = nullptr;
+    media::AudioPipeline* m_audio = nullptr;
     QHash<session::ConnId, QPointer<net::Connection>> m_conns;
     session::ConnId m_nextId = 0;
     QTimer m_tickTimer;
@@ -156,6 +160,8 @@ private:
     std::uint64_t m_lastReportUs = 0;
     std::uint64_t m_sessionC2dSumUs = 0;
     std::uint64_t m_sessionC2dCount = 0;
+    std::uint64_t m_sessionAudioLatencySumUs = 0;
+    std::uint64_t m_sessionAudioLatencyCount = 0;
     std::uint32_t m_senderBitrate = 0;
     std::uint16_t m_senderFpsX100 = 0;
     int m_videoWidth = 0;

@@ -72,6 +72,8 @@ class MirrorSession(
     private val onLink: (LinkState) -> Unit = {},
     private val config: Config = Config(),
     private val fallbackPlan: (StreamPlan) -> StreamPlan? = { null },
+    /** Ses durdu veya yeniden bağlanamadı (görüntü sürer). */
+    private val onAudioIssue: (Throwable) -> Unit = {},
 ) {
     data class Config(
         val pingIntervalMs: Long = 1000,
@@ -94,6 +96,10 @@ class MirrorSession(
     }
     @Volatile private var video: MediaChannel? = null
     @Volatile private var source: VideoSource? = null
+    @Volatile private var audio: MediaChannel? = null
+    @Volatile private var audioSource: AudioSource? = null
+    private val audioQueue = AudioQueue()
+    private var audioSender: Thread? = null
     @Volatile private var plan: StreamPlan? = null
     @Volatile private var bitrate: BitrateController? = null
     @Volatile private var lastConfig: ByteArray? = null
@@ -126,7 +132,9 @@ class MirrorSession(
 
     fun start() {
         startReader(epoch.get(), session.control)
-        scheduler.scheduleWithFixedDelay(::ping, 0, config.pingIntervalMs, TimeUnit.MILLISECONDS)
+        // İlk PING'ler sık: saat ofseti (ses senkronu ve gecikme ölçümü için) ilk ≈ 150 ms'de oturur.
+        for (i in 0 until FAST_PINGS) scheduler.schedule(::ping, i * FAST_PING_INTERVAL_MS, TimeUnit.MILLISECONDS)
+        scheduler.scheduleWithFixedDelay(::ping, config.pingIntervalMs, config.pingIntervalMs, TimeUnit.MILLISECONDS)
         scheduler.scheduleWithFixedDelay(::checkLiveness, config.livenessTimeoutMs / 5, config.livenessTimeoutMs / 5,
             TimeUnit.MILLISECONDS)
     }
@@ -149,6 +157,70 @@ class MirrorSession(
         scheduler.scheduleWithFixedDelay(::bitrateTick, BITRATE_TICK_MS, BITRATE_TICK_MS, TimeUnit.MILLISECONDS)
         scheduler.scheduleWithFixedDelay(::statsTick, STATS_INTERVAL_MS, STATS_INTERVAL_MS, TimeUnit.MILLISECONDS)
         startSource(plan)
+    }
+
+    /**
+     * Ses akışını başlatır (tahta WELCOME'da audio_enabled bildirdiyse). Engelleyicidir (ağ).
+     * Ses başlatılamazsa video etkilenmez; çağıran hatayı kullanıcıya bildirebilir.
+     */
+    @Throws(IOException::class)
+    fun startAudio(src: AudioSource) {
+        check(audioSource == null) { "ses zaten başladı" }
+        if (!session.welcome.audioEnabled) throw IOException("tahta sesi kabul etmiyor")
+        if (session.welcome.audioDecoders.none { it.codec == src.codec }) throw IOException("tahta bu ses codec'ini çözemiyor")
+        audioSource = src
+        attachAudio(session, src)
+        audioSender = Thread(::audioSendLoop, "mirror-audio").apply {
+            isDaemon = true
+            priority = Thread.MAX_PRIORITY
+            start()
+        }
+        src.start({ audioQueue.offer(it) }) { e ->
+            // Ses hatası oturumu bitirmez: ses durur, görüntü sürer.
+            audioQueue.close()
+            audio?.close()
+            audio = null
+            onAudioIssue(e)
+        }
+    }
+
+    /** Sesin toplam atılan paket sayısı (tanılama). */
+    val audioDropped: Long get() = audioQueue.dropped
+
+    private fun attachAudio(s: Session, src: AudioSource) {
+        val channel = SenderClient.attach(s, StreamKind.AUDIO)
+        s.control.send(
+            ControlMessage.StreamConfig(
+                streamKind = StreamKind.AUDIO,
+                codec = src.codec,
+                sampleRate = src.sampleRate.toLong(),
+                channels = src.channels,
+            ),
+        )
+        channel.send(FrameFlags.CONFIG, MonotonicClock.nowUs(), byteArrayOf(src.codec.toByte()) + src.config)
+        audio = channel
+    }
+
+    private fun audioSendLoop() {
+        while (!ended.get()) {
+            val channel = audio
+            if (channel == null) {
+                try {
+                    Thread.sleep(5)
+                } catch (_: InterruptedException) {
+                    return
+                }
+                audioQueue.clear() // kopuklukta biriken ses bayattır
+                continue
+            }
+            val p = audioQueue.take(100) ?: continue
+            if (paused) continue // duraklatma gizlilik içindir: ses de paylaşılmaz
+            try {
+                channel.send(0, p.ptsUs, p.data)
+            } catch (e: IOException) {
+                linkLost(epoch.get(), e)
+            }
+        }
     }
 
     /**
@@ -277,6 +349,8 @@ class MirrorSession(
         val old = session
         video?.close()
         video = null
+        audio?.close()
+        audio = null
         old.control.close()
         onLink(LinkState.RECONNECTING)
         Thread({ reconnectLoop(old, cause) }, "mirror-reconnect").apply { isDaemon = true; start() }
@@ -335,10 +409,19 @@ class MirrorSession(
                 return
             }
         }
+        audioSource?.let { src ->
+            try {
+                attachAudio(newSession, src)
+            } catch (e: IOException) {
+                // Ses yeniden bağlanamazsa görüntü sürer.
+                onAudioIssue(e)
+            }
+        }
         // Kopukluk sırasında biriken kareler bayattır: atılır, ilk kare yeni IDR olur.
         queue.dropUntilKeyframe()
         synchronized(this) { linkState = LinkState.CONNECTED }
         resumeCount.incrementAndGet()
+        for (i in 1..2) scheduler.schedule(::ping, i * FAST_PING_INTERVAL_MS, TimeUnit.MILLISECONDS)
         if (paused) trySend { newSession.control.send(ControlMessage.Pause) } else forceKeyframe()
         onLink(LinkState.CONNECTED)
     }
@@ -493,11 +576,18 @@ class MirrorSession(
         if (bye != null && linkState == LinkState.CONNECTED) trySend { session.control.send(ControlMessage.Bye(bye)) }
         scheduler.shutdownNow()
         queue.close()
+        audioQueue.close()
         try {
             source?.stop()
         } catch (_: RuntimeException) {
         }
+        try {
+            audioSource?.stop()
+        } catch (_: RuntimeException) {
+        }
         video?.close()
+        audio?.close()
+        audioSender?.interrupt()
         session.close()
         sender?.interrupt()
         onEnd(reason)
@@ -508,6 +598,8 @@ class MirrorSession(
         fun sendBufferFor(bps: Long): Int = (bps / 8 / 10).coerceIn(32L * 1024, 512L * 1024).toInt()
 
         const val BITRATE_TICK_MS = 250L
+        const val FAST_PINGS = 4
+        const val FAST_PING_INTERVAL_MS = 50L
         const val STATS_INTERVAL_MS = 1000L
         const val KEYFRAME_COALESCE_US = 200_000L
     }

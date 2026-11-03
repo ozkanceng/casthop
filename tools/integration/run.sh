@@ -13,6 +13,7 @@
 #   4d. Wi-Fi kopması (netsim, 1,5 sn): oturum RESUME ile ≤ 3 sn'de sürer, tahtada aynı oturum
 #   4e. Dar bant (netsim 2,5 Mbps < 4 Mbps akış): gönderici kare atar, gecikme birikmez
 #   4f. QR ile bağlanıp kalıcı eşleştirme alma; 4g. eşleştirme anahtarıyla QR'sız bağlanma
+#   4h. Görüntü + Opus ses; 4i. görüntü + AAC ses: paketler çalınır, ses görüntüyle senkron (±60 ms)
 #   5. SIGTERM → alıcı düzgün kapanır
 #   5b. Alıcı yeniden başlatılınca eşleştirme geçerli (trusted.json kalıcı)
 #   6. (YANSIT_IT_GUI=1) Arayüz modu Xvfb + Mesa OpenGL'de: qml6glsink yolu 300 kareyi çizer
@@ -58,6 +59,14 @@ for spec in "gop30 1280 720" "portrait 720 1280"; do
         ! filesink location="$WORK/test-$1.h264"
     [ -s "$WORK/test-$1.h264" ] || fail "test-$1 üretilemedi"
 done
+# Ses: 10 sn, 48 kHz stereo; Opus 20 ms paketler (Ogg) ve AAC-LC (ADTS).
+gst-launch-1.0 -q audiotestsrc num-buffers=500 samplesperbuffer=960 wave=sine freq=440 \
+    ! audio/x-raw,rate=48000,channels=2 ! opusenc frame-size=20 bitrate=96000 ! oggmux \
+    ! filesink location="$WORK/test.opus"
+gst-launch-1.0 -q audiotestsrc num-buffers=470 samplesperbuffer=1024 wave=sine freq=440 \
+    ! audio/x-raw,rate=48000,channels=2 ! avenc_aac bitrate=128000 ! aacparse \
+    ! audio/mpeg,mpegversion=4,stream-format=adts ! filesink location="$WORK/test.aac"
+[ -s "$WORK/test.opus" ] && [ -s "$WORK/test.aac" ] || fail "test sesi üretilemedi"
 
 log "Alıcı başlatılıyor (port $PORT)"
 rm -f "$WORK/pairing.json" "$WORK/stats.jsonl"
@@ -164,6 +173,18 @@ log "4g. Eşleştirme anahtarıyla QR'sız bağlanma"
     --input "$WORK/test.h264" --frames 60 --hold-ms 300 --device-name "Tablet P" --result "$WORK/s4g.json" \
     || fail "senaryo 4g"
 wait_sessions 7
+
+log "4h. Görüntü + Opus ses"
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth qr --engine mirror --input "$WORK/test-gop30.h264" \
+    --audio-input "$WORK/test.opus" --fps 60 --frames 300 --device-name "Tablet S" --result "$WORK/s4h.json" \
+    || fail "senaryo 4h"
+wait_sessions 8
+
+log "4i. Görüntü + AAC ses"
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth qr --engine mirror --input "$WORK/test-gop30.h264" \
+    --audio-input "$WORK/test.aac" --fps 60 --frames 300 --device-name "Tablet S" --result "$WORK/s4i.json" \
+    || fail "senaryo 4i"
+wait_sessions 9
 
 log "5. Düzgün kapanış"
 kill -TERM "$RPID"
