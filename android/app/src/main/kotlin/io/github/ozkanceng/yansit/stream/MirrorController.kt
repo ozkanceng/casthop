@@ -1,10 +1,5 @@
 package io.github.ozkanceng.yansit.stream
 
-import io.github.ozkanceng.yansit.sender.StreamPlanner
-import io.github.ozkanceng.yansit.sender.ReceiverDisplay
-import io.github.ozkanceng.yansit.sender.MirrorSession
-import io.github.ozkanceng.yansit.sender.MirrorStats
-import io.github.ozkanceng.yansit.sender.SessionEnd
 import android.content.Context
 import android.content.Intent
 import android.hardware.display.DisplayManager
@@ -13,9 +8,12 @@ import android.media.projection.MediaProjection
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.Display
 import androidx.core.content.ContextCompat
 import io.github.ozkanceng.yansit.BuildConfig
 import io.github.ozkanceng.yansit.data.AppSettings
+import io.github.ozkanceng.yansit.data.BoardStore
+import io.github.ozkanceng.yansit.data.RememberedBoard
 import io.github.ozkanceng.yansit.protocol.ByeReason
 import io.github.ozkanceng.yansit.protocol.Codec
 import io.github.ozkanceng.yansit.protocol.ControlMessage
@@ -31,9 +29,19 @@ import io.github.ozkanceng.yansit.protocol.client.IncompatibleReceiverException
 import io.github.ozkanceng.yansit.protocol.client.ReachResult
 import io.github.ozkanceng.yansit.protocol.client.Reachability
 import io.github.ozkanceng.yansit.protocol.client.SenderClient
+import io.github.ozkanceng.yansit.protocol.client.Session
+import io.github.ozkanceng.yansit.sender.LinkState
+import io.github.ozkanceng.yansit.sender.MirrorSession
+import io.github.ozkanceng.yansit.sender.MirrorStats
+import io.github.ozkanceng.yansit.sender.Preset
+import io.github.ozkanceng.yansit.sender.ReceiverDisplay
+import io.github.ozkanceng.yansit.sender.SessionEnd
+import io.github.ozkanceng.yansit.sender.StreamPlan
+import io.github.ozkanceng.yansit.sender.StreamPlanner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,9 +53,11 @@ private const val TAG = "YansitMirror"
 /** Kullanıcıya gösterilen hata türleri (her biri anlaşılır bir mesaja karşılık gelir). */
 enum class MirrorError {
     UNREACHABLE,
+    DIFFERENT_NETWORK,
     REFUSED,
     WRONG_BOARD,
     AUTH_FAILED,
+    BOARD_FORGOT_TABLET,
     BUSY_DENIED,
     BUSY_TIMEOUT,
     RATE_LIMITED,
@@ -71,13 +81,25 @@ sealed interface MirrorState {
     /** Tahta kabul etti; sistemin ekran paylaşım onayı bekleniyor. */
     data class AwaitingConsent(val board: String) : MirrorState
     data class Starting(val board: String) : MirrorState
-    data class Mirroring(val board: String, val stats: MirrorStats?) : MirrorState
+    data class Mirroring(
+        val board: String,
+        val stats: MirrorStats?,
+        val paused: Boolean = false,
+        /** Ağ koptu, oturum sürdürülmeye çalışılıyor (görüntü tahtada donuk kalır). */
+        val reconnecting: Boolean = false,
+    ) : MirrorState
     /** Bitti; [error] `null` ise kullanıcı kendisi durdurdu. */
     data class Ended(val board: String, val error: MirrorError?) : MirrorState
 }
 
+/** Bağlantı hedefi: yeni QR ya da hatırlanan tahta. */
+sealed interface ConnectTarget {
+    data class Qr(val payload: QrPayload) : ConnectTarget
+    data class Remembered(val board: RememberedBoard) : ConnectTarget
+}
+
 /**
- * Yansıtmanın uygulama genelindeki durum makinesi: QR → bağlan → tahta onayı → sistem onayı → yakalama.
+ * Yansıtmanın uygulama genelindeki durum makinesi: hedef → bağlan → tahta onayı → sistem onayı → yakalama.
  * Tek örnek; Activity ve [MirrorService] aynı süreçte bunu kullanır.
  */
 object MirrorController {
@@ -85,21 +107,29 @@ object MirrorController {
     val state: StateFlow<MirrorState> = _state.asStateFlow()
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val main = Handler(Looper.getMainLooper())
     private val lock = Any()
     private var session: MirrorSession? = null
     private var capture: Capture? = null
     private var board: String = ""
+    private var target: ConnectTarget? = null
     /** Her bağlantı denemesi ve durdurma bir artırır; eski denemenin geç gelen sonucu yok sayılır. */
     private var generation = 0
+    private lateinit var appContext: Context
+
+    /** Uzun kopmada eşleştirmeyle yeniden bağlanma denemesi süresi. */
+    private const val LONG_RECONNECT_WINDOW_NS = 60_000_000_000L
 
     /** Yansıtma sürerken tutulan sistem kaynakları. */
-    private class Capture(
-        val service: MirrorService,
-        val projection: MediaProjection,
-        var display: VirtualDisplay? = null,
-        var encoder: ScreenEncoder? = null,
-    ) {
+    private class Capture(val service: MirrorService, val projection: MediaProjection) {
+        var display: VirtualDisplay? = null
+        var encoder: ScreenEncoder? = null
+        var plan: StreamPlan? = null
+        var displayListener: DisplayManager.DisplayListener? = null
+
         fun release() {
+            displayListener?.let { service.getSystemService(DisplayManager::class.java).unregisterDisplayListener(it) }
+            displayListener = null
             display?.release()
             display = null
             encoder?.release()
@@ -113,66 +143,34 @@ object MirrorController {
         }
     }
 
-    /** QR okunduktan sonra: tahtaya bağlanır ve kimlik doğrular. */
-    fun connect(context: Context, qr: QrPayload) {
+    // --- Bağlanma ---
+
+    fun connect(context: Context, target: ConnectTarget) {
         val current = _state.value
         if (current !is MirrorState.Idle && current !is MirrorState.Ended) return
-        board = qr.name
+        appContext = context.applicationContext
+        this.target = target
+        board = when (target) {
+            is ConnectTarget.Qr -> target.payload.name
+            is ConnectTarget.Remembered -> target.board.name
+        }
         _state.value = MirrorState.Connecting(board)
-        val settings = AppSettings(context)
         val attempt = synchronized(lock) { ++generation }
         scope.launch {
-            val outcome = try {
-                val host = when (val r = Reachability.firstReachable(qr.hosts, qr.port)) {
-                    is ReachResult.Reachable -> r.host
-                    is ReachResult.Unreachable -> {
-                        failIfCurrent(attempt, if (r.refused) MirrorError.REFUSED else MirrorError.UNREACHABLE)
+            val result = hello(target) { timeoutMs ->
+                if (isCurrent(attempt)) _state.value = MirrorState.WaitingApproval(board, timeoutMs)
+            }
+            when (result) {
+                is HelloResult.Failed -> failIfCurrent(attempt, result.error)
+                is HelloResult.Ok -> {
+                    if (!isCurrent(attempt)) {
+                        // Kullanıcı bu sırada vazgeçti.
+                        runCatching { result.session.control.send(ControlMessage.Bye(ByeReason.USER_STOP)) }
+                        result.session.close()
                         return@launch
                     }
-                }
-                SenderClient.hello(
-                    Endpoint(host, qr.port, qr.certFingerprint),
-                    Credentials.QrToken(qr.token),
-                    DeviceInfo(
-                        name = settings.deviceName,
-                        deviceId = settings.deviceId,
-                        appVersion = BuildConfig.VERSION_NAME,
-                        videoCodecs = listOf(Codec.H264),
-                        maxWidth = 3840,
-                        maxHeight = 2160,
-                        maxFps = 60,
-                    ),
-                ) { timeoutMs ->
-                    if (isCurrent(attempt)) _state.value = MirrorState.WaitingApproval(board, timeoutMs)
-                }
-            } catch (e: FingerprintMismatchException) {
-                failIfCurrent(attempt, MirrorError.WRONG_BOARD)
-                return@launch
-            } catch (e: IncompatibleReceiverException) {
-                failIfCurrent(attempt, MirrorError.INCOMPATIBLE)
-                return@launch
-            } catch (e: ProtocolException) {
-                Log.w(TAG, "protokol hatası", e)
-                failIfCurrent(attempt, MirrorError.INCOMPATIBLE)
-                return@launch
-            } catch (e: IOException) {
-                Log.w(TAG, "bağlantı hatası", e)
-                failIfCurrent(attempt, MirrorError.UNREACHABLE)
-                return@launch
-            }
-            if (!isCurrent(attempt)) {
-                // Kullanıcı bu sırada vazgeçti.
-                if (outcome is HelloOutcome.Accepted) {
-                    runCatching { outcome.session.control.send(ControlMessage.Bye(ByeReason.USER_STOP)) }
-                    outcome.session.close()
-                }
-                return@launch
-            }
-            when (outcome) {
-                is HelloOutcome.Rejected -> failIfCurrent(attempt, rejectError(outcome.reason))
-                is HelloOutcome.Accepted -> {
-                    board = outcome.session.welcome.receiverName
-                    val s = MirrorSession(outcome.session, ::onStats, ::onSessionEnd)
+                    board = result.session.welcome.receiverName
+                    val s = newMirrorSession(result.session)
                     synchronized(lock) { session = s }
                     s.start()
                     _state.value = MirrorState.AwaitingConsent(board)
@@ -180,6 +178,99 @@ object MirrorController {
             }
         }
     }
+
+    private sealed interface HelloResult {
+        data class Ok(val session: Session) : HelloResult
+        data class Failed(val error: MirrorError) : HelloResult
+    }
+
+    /** Ulaşılabilirlik + kimlik doğrulama; QR ile ilk bağlantıda kalıcı eşleştirme istenir ve kaydedilir. */
+    private fun hello(target: ConnectTarget, onPending: (Long) -> Unit): HelloResult {
+        val settings = AppSettings(appContext)
+        val (hosts, port, fp) = when (target) {
+            is ConnectTarget.Qr -> Triple(target.payload.hosts, target.payload.port, target.payload.certFingerprint)
+            is ConnectTarget.Remembered -> Triple(target.board.hosts, target.board.port, target.board.fingerprint)
+        }
+        val host = when (val r = Reachability.firstReachable(hosts, port)) {
+            is ReachResult.Reachable -> r.host
+            is ReachResult.Unreachable -> return HelloResult.Failed(
+                when {
+                    r.refused -> MirrorError.REFUSED
+                    NetworkDiagnostics.sharesSubnet(appContext, hosts) == false -> MirrorError.DIFFERENT_NETWORK
+                    else -> MirrorError.UNREACHABLE
+                },
+            )
+        }
+        val credentials = when (target) {
+            is ConnectTarget.Qr -> Credentials.QrToken(target.payload.token)
+            is ConnectTarget.Remembered -> Credentials.Paired(target.board.keyId, target.board.pairKey)
+        }
+        val outcome = try {
+            SenderClient.hello(
+                Endpoint(host, port, fp),
+                credentials,
+                DeviceInfo(
+                    name = settings.deviceName,
+                    deviceId = settings.deviceId,
+                    appVersion = BuildConfig.VERSION_NAME,
+                    videoCodecs = listOf(Codec.H264),
+                    maxWidth = 3840,
+                    maxHeight = 2160,
+                    maxFps = 60,
+                ),
+                requestPairing = target is ConnectTarget.Qr,
+                onPending = onPending,
+            )
+        } catch (e: FingerprintMismatchException) {
+            return HelloResult.Failed(MirrorError.WRONG_BOARD)
+        } catch (e: IncompatibleReceiverException) {
+            return HelloResult.Failed(MirrorError.INCOMPATIBLE)
+        } catch (e: ProtocolException) {
+            Log.w(TAG, "protokol hatası", e)
+            return HelloResult.Failed(MirrorError.INCOMPATIBLE)
+        } catch (e: IOException) {
+            Log.w(TAG, "bağlantı hatası", e)
+            return HelloResult.Failed(MirrorError.UNREACHABLE)
+        }
+        val boards = BoardStore(appContext)
+        return when (outcome) {
+            is HelloOutcome.Rejected -> {
+                if (target is ConnectTarget.Remembered && outcome.reason == RejectReason.AUTH_FAILED) {
+                    // Tahta eşleştirmeyi unutmuş (silinmiş veya sertifika yenilenmiş): yeniden QR gerekir.
+                    boards.remove(target.board.fingerprint)
+                    HelloResult.Failed(MirrorError.BOARD_FORGOT_TABLET)
+                } else {
+                    HelloResult.Failed(rejectError(outcome.reason))
+                }
+            }
+            is HelloOutcome.Accepted -> {
+                val w = outcome.session.welcome
+                val now = System.currentTimeMillis()
+                when (target) {
+                    is ConnectTarget.Qr -> {
+                        val keyId = w.keyId
+                        val pairKey = w.pairKey
+                        if (keyId != null && pairKey != null) {
+                            boards.save(
+                                RememberedBoard(w.receiverName, target.payload.hosts, target.payload.port,
+                                    outcome.session.fingerprint, keyId, pairKey, now),
+                            )
+                        }
+                    }
+                    is ConnectTarget.Remembered -> boards.save(target.board.copy(name = w.receiverName, lastUsedMs = now))
+                }
+                HelloResult.Ok(outcome.session)
+            }
+        }
+    }
+
+    private fun newMirrorSession(s: Session) = MirrorSession(
+        s,
+        onStats = ::onStats,
+        onEnd = ::onSessionEnd,
+        onLink = ::onLink,
+        fallbackPlan = ::lowerPlan,
+    )
 
     /** Sistem ekran paylaşımı onay ekranının sonucu. */
     fun onConsentResult(context: Context, granted: Boolean, resultCode: Int, data: Intent?) {
@@ -193,16 +284,12 @@ object MirrorController {
         ContextCompat.startForegroundService(context, MirrorService.startIntent(context, resultCode, data, board))
     }
 
+    // --- Yakalama ---
+
     /** [MirrorService] ön plana geçip MediaProjection'ı aldı. */
     internal fun onProjectionReady(service: MirrorService, projection: MediaProjection) {
         val s = synchronized(lock) {
-            val s = session
-            if (s == null) {
-                null
-            } else {
-                capture = Capture(service, projection)
-                s
-            }
+            session?.also { capture = Capture(service, projection) }
         }
         if (s == null) {
             projection.stop()
@@ -212,38 +299,39 @@ object MirrorController {
         scope.launch { startCapture(service, projection, s) }
     }
 
-    private fun startCapture(service: MirrorService, projection: MediaProjection, s: MirrorSession) {
-        val (srcW, srcH) = currentDisplaySize(service)
+    private fun currentPlan(context: Context, s: MirrorSession, preset: Preset? = null): StreamPlan? {
+        val (srcW, srcH) = currentDisplaySize(context)
         val w = s.welcome
-        val settings = AppSettings(service)
-        val encoders = AndroidEncoderCaps.h264Encoders()
-        val plan = StreamPlanner.plan(srcW, srcH, settings.preset, ReceiverDisplay(w.displayWidth, w.displayHeight, w.displayRefresh),
-            encoders, settings.overrides)
+        val settings = AppSettings(context)
+        return StreamPlanner.plan(
+            srcW, srcH, preset ?: settings.preset, ReceiverDisplay(w.displayWidth, w.displayHeight, w.displayRefresh),
+            AndroidEncoderCaps.h264Encoders(), settings.overrides,
+        )
+    }
+
+    private fun startCapture(service: MirrorService, projection: MediaProjection, s: MirrorSession) {
+        val plan = currentPlan(service, s)
         if (plan == null) {
-            Log.e(TAG, "uygun kodlayıcı yok: ${encoders.map { it.name }}")
+            Log.e(TAG, "uygun kodlayıcı yok: ${AndroidEncoderCaps.h264Encoders().map { it.name }}")
             fail(MirrorError.NO_ENCODER)
             return
         }
-        val caps = encoders.first { it.name == plan.encoderName }
+        val caps = AndroidEncoderCaps.h264Encoders().first { it.name == plan.encoderName }
         val encoder = ScreenEncoder(caps)
         try {
             val display = projection.createVirtualDisplay(
-                "Yansıt",
-                plan.width,
-                plan.height,
-                service.resources.displayMetrics.densityDpi,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                encoder.inputSurface,
-                null,
-                Handler(Looper.getMainLooper()),
+                "Yansıt", plan.width, plan.height, service.resources.displayMetrics.densityDpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, encoder.inputSurface, null, main,
             )
             synchronized(lock) {
                 capture?.display = display
                 capture?.encoder = encoder
+                capture?.plan = plan
             }
             s.startVideo(plan, encoder)
+            watchRotation(service)
             _state.value = MirrorState.Mirroring(board, null)
-            Log.i(TAG, "yansıtma: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName}), kaynak ${srcW}x$srcH")
+            Log.i(TAG, "yansıtma: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName})")
         } catch (e: IOException) {
             Log.w(TAG, "video bağlantısı kurulamadı", e)
             s.stop(ByeReason.ERROR)
@@ -253,6 +341,83 @@ object MirrorController {
             synchronized(lock) { if (capture?.encoder == null) encoder.release() }
             fail(MirrorError.ENCODER_FAILED)
         }
+    }
+
+    /**
+     * Döndürme: Android 14+ [onCapturedContentResize] ile de bildirir; tüm sürümlerde ekran dinleyicisi.
+     * Her iki yol da [onSourceResized]'a gelir; boyut aynıysa bir şey yapılmaz.
+     */
+    private fun watchRotation(context: Context) {
+        val dm = context.getSystemService(DisplayManager::class.java)
+        val listener = object : DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId: Int) = Unit
+            override fun onDisplayRemoved(displayId: Int) = Unit
+            override fun onDisplayChanged(displayId: Int) {
+                if (displayId == Display.DEFAULT_DISPLAY) scope.launch { onSourceResized() }
+            }
+        }
+        dm.registerDisplayListener(listener, main)
+        synchronized(lock) { capture?.displayListener = listener }
+    }
+
+    /** MediaProjection.Callback.onCapturedContentResize (API 34+). */
+    internal fun onCapturedContentResize() {
+        scope.launch { onSourceResized() }
+    }
+
+    @Synchronized
+    private fun onSourceResized() {
+        val (c, s) = synchronized(lock) { capture to session }
+        if (c == null || s == null) return
+        val service = c.service
+        val newPlan = currentPlan(service, s) ?: return
+        val old = c.plan ?: return
+        if (newPlan.width == old.width && newPlan.height == old.height) return
+        Log.i(TAG, "kaynak boyutu değişti: ${old.width}x${old.height} → ${newPlan.width}x${newPlan.height}")
+        val started = System.nanoTime()
+        synchronized(lock) {
+            c.display?.resize(newPlan.width, newPlan.height, service.resources.displayMetrics.densityDpi)
+            c.plan = newPlan
+        }
+        s.reconfigure(newPlan)
+        Log.i(TAG, "yeniden yapılandırma ${(System.nanoTime() - started) / 1_000_000} ms")
+    }
+
+    /** Kodlayıcı tekrar tekrar hata verirse bir alt ön ayar (ARCHITECTURE.md §7). */
+    private fun lowerPlan(current: StreamPlan): StreamPlan? {
+        val (c, s) = synchronized(lock) { capture to session }
+        if (c == null || s == null) return null
+        val next = when (AppSettings(c.service).preset) {
+            Preset.BEST -> Preset.BALANCED
+            Preset.BALANCED, Preset.WEAK_NETWORK -> Preset.WEAK_NETWORK
+        }
+        val plan = currentPlan(c.service, s, next)?.takeIf { it != current } ?: return null
+        synchronized(lock) {
+            c.display?.resize(plan.width, plan.height, c.service.resources.displayMetrics.densityDpi)
+            c.plan = plan
+        }
+        return plan
+    }
+
+    // --- Kullanıcı eylemleri ---
+
+    fun pause() {
+        val (c, s) = synchronized(lock) { capture to session }
+        val st = _state.value
+        if (c == null || s == null || st !is MirrorState.Mirroring || st.paused) return
+        // Yeni kare üretimi durur: tahtada son kare ve "Yansıtma duraklatıldı" kalır.
+        c.display?.surface = null
+        s.pause()
+        _state.value = st.copy(paused = true)
+    }
+
+    fun resume() {
+        val (c, s) = synchronized(lock) { capture to session }
+        val st = _state.value
+        if (c == null || s == null || st !is MirrorState.Mirroring || !st.paused) return
+        c.display?.surface = c.encoder?.inputSurface
+        s.unpause()
+        _state.value = st.copy(paused = false)
     }
 
     /** Kullanıcı durdurdu veya bağlanmaktan vazgeçti (uygulama ya da bildirim). */
@@ -267,8 +432,11 @@ object MirrorController {
 
     /** Sistem yansıtmayı bitirdi (durum çubuğu çipi, ekran kilidi — RISKS R2). */
     internal fun onProjectionStopped() {
-        val s = synchronized(lock) { session } ?: return
-        s.stop(ByeReason.PROJECTION_STOPPED)
+        val s = synchronized(lock) {
+            generation++
+            session
+        }
+        if (s != null) s.stop(ByeReason.PROJECTION_STOPPED) else releaseCapture()
     }
 
     /** Hata/sonuç mesajı kapatıldı. */
@@ -276,16 +444,37 @@ object MirrorController {
         if (_state.value is MirrorState.Ended) _state.value = MirrorState.Idle
     }
 
+    // --- Oturum olayları ---
+
     private fun onStats(stats: MirrorStats) {
-        if (_state.value is MirrorState.Mirroring) _state.value = MirrorState.Mirroring(board, stats)
+        val st = _state.value
+        if (st is MirrorState.Mirroring) _state.value = st.copy(stats = stats)
+    }
+
+    private fun onLink(link: LinkState) {
+        val st = _state.value
+        if (st is MirrorState.Mirroring) _state.value = st.copy(reconnecting = link == LinkState.RECONNECTING)
     }
 
     private fun onSessionEnd(end: SessionEnd) {
-        synchronized(lock) { session = null }
+        val ended = synchronized(lock) { session.also { session = null } }
+        Log.i(TAG, "oturum bitti: $end")
+        // Uzun kopma: RESUME penceresi geçti ama yakalama sürüyor ve tahta hatırlanıyorsa eşleştirmeyle
+        // yeni oturum açılır; öğretmenin bir şey yapması gerekmez.
+        if (end is SessionEnd.ConnectionLost && ended != null && synchronized(lock) { capture } != null) {
+            val remembered = rememberedForCurrent()
+            if (remembered != null) {
+                scope.launch { reconnectWithPairing(remembered) }
+                return
+            }
+        }
         releaseCapture()
         val error = when (end) {
-            is SessionEnd.Local -> if (end.byeReason == ByeReason.PROJECTION_STOPPED) MirrorError.PROJECTION_ENDED
-            else if (end.byeReason == ByeReason.ERROR) MirrorError.ENCODER_FAILED else null
+            is SessionEnd.Local -> when (end.byeReason) {
+                ByeReason.PROJECTION_STOPPED -> MirrorError.PROJECTION_ENDED
+                ByeReason.ERROR -> MirrorError.ENCODER_FAILED
+                else -> null
+            }
             is SessionEnd.Remote -> when (end.byeReason) {
                 ByeReason.USER_STOP -> MirrorError.STOPPED_BY_BOARD
                 ByeReason.TAKEOVER -> MirrorError.TAKEN_OVER
@@ -295,7 +484,6 @@ object MirrorController {
             is SessionEnd.ConnectionLost -> MirrorError.CONNECTION_LOST
             is SessionEnd.EncoderFailed -> MirrorError.ENCODER_FAILED
         }
-        Log.i(TAG, "oturum bitti: $end")
         val current = _state.value
         // Kullanıcı durdurduysa "Ended(null)" zaten yazıldı; hatayla üzerine yazma.
         if (!(current is MirrorState.Ended && current.error == null && end is SessionEnd.Local)) {
@@ -303,9 +491,73 @@ object MirrorController {
         }
     }
 
+    private fun rememberedForCurrent(): RememberedBoard? {
+        val boards = BoardStore(appContext)
+        return when (val t = target) {
+            is ConnectTarget.Remembered -> boards.find(t.board.fingerprint)
+            is ConnectTarget.Qr -> boards.find(t.payload.certFingerprint)
+            null -> null
+        }
+    }
+
+    private suspend fun reconnectWithPairing(remembered: RememberedBoard) {
+        val st = _state.value
+        if (st is MirrorState.Mirroring) _state.value = st.copy(reconnecting = true)
+        val attempt = synchronized(lock) { generation }
+        val deadline = System.nanoTime() + LONG_RECONNECT_WINDOW_NS
+        while (System.nanoTime() < deadline) {
+            if (synchronized(lock) { attempt != generation || capture == null }) return
+            when (val r = hello(ConnectTarget.Remembered(remembered)) { }) {
+                is HelloResult.Ok -> {
+                    resumeWithNewSession(attempt, r.session)
+                    return
+                }
+                is HelloResult.Failed -> when (r.error) {
+                    MirrorError.UNREACHABLE, MirrorError.DIFFERENT_NETWORK, MirrorError.REFUSED -> delay(1000)
+                    else -> {
+                        releaseCapture()
+                        _state.value = MirrorState.Ended(board, r.error)
+                        return
+                    }
+                }
+            }
+        }
+        releaseCapture()
+        _state.value = MirrorState.Ended(board, MirrorError.CONNECTION_LOST)
+    }
+
+    private fun resumeWithNewSession(attempt: Int, newSession: Session) {
+        val s = newMirrorSession(newSession)
+        val c = synchronized(lock) {
+            if (attempt != generation || capture == null) null else capture.also { session = s }
+        }
+        val plan = c?.plan
+        val encoder = c?.encoder
+        if (c == null || plan == null || encoder == null) {
+            newSession.close()
+            return
+        }
+        s.start()
+        try {
+            // Önceki oturum kodlayıcıyı durdurdu; aynı Surface ve VirtualDisplay ile yeniden başlar.
+            s.startVideo(plan, encoder)
+            val cur = _state.value
+            if (cur is MirrorState.Mirroring) {
+                if (cur.paused) c.display?.surface = encoder.inputSurface
+                _state.value = cur.copy(reconnecting = false, paused = false)
+            }
+            Log.i(TAG, "eşleştirmeyle yeniden bağlanıldı")
+        } catch (e: IOException) {
+            Log.w(TAG, "yeniden bağlanma: video", e)
+            s.stop(ByeReason.ERROR)
+        }
+    }
+
+    // --- Yardımcılar ---
+
     private fun releaseCapture() {
         val c = synchronized(lock) { capture.also { capture = null } }
-        c?.release()
+        if (c != null) main.post { c.release() }
     }
 
     private fun isCurrent(attempt: Int): Boolean {

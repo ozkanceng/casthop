@@ -2,7 +2,7 @@
 
 > Android tablet ekranını (ve sesini) Pardus ETAP akıllı tahtalarına kablosuz, düşük gecikmeyle yansıtan açık kaynaklı sistem.
 >
-> Durum: plan 2026-11-03'te onaylandı. Tamamlanan kilometre taşları: **M0, M1, M2, M3** (M3 gerçek cihaz denetimi bekliyor) (ayrıntı: [CHANGELOG](../CHANGELOG.md)). Gerçek cihaz denetimleri: [TESTING.md](TESTING.md).
+> Durum: plan 2026-11-03'te onaylandı. Tamamlanan kilometre taşları: **M0, M1, M2, M3, M4** (M3–M4 gerçek cihaz denetimi bekliyor) (ayrıntı: [CHANGELOG](../CHANGELOG.md)). Gerçek cihaz denetimleri: [TESTING.md](TESTING.md).
 
 ## 0. Ad ve kimlikler
 

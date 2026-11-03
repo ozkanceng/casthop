@@ -84,4 +84,21 @@
     <string name="notif_channel_desc">Yansıtma sürerken gösterilir.</string>
     <string name="notif_title">%1$s tahtasına yansıtılıyor</string>
     <string name="notif_text">Durdurmak için dokunun veya Durdur\'a basın.</string>
+    <string name="err_different_network">Tablet ve tahta farklı ağlarda</string>
+    <string name="err_different_network_body">Tablet, tahtanın ağına bağlı görünmüyor. Tableti tahtayla aynı Wi-Fi ağına bağlayın ya da aşağıdaki hotspot yolunu deneyin.</string>
+    <string name="err_board_forgot">Tahta bu tableti tanımıyor</string>
+    <string name="err_board_forgot_body">Tahtadaki eşleştirme silinmiş olabilir. Tahtadaki QR kodunu yeniden okutun.</string>
+    <string name="hotspot_title">Okul ağı engelliyorsa: tabletin hotspot\'u</string>
+    <string name="hotspot_steps">1. Tablette Ayarlar → Bağlantılar → Mobil erişim noktası\'nı açın.
+2. Tahtada ağ simgesinden tabletin ağına bağlanın.
+3. Tahtada beliren yeni QR kodunu okutun.</string>
+    <string name="action_pause">Duraklat</string>
+    <string name="action_resume">Devam et</string>
+    <string name="state_paused">Duraklatıldı. Tahtada son görüntü kalır; devam edene kadar ekranınız paylaşılmaz.</string>
+    <string name="state_reconnecting">Bağlantı yeniden kuruluyor…</string>
+    <string name="boards_title">Hatırlanan tahtalar</string>
+    <string name="boards_hint">Bir kez QR ile bağlandığınız tahtaya buradan tek dokunuşla bağlanırsınız.</string>
+    <string name="board_forget">Unut</string>
+    <string name="board_forget_desc">%1$s tahtasını unut</string>
+    <string name="action_scan_qr">QR ile yeni tahta</string>
 </resources>

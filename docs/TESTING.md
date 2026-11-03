@@ -120,3 +120,29 @@ ayarların yalnız desteklenen değerleri gösterdiğini doğrulamak.
 - `adb logcat -s YansitMirror YansitEncoder YansitService` çıktısı (bağlanmadan durdurmaya kadar)
 - 4–5. adımda kartta görünen gecikme/fps/Mbps ve çözünürlük
 - Başarısız adımların numarası ve ekran görüntüsü
+
+---
+
+## M4 — Dayanıklılık
+
+Amaç: Döndürme, Wi-Fi kopması, duraklatma ve hatırlanan tahtaların gerçek cihazda çalıştığını doğrulamak.
+CI'da aynı durumların benzetimi her değişiklikte koşuyor (`tools/integration`: döndürme, kopma + RESUME,
+dar bant, kalıcı eşleştirme); burada yalnız gerçek donanımın davranışı denetlenir.
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Yansıtırken tableti yataydan dikeye çevirin | ≤ 1 sn içinde tahtada dikey görüntü (kenar boşluklu); `adb logcat -s YansitMirror` içinde `yeniden yapılandırma … ms` | ☐ |
+| 2 | Geri yataya çevirin, 5 kez hızlıca döndürün | Her seferinde ≤ 1 sn; uygulama çökmez | ☐ |
+| 3 | Yansıtırken tabletin Wi-Fi'ını kapatıp 2 sn sonra açın | Tahtada son görüntü donar, ağ gelince ≤ 3 sn içinde akış sürer; tablette kısa süre "Bağlantı yeniden kuruluyor…" | ☐ |
+| 4 | Wi-Fi'ı 20 sn kapalı tutup açın | Tablet tahtayı hatırlıyorsa kendiliğinden yeniden bağlanır (QR gerekmez) | ☐ |
+| 5 | **Duraklat** | Tahtada son görüntü + "Yansıtma duraklatıldı"; tablette başka uygulamaya geçince tahtada değişiklik yok | ☐ |
+| 6 | **Devam et** | ≤ 1 sn içinde güncel ekran | ☐ |
+| 7 | Durdurup ana ekrana dönün | "Hatırlanan tahtalar" altında tahtanın adı | ☐ |
+| 8 | Tahtanın adına dokunun | QR'sız, onay penceresinden sonra yansıtma başlar | ☐ |
+| 9 | Tahtada `~/.local/share/Yansit/yansit-receiver/trusted.json` dosyasını silip alıcıyı yeniden başlatın, 8'i tekrarlayın | "Tahta bu tableti tanımıyor" mesajı; tahta listeden düşer | ☐ |
+| 10 | Tablet ve tahta farklı Wi-Fi ağlarındayken bağlanın | "Tablet ve tahta farklı ağlarda" + hotspot adımları | ☐ |
+| 11 | Hotspot adımlarını uygulayın (tablet hotspot, tahta ona bağlı) | Yeni QR ile bağlantı kurulur | ☐ |
+| 12 | Kalabalık/2,4 GHz bir ağda 5 dk yansıtın | Görüntü zaman zaman kalitesini düşürür ama gecikme birikmez (kartta gecikme < 300 ms civarı) | ☐ |
+
+**Sonuç bildirimi:** `adb logcat -s YansitMirror YansitEncoder YansitService` çıktısı ve alıcının `--verbose`
+günlüğü; 1 ve 3. adımlarda ölçülen süreler.

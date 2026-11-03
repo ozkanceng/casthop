@@ -65,6 +65,11 @@ class MirrorService : Service() {
                     Log.i(TAG, "MediaProjection durdu")
                     MirrorController.onProjectionStopped()
                 }
+
+                // API 34+: döndürme veya paylaşılan pencere boyutu değişti.
+                override fun onCapturedContentResize(width: Int, height: Int) {
+                    MirrorController.onCapturedContentResize()
+                }
             },
             Handler(Looper.getMainLooper()),
         )

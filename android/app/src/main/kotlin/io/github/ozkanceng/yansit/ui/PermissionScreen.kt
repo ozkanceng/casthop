@@ -54,6 +54,9 @@ object AppPermissions {
         all().filter { ContextCompat.checkSelfPermission(context, it.permission) != PackageManager.PERMISSION_GRANTED }
 
     fun requiredGranted(context: Context): Boolean = missing(context).none { it.required }
+
+    /** Hatırlanan tahtaya bağlanmak için yalnız yerel ağ izni gerekir. */
+    fun networkGranted(context: Context): Boolean = missing(context).none { it.permission == ACCESS_LOCAL_NETWORK }
 }
 
 /** İlk bağlanmadan önce izinlerin neden gerektiğini açıklar. */

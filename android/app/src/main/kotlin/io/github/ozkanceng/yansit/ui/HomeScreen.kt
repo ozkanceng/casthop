@@ -17,6 +17,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -27,27 +28,36 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.ozkanceng.yansit.R
+import io.github.ozkanceng.yansit.data.RememberedBoard
+import io.github.ozkanceng.yansit.protocol.Bytes
+import io.github.ozkanceng.yansit.sender.MirrorStats
 import io.github.ozkanceng.yansit.stream.MirrorError
 import io.github.ozkanceng.yansit.stream.MirrorState
-import io.github.ozkanceng.yansit.sender.MirrorStats
 import io.github.ozkanceng.yansit.ui.theme.YansitTheme
 
-/** Ana ekran: tek büyük eylem düğmesi ve duruma göre bilgi kartı. */
+/** Ana ekran eylemleri. */
+class HomeActions(
+    val onScan: () -> Unit,
+    val onBoard: (RememberedBoard) -> Unit,
+    val onForget: (RememberedBoard) -> Unit,
+    val onStop: () -> Unit,
+    val onPause: () -> Unit,
+    val onResume: () -> Unit,
+    val onDismiss: () -> Unit,
+    val onSettings: () -> Unit,
+)
+
+/** Ana ekran: tek büyük eylem düğmesi, hatırlanan tahtalar ve duruma göre bilgi kartı. */
 @Composable
-fun HomeScreen(
-    state: MirrorState,
-    versionName: String,
-    onConnect: () -> Unit,
-    onStop: () -> Unit,
-    onDismiss: () -> Unit,
-    onSettings: () -> Unit,
-) {
+fun HomeScreen(state: MirrorState, boards: List<RememberedBoard>, versionName: String, actions: HomeActions) {
     Scaffold { padding ->
         Column(
             modifier = Modifier
@@ -63,7 +73,7 @@ fun HomeScreen(
                 style = MaterialTheme.typography.displayMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
-            val contentWidth = Modifier.widthIn(max = 520.dp).fillMaxWidth()
+            val contentWidth = Modifier.widthIn(max = 560.dp).fillMaxWidth()
             when (state) {
                 MirrorState.Idle -> {
                     Text(
@@ -72,29 +82,36 @@ fun HomeScreen(
                         textAlign = TextAlign.Center,
                         modifier = contentWidth,
                     )
-                    BigButton(R.string.action_connect, onConnect, contentWidth)
+                    ConnectChoices(boards, actions, contentWidth)
                 }
                 is MirrorState.Connecting -> Progress(stringResource(R.string.state_connecting, state.board), contentWidth)
                 is MirrorState.WaitingApproval -> Progress(stringResource(R.string.state_waiting_approval, state.board), contentWidth)
                 is MirrorState.AwaitingConsent -> Progress(stringResource(R.string.state_awaiting_consent), contentWidth)
                 is MirrorState.Starting -> Progress(stringResource(R.string.state_starting, state.board), contentWidth)
                 is MirrorState.Mirroring -> {
-                    MirroringCard(state.board, state.stats, contentWidth)
-                    BigButton(R.string.action_stop_mirroring, onStop, contentWidth, destructive = true)
+                    MirroringCard(state, contentWidth)
+                    if (state.paused) {
+                        BigButton(R.string.action_resume, actions.onResume, contentWidth)
+                    } else {
+                        FilledTonalButton(onClick = actions.onPause, modifier = contentWidth.heightIn(min = 64.dp)) {
+                            Text(stringResource(R.string.action_pause), style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
+                    BigButton(R.string.action_stop_mirroring, actions.onStop, contentWidth, destructive = true)
                 }
                 is MirrorState.Ended -> {
                     EndedCard(state.error, contentWidth)
-                    BigButton(R.string.action_connect, onConnect, contentWidth)
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) }
+                    ConnectChoices(boards, actions, contentWidth)
+                    TextButton(onClick = actions.onDismiss) { Text(stringResource(R.string.action_ok)) }
                 }
             }
             if (state is MirrorState.Connecting || state is MirrorState.WaitingApproval || state is MirrorState.Starting) {
-                OutlinedButton(onClick = onStop, modifier = Modifier.heightIn(min = 56.dp)) {
+                OutlinedButton(onClick = actions.onStop, modifier = Modifier.heightIn(min = 56.dp)) {
                     Text(stringResource(R.string.action_cancel))
                 }
             }
             if (state is MirrorState.Idle || state is MirrorState.Ended) {
-                OutlinedButton(onClick = onSettings, modifier = Modifier.heightIn(min = 56.dp)) {
+                OutlinedButton(onClick = actions.onSettings, modifier = Modifier.heightIn(min = 56.dp)) {
                     Text(stringResource(R.string.action_settings))
                 }
             }
@@ -104,6 +121,38 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/** Hatırlanan tahtalar (tek dokunuş) + QR ile yeni tahta. Tahta yoksa yalnız büyük QR düğmesi. */
+@Composable
+private fun ConnectChoices(boards: List<RememberedBoard>, actions: HomeActions, modifier: Modifier) {
+    if (boards.isEmpty()) {
+        BigButton(R.string.action_connect, actions.onScan, modifier)
+        return
+    }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(stringResource(R.string.boards_title), style = MaterialTheme.typography.titleMedium)
+        for (b in boards) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { actions.onBoard(b) }, modifier = Modifier.weight(1f).heightIn(min = 64.dp)) {
+                    Text(b.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                val forgetDesc = stringResource(R.string.board_forget_desc, b.name)
+                TextButton(
+                    onClick = { actions.onForget(b) },
+                    modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = forgetDesc },
+                ) { Text(stringResource(R.string.board_forget)) }
+            }
+        }
+        OutlinedButton(onClick = actions.onScan, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
+            Text(stringResource(R.string.action_scan_qr), style = MaterialTheme.typography.titleMedium)
+        }
+        Text(
+            stringResource(R.string.boards_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -138,19 +187,35 @@ private fun Progress(text: String, modifier: Modifier) {
 }
 
 @Composable
-private fun MirroringCard(board: String, stats: MirrorStats?, modifier: Modifier) {
-    Card(modifier = modifier) {
+private fun MirroringCard(state: MirrorState.Mirroring, modifier: Modifier) {
+    Card(modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.state_mirroring, board), style = MaterialTheme.typography.titleLarge)
-            if (stats != null) {
-                Text(
+            Text(stringResource(R.string.state_mirroring, state.board), style = MaterialTheme.typography.titleLarge)
+            when {
+                state.reconnecting -> Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Text(
+                        stringResource(R.string.state_reconnecting),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.secondary,
+                    )
+                }
+                state.paused -> Text(
+                    stringResource(R.string.state_paused),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+                state.stats != null -> Text(
                     stringResource(
                         R.string.mirroring_stats,
-                        stats.latencyMs?.toString() ?: "–",
-                        stats.fps.toInt(),
-                        stats.bitrateBps / 1_000_000.0,
-                        stats.width,
-                        stats.height,
+                        state.stats.latencyMs?.toString() ?: "–",
+                        state.stats.fps.toInt(),
+                        state.stats.bitrateBps / 1_000_000.0,
+                        state.stats.width,
+                        state.stats.height,
                     ),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -178,6 +243,11 @@ private fun EndedCard(error: MirrorError?, modifier: Modifier) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(stringResource(title), style = MaterialTheme.typography.titleLarge)
             if (body != null) Text(stringResource(body), style = MaterialTheme.typography.bodyLarge)
+            // Okul ağı istemci yalıtımı yapıyorsa en güvenilir yol tabletin hotspot'u (RISKS R1).
+            if (error == MirrorError.UNREACHABLE || error == MirrorError.DIFFERENT_NETWORK) {
+                Text(stringResource(R.string.hotspot_title), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.hotspot_steps), style = MaterialTheme.typography.bodyLarge)
+            }
         }
     }
 }
@@ -186,9 +256,11 @@ private fun EndedCard(error: MirrorError?, modifier: Modifier) {
 private fun errorText(error: MirrorError?): Pair<Int, Int?> = when (error) {
     null -> R.string.ended_by_user to null
     MirrorError.UNREACHABLE -> R.string.err_unreachable to R.string.err_unreachable_body
+    MirrorError.DIFFERENT_NETWORK -> R.string.err_different_network to R.string.err_different_network_body
     MirrorError.REFUSED -> R.string.err_refused to R.string.err_refused_body
     MirrorError.WRONG_BOARD -> R.string.err_wrong_board to R.string.err_wrong_board_body
     MirrorError.AUTH_FAILED -> R.string.err_auth to R.string.err_auth_body
+    MirrorError.BOARD_FORGOT_TABLET -> R.string.err_board_forgot to R.string.err_board_forgot_body
     MirrorError.BUSY_DENIED -> R.string.err_busy_denied to R.string.err_busy_denied_body
     MirrorError.BUSY_TIMEOUT -> R.string.err_busy_timeout to R.string.err_busy_timeout_body
     MirrorError.RATE_LIMITED -> R.string.err_rate_limited to R.string.err_rate_limited_body
@@ -205,19 +277,31 @@ private fun errorText(error: MirrorError?): Pair<Int, Int?> = when (error) {
     MirrorError.INTERNAL -> R.string.err_internal to null
 }
 
+private val previewActions = HomeActions({}, {}, {}, {}, {}, {}, {}, {})
+private val previewBoard = RememberedBoard(
+    "7-A Sınıfı", listOf("192.168.1.20"), 47800, Bytes.fromHex("00".repeat(32)), Bytes.fromHex("00".repeat(16)),
+    Bytes.fromHex("00".repeat(32)), 0,
+)
+
+@Preview(showBackground = true, widthDp = 800, heightDp = 700)
+@Composable
+private fun HomeIdlePreview() {
+    YansitTheme { HomeScreen(MirrorState.Idle, listOf(previewBoard), "0.1.0", previewActions) }
+}
+
 @Preview(showBackground = true, widthDp = 800, heightDp = 600)
 @Composable
 private fun HomeMirroringPreview() {
     YansitTheme {
         HomeScreen(
             MirrorState.Mirroring("7-A Sınıfı", MirrorStats(42, 59.8, 16_000_000, 0, 1728, 1072)),
-            "0.1.0", {}, {}, {}, {},
+            emptyList(), "0.1.0", previewActions,
         )
     }
 }
 
-@Preview(showBackground = true, widthDp = 800, heightDp = 600)
+@Preview(showBackground = true, widthDp = 800, heightDp = 700)
 @Composable
 private fun HomeErrorPreview() {
-    YansitTheme { HomeScreen(MirrorState.Ended("7-A", MirrorError.UNREACHABLE), "0.1.0", {}, {}, {}, {}) }
+    YansitTheme { HomeScreen(MirrorState.Ended("7-A", MirrorError.DIFFERENT_NETWORK), emptyList(), "0.1.0", previewActions) }
 }

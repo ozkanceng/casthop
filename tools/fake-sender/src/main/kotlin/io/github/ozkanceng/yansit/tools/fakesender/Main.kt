@@ -45,7 +45,8 @@ private const val USAGE = """fake-sender — Yansıt test göndericisi
   --uri U             QR içeriği (yansit://...)
   --host IP           URI'deki adres yerine bu adres
   --pin NNNNNN        tahtadaki 6 haneli kod (--auth pin için; pairing dosyasındakinin yerine)
-  --auth M            qr | pin | bad-token | bad-pin   (varsayılan qr)
+  --auth M            qr | pin | bad-token | bad-pin | paired   (varsayılan qr)
+  --pairing-key F     paired: kayıtlı eşleştirme (JSON); --request-pairing ile WELCOME'daki anahtar buraya yazılır
   --input F           H.264 Annex-B dosyası (akış için)
   --fps N             gönderim hızı (varsayılan 60)
   --frames N          gönderilecek kare (0 = dosyanın tamamı; dosya kısaysa başa sarar)
@@ -65,7 +66,7 @@ private const val USAGE = """fake-sender — Yansıt test göndericisi
 
 Çıkış kodu: 0 beklenti tuttu, 1 tutmadı, 2 kullanım hatası, 3 bağlantı hatası."""
 
-private class Options(
+private data class Options(
     val uri: String,
     val pin: String?,
     val host: String?,
@@ -81,6 +82,7 @@ private class Options(
     val holdMs: Long,
     val result: File?,
     val engine: String,
+    val pairingKey: File?,
     val port: Int?,
     val rotateInput: File?,
     val rotateAfter: Int,
@@ -139,6 +141,7 @@ private fun parseArgs(args: Array<String>): Options {
         holdMs = m["--hold-ms"]?.toLongOrNull() ?: 1500,
         result = m["--result"]?.let(::File),
         engine = (m["--engine"] ?: "raw").also { if (it != "raw" && it != "mirror") usage("--engine: raw | mirror") },
+        pairingKey = m["--pairing-key"]?.let(::File),
         port = m["--port"]?.toIntOrNull()?.takeIf { it in 1..65535 } ?: if ("--port" in m) usage("--port") else null,
         rotateInput = m["--rotate-input"]?.let(::File),
         rotateAfter = m["--rotate-after"]?.toIntOrNull() ?: 0,
@@ -159,6 +162,11 @@ private fun credentials(o: Options, qr: QrPayload): Credentials = when (o.auth) 
     "bad-token" -> Credentials.QrToken(Auth.randomBytes(16))
     "pin" -> Credentials.Pin(o.pin?.takeIf { it.length == 6 && it.all(Char::isDigit) } ?: usage("--auth pin: --pin NNNNNN gerekli"))
     "bad-pin" -> Credentials.Pin(if (o.pin == "000000") "000001" else "000000")
+    "paired" -> {
+        val f = o.pairingKey ?: usage("--auth paired için --pairing-key gerekli")
+        val k = Json.parseToJsonElement(f.readText()).jsonObject
+        Credentials.Paired(Bytes.fromHex(k["key_id"]!!.jsonPrimitive.content), Bytes.fromHex(k["pair_key"]!!.jsonPrimitive.content))
+    }
     else -> usage("--auth: qr | pin | bad-token | bad-pin")
 }
 
@@ -353,7 +361,14 @@ private fun streamWithMirrorSession(
 }
 
 fun main(args: Array<String>) {
-    val o = parseArgs(args)
+    val parsed = parseArgs(args)
+    // Eşleştirme cihaza bağlıdır: kayıtlı anahtarla bağlanırken aynı device_id kullanılır.
+    val o = if (parsed.auth == "paired" && parsed.pairingKey?.isFile == true) {
+        val k = Json.parseToJsonElement(parsed.pairingKey.readText()).jsonObject
+        parsed.copy(deviceId = Bytes.fromHex(k["device_id"]!!.jsonPrimitive.content))
+    } else {
+        parsed
+    }
     val qr = QrPayload.parse(o.uri)
     val endpoint = Endpoint(o.host ?: qr.hosts.first(), o.port ?: qr.port, qr.certFingerprint)
     val device = DeviceInfo(
@@ -388,7 +403,18 @@ fun main(args: Array<String>) {
             }
             is HelloOutcome.Accepted -> {
                 put("outcome", "welcome")
-                put("paired", outcome.session.welcome.pairKey != null)
+                val w = outcome.session.welcome
+                put("paired", w.pairKey != null)
+                val keyFile = o.pairingKey
+                if (o.requestPairing && keyFile != null && w.pairKey != null && w.keyId != null) {
+                    keyFile.writeText(
+                        buildJsonObject {
+                            put("key_id", w.keyId!!.toHex())
+                            put("pair_key", w.pairKey!!.toHex())
+                            put("device_id", o.deviceId.toHex())
+                        }.toString(),
+                    )
+                }
             }
         }
     }.toMutableMap()

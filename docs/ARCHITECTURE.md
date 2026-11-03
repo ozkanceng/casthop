@@ -63,7 +63,9 @@ Tek dinleme portu, üç TLS bağlantısı (CONTROL, VIDEO, AUDIO). İlk bağlant
 
 **Gönderim kuyruğu ve canlılık**
 - Video kuyruğu en fazla ~2 kare veya 50 ms bekleyen veri tutar. Aşılırsa: kuyruktaki tüm P-kareler atılır, `DROP` sayacı artar, kodlayıcıdan IDR istenir, sonraki IDR'ye kadar P-kareler gönderilmez (H.264 P-kareleri referans olduğundan tek tek atılamaz). Aynı anda `BitrateController`'a tıkanıklık olayı bildirilir.
-- `SO_SNDBUF` küçük (≈ 256 KiB) tutulur ki çekirdek tamponu kuyruk görevi görmesin; `TCP_NODELAY` açık.
+- VIDEO soketinin `SO_SNDBUF` değeri güncel bit hızının ≈ 100 ms'si kadar tutulur (32–512 KiB, bit hızı değiştikçe güncellenir) ki çekirdek tamponu kuyruk görevi görmesin; `TCP_NODELAY` açık.
+- **Gecikme bütçesi:** alıcının bildirdiği yakalama→alım gecikmesi 300 ms'yi aşarsa (ağ, kodlayıcının en düşük bit hızında bile yetmiyor; yoldaki AP/vekil tamponları dolu) gönderim bütçeyi aşan süre kadar (en fazla 1 sn) kesilir, bekleyen kareler atılır ve IDR ile devam edilir. Böylece gecikme hiçbir koşulda birikmez.
+- **Canlılık ve RESUME:** 2,5 sn tahtadan hiçbir mesaj gelmezse bağlantı kopmuş sayılır; RESUME (≤ 10 sn pencere) → VIDEO yeniden ATTACH → son CONFIG yeniden gönderilir → hemen IDR. Pencere kaçarsa ve tahta hatırlanıyorsa eşleştirme anahtarıyla yeni oturum açılır (yakalama ve VirtualDisplay korunur).
 
 **BitrateController** (saf mantık, birim testli): girdiler = gönderici kuyruk gecikmesi, alıcı raporu (tahmini tek yön gecikme eğimi, geç kare oranı, alınan bit hızı). AIMD: tıkanıklık → ×0,7 (en sık 500 ms'de bir); 2 sn kararlı → +%8/sn tavana kadar. Ayrıntı: [PROTOCOL.md §7.6](PROTOCOL.md).
 

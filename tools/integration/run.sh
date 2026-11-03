@@ -12,7 +12,9 @@
 #   4c. Döndürme: akış ortasında 1280x720 → 720x1280 yeniden yapılandırma, kare kaybı yok
 #   4d. Wi-Fi kopması (netsim, 1,5 sn): oturum RESUME ile ≤ 3 sn'de sürer, tahtada aynı oturum
 #   4e. Dar bant (netsim 2,5 Mbps < 4 Mbps akış): gönderici kare atar, gecikme birikmez
+#   4f. QR ile bağlanıp kalıcı eşleştirme alma; 4g. eşleştirme anahtarıyla QR'sız bağlanma
 #   5. SIGTERM → alıcı düzgün kapanır
+#   5b. Alıcı yeniden başlatılınca eşleştirme geçerli (trusted.json kalıcı)
 #   6. (YANSIT_IT_GUI=1) Arayüz modu Xvfb + Mesa OpenGL'de: qml6glsink yolu 300 kareyi çizer
 set -eu
 
@@ -149,12 +151,45 @@ sleep 1
 kill "$NPID" 2>/dev/null || true
 wait_sessions 5
 
+log "4f. QR + kalıcı eşleştirme"
+rm -f "$WORK/pair.json"
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth qr --request-pairing --pairing-key "$WORK/pair.json" \
+    --input "$WORK/test.h264" --frames 60 --hold-ms 300 --device-name "Tablet P" --result "$WORK/s4f.json" \
+    || fail "senaryo 4f"
+[ -s "$WORK/pair.json" ] || fail "senaryo 4f: eşleştirme anahtarı alınmadı"
+wait_sessions 6
+
+log "4g. Eşleştirme anahtarıyla QR'sız bağlanma"
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth paired --pairing-key "$WORK/pair.json" \
+    --input "$WORK/test.h264" --frames 60 --hold-ms 300 --device-name "Tablet P" --result "$WORK/s4g.json" \
+    || fail "senaryo 4g"
+wait_sessions 7
+
 log "5. Düzgün kapanış"
 kill -TERM "$RPID"
 RC=0
 wait "$RPID" || RC=$?
 RPID=""
 [ "$RC" -eq 0 ] || fail "alıcı çıkış kodu $RC"
+
+log "5b. Yeniden başlatma sonrası eşleştirme"
+XDG_RUNTIME_DIR="$RUNTIME" "$RECEIVER" --headless --verbose --port "$PORT" --data-dir "$WORK/data" \
+    --pairing-file "$WORK/pairing2.json" --stats-file "$WORK/stats-restart.jsonl" --qr-host 127.0.0.1 \
+    --name "CI Tahta" >"$WORK/receiver-restart.log" 2>&1 &
+RPID=$!
+i=0
+until [ -s "$WORK/pairing2.json" ]; do
+    i=$((i + 1))
+    [ $i -gt 100 ] && fail "alıcı yeniden başlamadı"
+    sleep 0.1
+done
+cmp -s "$WORK/pairing.json" "$WORK/pairing2.json" && fail "yeni QR token'ı üretilmemiş"
+"$SENDER" --pairing-file "$WORK/pairing2.json" --auth paired --pairing-key "$WORK/pair.json" \
+    --input "$WORK/test.h264" --frames 60 --hold-ms 300 --device-name "Tablet P" --result "$WORK/s5b.json" \
+    || fail "senaryo 5b"
+kill -TERM "$RPID"
+wait "$RPID" || fail "senaryo 5b: alıcı çıkışı"
+RPID=""
 
 if [ "${YANSIT_IT_GUI:-0}" = 1 ]; then
     log "6. Arayüz modu (Xvfb, OpenGL)"

@@ -14,7 +14,7 @@ def expect(cond, msg):
 
 
 stats = [json.loads(l) for l in (work / "stats.jsonl").read_text().splitlines() if l.strip()]
-expect(len(stats) == 5, f"beş oturum istatistiği (bulunan: {len(stats)})")
+expect(len(stats) == 7, f"yedi oturum istatistiği (bulunan: {len(stats)})")
 s = stats[0] if stats else {}
 m = stats[1] if len(stats) > 1 else {}
 s2 = json.loads((work / "s2.json").read_text())
@@ -76,6 +76,11 @@ samples = con.get("c2d_samples_ms", [])
 tail = samples[-5:]
 expect(len(samples) >= 5 and max(tail) < 800,
        f"dar bant: gecikme birikmedi (son 5 sn'lik c2d en çok {max(tail) if tail else None} ms < 800; tümü {samples})")
+
+p4f, p4g, p5b = load("s4f.json"), load("s4g.json"), load("s5b.json")
+expect(p4f.get("paired") is True, "eşleştirme: QR bağlantısında anahtar verildi")
+expect(p4g.get("ok") is True and p4g.get("paired") is False, "eşleştirme: QR'sız bağlanıldı (yeni anahtar istenmedi)")
+expect(p5b.get("ok") is True, "eşleştirme: alıcı yeniden başladıktan sonra da geçerli")
 
 gui = work / "stats-gui.jsonl"
 if gui.exists():

@@ -83,4 +83,21 @@
     <string name="notif_channel_desc">Shown while mirroring.</string>
     <string name="notif_title">Mirroring to %1$s</string>
     <string name="notif_text">Tap to open or press Stop.</string>
+    <string name="err_different_network">The tablet and the board are on different networks</string>
+    <string name="err_different_network_body">The tablet does not seem to be on the board\'s network. Connect the tablet to the same Wi-Fi as the board, or try the hotspot option below.</string>
+    <string name="err_board_forgot">The board no longer knows this tablet</string>
+    <string name="err_board_forgot_body">The pairing may have been removed on the board. Scan the QR code on the board again.</string>
+    <string name="hotspot_title">If the school network blocks it: use the tablet\'s hotspot</string>
+    <string name="hotspot_steps">1. On the tablet, turn on Settings → Connections → Mobile hotspot.
+2. On the board, connect to the tablet\'s network from the network icon.
+3. Scan the new QR code shown on the board.</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="state_paused">Paused. The board keeps the last picture; your screen is not shared until you resume.</string>
+    <string name="state_reconnecting">Reconnecting…</string>
+    <string name="boards_title">Remembered boards</string>
+    <string name="boards_hint">Connect with one tap to boards you have scanned once.</string>
+    <string name="board_forget">Forget</string>
+    <string name="board_forget_desc">Forget %1$s</string>
+    <string name="action_scan_qr">New board with QR</string>
 </resources>
