@@ -46,3 +46,7 @@ compile_commands.json
 
 # --- Ölçüm çıktıları / Measurement outputs ---
 tools/**/out/
+
+# Python
+__pycache__/
+*.pyc
