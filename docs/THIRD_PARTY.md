@@ -10,7 +10,7 @@ alınır. Bu liste RISKS R19 gereği tutulur ve bağımlılık eklendikçe günc
 |---|---|---|---|
 | Qt 6 (Core, Gui, Network, Qml, Quick, Controls) | arayüz, ağ, TLS | LGPL-3.0 | dinamik (.deb: sistem kütüphanesi) |
 | GStreamer 1.22 + plugins-base/good/bad, gst-libav, gstreamer1.0-qt6, gstreamer1.0-gl | video/ses çözme ve çizim | LGPL-2.1+ | dinamik / eklenti |
-| FFmpeg (libavcodec, gst-libav üzerinden) | yazılım H.264/H.265/AAC çözme | LGPL-2.1+ (Debian derlemesi) | dinamik |
+| FFmpeg (libavcodec, gst-libav üzerinden) | yazılım H.264/H.265/AAC çözme | LGPL-2.1+; Debian derlemesi GPL bileşenleri içerir (aşağıya bakın) | dinamik |
 | OpenSSL 3 | HMAC-SHA256, sertifika üretimi, TLS (Qt arka ucu) | Apache-2.0 | dinamik |
 | libqrencode | QR kodu | LGPL-2.1+ | dinamik |
 | Avahi (libavahi-client) | mDNS yayını | LGPL-2.1+ | dinamik |
@@ -18,10 +18,17 @@ alınır. Bu liste RISKS R19 gereği tutulur ve bağımlılık eklendikçe günc
 | GoogleTest | yalnız birim testleri | BSD-3-Clause | derleme zamanı |
 | nlohmann/json | yalnız birim testleri | MIT | derleme zamanı |
 
-AppImage (taşınabilir sürüm) Qt ve GStreamer kütüphanelerini paylaşımlı kütüphane olarak içerir; LGPL gereği
-kullanıcı bunları değiştirebilir (`--appimage-extract` ile açılıp `usr/lib` altındaki dosyalar değiştirilebilir).
-Gömülü kütüphanelerin kaynak kodu Debian 12 kaynak paketlerinde (`apt-get source <paket>`) bulunur; sürümler AppImage
-içindeki `usr/share/yansit/bundled-packages.txt` dosyasında listelenir.
+### Taşınabilir paket (`yansit-receiver-*.tar.gz`)
+
+Taşınabilir paket Debian 12 paketlerinden alınmış Qt, GStreamer ve FFmpeg kütüphanelerini **değiştirilmeden**,
+paylaşımlı kütüphane olarak içerir (`lib/`, `plugins/`, `qml/`, `gstreamer-1.0/`); kullanıcı bunları değiştirebilir
+(LGPL). Debian'ın FFmpeg derlemesi GPL bileşenleri (ör. x264, x265) içerdiğinden **taşınabilir paket bütün olarak
+GPL-3.0 koşullarıyla dağıtılır**; Yansıt'ın kendi kodu Apache-2.0'dır ve GPL-3.0 ile uyumludur. `.deb` paketi bu
+kütüphaneleri içermez (sistemin depodan kurduğu paketleri kullanır).
+
+Karşılık gelen kaynak kodu: paketteki `share/bundled-packages.txt` her gömülü Debian paketinin adını ve tam sürümünü
+listeler; kaynakları `apt-get source <paket>=<sürüm>` veya <https://snapshot.debian.org/> üzerinden alınabilir. Yansıt
+projesi istek üzerine bu kaynakları da sağlar (GitHub Issues).
 
 ## Tablet uygulaması (`android/`)
 

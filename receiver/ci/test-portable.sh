@@ -7,7 +7,8 @@ ARCHIVE="$(realpath "$1")"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq --no-install-recommends \
-    libgl1 libegl1 libgbm1 libdrm2 libx11-6 libx11-xcb1 libxcb1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
+    libgl1 libegl1 libgles2 libopengl0 libgbm1 libdrm2 libx11-6 libx11-xcb1 libxrender1 libxext6 libxfixes3 libxi6 \
+    libxrandr2 libxcursor1 libxdamage1 libxcomposite1 libxinerama1 libxss1 libxv1 libxcb1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
     libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1 \
     libxkbcommon0 libxkbcommon-x11-0 libwayland-client0 libwayland-cursor0 libwayland-egl1 libfontconfig1 \
     libfreetype6 libdbus-1-3 libpulse0 libasound2 libglib2.0-0 fonts-noto-core >/dev/null
@@ -33,8 +34,8 @@ XDG_RUNTIME_DIR="$WORK/rt" "$DIR/yansit-receiver" --headless --verbose --data-di
 cat "$WORK/log"
 grep -q "dinleniyor" "$WORK/log"
 [ -s "$WORK/p.json" ]
-# GStreamer gömülü eklentilerden çözücüleri bulabilmeli.
-GST_PLUGIN_SYSTEM_PATH_1_0="$DIR/gstreamer-1.0" GST_PLUGIN_SCANNER_1_0="$DIR/libexec/gst-plugin-scanner" \
-    GST_REGISTRY_1_0="$WORK/reg.bin" LD_LIBRARY_PATH="$DIR/lib" \
-    "$DIR/bin/yansit-receiver" --version
+# Arayüz: gömülü Qt platform eklentisi ve QML modülleri (QtQuick.Controls vb.) yüklenmeli; uyarı ölümcül.
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FATAL_WARNINGS=1 XDG_RUNTIME_DIR="$WORK/rt" \
+    "$DIR/yansit-receiver" --windowed --exit-after 3000 --port 47801 --data-dir "$WORK/data" --qr-host 127.0.0.1 \
+    >"$WORK/gui.log" 2>&1 || { cat "$WORK/gui.log"; exit 1; }
 echo "taşınabilir paket temiz sistemde çalışıyor"

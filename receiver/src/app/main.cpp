@@ -246,6 +246,10 @@ int runGui(int argc, char* argv[]) {
     yansit::ScreenshotTool screenshots;
 
     auto engine = std::make_unique<QQmlApplicationEngine>();
+    // Qt 6.4: qt_add_qml_module modülü qrc:/Yansit/ altına koyar ama "qrc:/" varsayılan içe aktarma yollarında yok.
+    // Derleme dizininde uygulama dizinindeki Yansit/qmldir bulunduğu için fark edilmez; kurulu (/usr/bin) ikilide
+    // qmldir bulunamaz ve Theme tekili tanımsız kalır.
+    engine->addImportPath(QStringLiteral("qrc:/"));
     engine->addImageProvider(QStringLiteral("qr"), new yansit::QrImageProvider);
     engine->setInitialProperties({{QStringLiteral("startFullScreen"), !parser.isSet(o.windowed)},
                                   {QStringLiteral("receiver"), QVariant::fromValue(&service)},

@@ -81,6 +81,9 @@ jobs:
       - name: Build .deb
         run: receiver/ci/build-deb.sh dist
 
+      - name: Test the installed package
+        run: receiver/ci/test-installed.sh dist/yansit-receiver_*.deb
+
       - name: Build portable package
         run: receiver/ci/build-portable.sh dist "${GITHUB_REF_NAME#v}"
 

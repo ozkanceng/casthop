@@ -41,8 +41,10 @@ done
 mkdir -p "$STAGE/libexec"
 cp "$SYSLIB/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner" "$STAGE/libexec/"
 
-# Sistemden kullanılacak (gömülmeyecek) kütüphaneler: sürücüye/donanıma/oturuma bağlı olanlar ve glibc.
-EXCLUDE='^(ld-linux|libc\.|libm\.|libdl\.|libpthread\.|librt\.|libresolv\.|libutil\.|libgcc_s\.|libstdc\+\+\.|libGL|libEGL|libGLX|libGLdispatch|libOpenGL|libgbm|libdrm|libva|libvdpau|libX|libxcb|libxkbcommon|libwayland|libasound|libpulse|libpipewire|libdbus|libsystemd|libudev|libfontconfig|libfreetype|libexpat|libz\.|libharfbuzz|libgraphite2|libpng16|libbrotli)'
+# Sistemden kullanılacak (gömülmeyecek) kütüphaneler: glibc, GL/EGL/DRM sürücü katmanı, X11/Wayland istemcisi,
+# ses sunucusu istemcisi, D-Bus/systemd ve yazı tipi yapılandırması (masaüstünde her zaman bulunur, oturuma bağlıdır).
+# libva/libvdpau gömülür (çekirdek kütüphane); VA/VDPAU sürücüleri sistemden yüklenir.
+EXCLUDE='^(ld-linux|libc\.|libm\.|libdl\.|libpthread\.|librt\.|libresolv\.|libutil\.|libgcc_s\.|libstdc\+\+\.|libGL|libEGL|libGLX|libGLdispatch|libOpenGL|libgbm|libdrm|libX|libxcb|libxkbcommon|libwayland|libasound|libpulse|libpipewire|libdbus|libsystemd|libudev|libfontconfig|libfreetype|libexpat|libz\.)'
 collect() {
     ldd "$1" 2>/dev/null | awk '/=> \//{print $3}' | while read -r lib; do
         base="$(basename "$lib")"

@@ -62,8 +62,18 @@ jobs:
       - name: Build .deb
         run: receiver/ci/build-deb.sh out
 
+      - name: Test the installed package
+        run: receiver/ci/test-installed.sh out/yansit-receiver_*.deb
+
+      - name: Build and test the portable package
+        run: |
+          receiver/ci/build-portable.sh out
+          receiver/ci/test-portable.sh out/yansit-receiver-*.tar.gz
+
       - uses: actions/upload-artifact@v7
         with:
           name: receiver-deb
-          path: out/*.deb
+          path: |
+            out/*.deb
+            out/*.tar.gz
           retention-days: 14

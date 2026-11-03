@@ -66,6 +66,16 @@ qt_add_executable(yansit-receiver
 target_compile_definitions(yansit-receiver PRIVATE
     YANSIT_VERSION="${PROJECT_VERSION}")
 
+set(YANSIT_QML_FILES
+    qml/ApprovalDialog.qml
+    qml/Main.qml
+    qml/SettingsPanel.qml
+    qml/StreamOverlay.qml
+    qml/Theme.qml
+    qml/TouchButton.qml
+    qml/VideoView.qml
+    qml/WaitingScreen.qml
+)
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 # GstGLQt6VideoItem türü derleme anında bilinmez (çalışma anında qml6glsink eklentisi kaydeder).
 set_source_files_properties(qml/VideoView.qml PROPERTIES QT_QML_SKIP_CACHEGEN TRUE)
@@ -73,15 +83,7 @@ set_source_files_properties(qml/VideoView.qml PROPERTIES QT_QML_SKIP_CACHEGEN TR
 qt_add_qml_module(yansit-receiver
     URI Yansit
     VERSION 1.0
-    QML_FILES
-        qml/ApprovalDialog.qml
-        qml/Main.qml
-        qml/SettingsPanel.qml
-        qml/StreamOverlay.qml
-        qml/Theme.qml
-        qml/TouchButton.qml
-        qml/VideoView.qml
-        qml/WaitingScreen.qml
+    QML_FILES ${YANSIT_QML_FILES}
 )
 
 qt_add_translations(yansit-receiver

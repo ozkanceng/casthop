@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import Yansit
 
 // Tahtada parmakla kullanım için büyük, yüksek kontrastlı buton.
 Button {
