@@ -75,6 +75,7 @@ ReceiverService::ReceiverService(Options options, QObject* parent) : QObject(par
         refreshState();
     });
     connect(m_video, &media::VideoPipeline::videoSizeChanged, this, [this](int w, int h) {
+        qCInfo(lcRecv) << "video boyutu:" << QStringLiteral("%1x%2").arg(w).arg(h);
         m_videoWidth = w;
         m_videoHeight = h;
     });

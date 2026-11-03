@@ -74,6 +74,17 @@ public class MediaChannel internal constructor(private val tls: PinnedSocket, pu
         seq = (seq + 1) and 0xFFFFFFFFL
     }
 
+    /**
+     * Çekirdek gönderim tamponu. Bit hızına göre küçük tutulur (≈ 100 ms veri) ki tıkanıklıkta gecikme
+     * tamponda birikmek yerine gönderici kuyruğunda görülsün ve kare atılabilsin.
+     */
+    public fun setSendBufferBytes(bytes: Int) {
+        try {
+            tls.socket.sendBufferSize = bytes
+        } catch (_: java.net.SocketException) {
+        }
+    }
+
     override fun close() {
         tls.close()
     }

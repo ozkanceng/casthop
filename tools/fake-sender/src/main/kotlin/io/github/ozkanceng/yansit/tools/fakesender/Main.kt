@@ -17,6 +17,7 @@ import io.github.ozkanceng.yansit.protocol.client.HelloOutcome
 import io.github.ozkanceng.yansit.protocol.client.MonotonicClock
 import io.github.ozkanceng.yansit.protocol.client.SenderClient
 import io.github.ozkanceng.yansit.protocol.client.Session
+import io.github.ozkanceng.yansit.sender.LinkState
 import io.github.ozkanceng.yansit.sender.MirrorSession
 import io.github.ozkanceng.yansit.sender.MirrorStats
 import io.github.ozkanceng.yansit.sender.SessionEnd
@@ -55,6 +56,10 @@ private const val USAGE = """fake-sender — Yansıt test göndericisi
   --expect-pending    tahta onayı beklemesi (PENDING_APPROVAL) zorunlu
   --hold-ms N         son kareden sonra BYE'dan önce bekleme (varsayılan 1500)
   --result F          sonuç özeti (JSON)
+  --port N            URI'deki port yerine bu port (ör. ağ benzetim vekili)
+  --rotate-input F    (mirror) --rotate-after kareden sonra bu dosyaya geç ve kodlayıcıyı yeniden yapılandır
+  --rotate-after N    (mirror) döndürme benzetiminin karesi
+  --rotate-size WxH   (mirror) döndürülmüş akışın boyutu (varsayılan 720x1280)
   --engine E          raw | mirror  (varsayılan raw). mirror: Android uygulamasının gönderici çekirdeği
                       (MirrorSession: kuyruk, bit hızı uyarlaması, IDR istekleri) dosya kaynağıyla
 
@@ -76,6 +81,10 @@ private class Options(
     val holdMs: Long,
     val result: File?,
     val engine: String,
+    val port: Int?,
+    val rotateInput: File?,
+    val rotateAfter: Int,
+    val rotateSize: Pair<Int, Int>,
 )
 
 private fun usage(msg: String): Nothing {
@@ -130,6 +139,14 @@ private fun parseArgs(args: Array<String>): Options {
         holdMs = m["--hold-ms"]?.toLongOrNull() ?: 1500,
         result = m["--result"]?.let(::File),
         engine = (m["--engine"] ?: "raw").also { if (it != "raw" && it != "mirror") usage("--engine: raw | mirror") },
+        port = m["--port"]?.toIntOrNull()?.takeIf { it in 1..65535 } ?: if ("--port" in m) usage("--port") else null,
+        rotateInput = m["--rotate-input"]?.let(::File),
+        rotateAfter = m["--rotate-after"]?.toIntOrNull() ?: 0,
+        rotateSize = (m["--rotate-size"] ?: "720x1280").split('x').let { parts ->
+            val w = parts.getOrNull(0)?.toIntOrNull()
+            val h = parts.getOrNull(1)?.toIntOrNull()
+            if (w == null || h == null) usage("--rotate-size WxH") else w to h
+        },
     )
 }
 
@@ -260,46 +277,85 @@ private fun streamWithMirrorSession(
     session: Session,
     summary: MutableMap<String, kotlinx.serialization.json.JsonElement>,
 ): Boolean {
-    val h264 = AnnexB.parse(o.input!!.readBytes())
-    val total = if (o.frames == 0) h264.units.size else o.frames
+    val main = AnnexB.parse(o.input!!.readBytes())
+    val rotated = o.rotateInput?.let { AnnexB.parse(it.readBytes()) }
+    val total = if (o.frames == 0) main.units.size else o.frames
     val ended = CountDownLatch(1)
     val endReason = AtomicReference<SessionEnd?>()
     val lastStats = AtomicReference<MirrorStats?>()
+    val latencySamples = java.util.Collections.synchronizedList(ArrayList<Int>())
+    val linkEvents = java.util.Collections.synchronizedList(ArrayList<Pair<LinkState, Long>>())
+    val planA = StreamPlan("file", Codec.H264, false, 1280, 720, o.fps, 8_000_000, 2_000_000, 12_000_000)
+    val planB = planA.copy(width = o.rotateSize.first, height = o.rotateSize.second)
     lateinit var mirror: MirrorSession
-    val source = FileVideoSource(h264, o.fps, total) {
-        Thread.sleep(o.holdMs)
-        mirror.stop(ByeReason.USER_STOP)
-    }
-    mirror = MirrorSession(session, { lastStats.set(it) }) { endReason.set(it); ended.countDown() }
+    val reconfigured = AtomicBoolean(false)
+    val source = FileVideoSource(
+        select = { plan -> if (plan == planB && rotated != null) rotated else main },
+        fps = o.fps,
+        frames = total,
+        onFrame = { index ->
+            if (rotated != null && index == o.rotateAfter && reconfigured.compareAndSet(false, true)) {
+                // Döndürme benzetimi: kodlayıcı yeni boyutla yeniden başlar (Android'de VirtualDisplay.resize sonrası).
+                Thread { mirror.reconfigure(planB) }.start()
+            }
+        },
+        onFinished = {
+            Thread.sleep(o.holdMs)
+            mirror.stop(ByeReason.USER_STOP)
+        },
+    )
+    mirror = MirrorSession(
+        session,
+        onStats = { st ->
+            lastStats.set(st)
+            st.latencyMs?.let(latencySamples::add)
+        },
+        onEnd = { endReason.set(it); ended.countDown() },
+        onLink = { state ->
+            linkEvents.add(state to MonotonicClock.nowUs())
+            println("bağlantı: $state")
+        },
+    )
     mirror.start()
-    val plan = StreamPlan("file", Codec.H264, false, 1280, 720, o.fps, 8_000_000, 2_000_000, 12_000_000)
     try {
-        mirror.startVideo(plan, source)
+        mirror.startVideo(planA, source)
     } catch (e: IOException) {
         System.err.println("video bağlantısı: $e")
         mirror.stop(ByeReason.ERROR)
         return false
     }
-    val finished = ended.await(total * 1000L / o.fps + o.holdMs + 15_000, TimeUnit.MILLISECONDS)
+    val finished = ended.await(total * 1000L / o.fps + o.holdMs + 30_000, TimeUnit.MILLISECONDS)
     val end = endReason.get()
     summary["engine"] = JsonPrimitive("mirror")
     summary["frames_sent"] = JsonPrimitive(source.framesProduced.get())
     summary["keyframe_requests"] = JsonPrimitive(source.keyframeRequests.get())
     summary["bitrate_changes"] = JsonPrimitive(source.bitrateChanges.get())
     summary["final_bitrate_bps"] = JsonPrimitive(source.lastBitrate.get())
+    summary["restarts"] = JsonPrimitive(source.starts.get() - 1)
+    summary["resume_count"] = JsonPrimitive(mirror.resumeCount.get())
+    summary["drain_count"] = JsonPrimitive(mirror.drainCount.get())
+    // Kopma → yeniden bağlanma süreleri (ms).
+    val outages = synchronized(linkEvents) {
+        linkEvents.zipWithNext().filter { (a, b) -> a.first == LinkState.RECONNECTING && b.first == LinkState.CONNECTED }
+            .map { (a, b) -> (b.second - a.second) / 1000 }
+    }
+    summary["reconnect_ms"] = kotlinx.serialization.json.JsonArray(outages.map { JsonPrimitive(it) })
     summary["end"] = JsonPrimitive(end?.toString() ?: "timeout")
+    summary["c2d_samples_ms"] = kotlinx.serialization.json.JsonArray(synchronized(latencySamples) {
+        latencySamples.map { JsonPrimitive(it) }
+    })
     lastStats.get()?.let { st ->
         st.latencyMs?.let { summary["last_c2d_ms"] = JsonPrimitive(it) }
         summary["sender_dropped"] = JsonPrimitive(st.droppedFrames)
     }
-    println("MirrorSession: ${source.framesProduced.get()} kare, son: $end")
+    println("MirrorSession: ${source.framesProduced.get()} kare, RESUME ${mirror.resumeCount.get()}, son: $end")
     return finished && end == SessionEnd.Local(ByeReason.USER_STOP)
 }
 
 fun main(args: Array<String>) {
     val o = parseArgs(args)
     val qr = QrPayload.parse(o.uri)
-    val endpoint = Endpoint(o.host ?: qr.hosts.first(), qr.port, qr.certFingerprint)
+    val endpoint = Endpoint(o.host ?: qr.hosts.first(), o.port ?: qr.port, qr.certFingerprint)
     val device = DeviceInfo(
         name = o.deviceName,
         deviceId = o.deviceId,

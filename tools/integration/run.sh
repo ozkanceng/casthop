@@ -9,6 +9,9 @@
 #   3. Akış sürerken ikinci gönderici (PIN) → PENDING_APPROVAL, onay gelmeyince REJECT(BUSY_TIMEOUT)
 #   4. Kullanılmış QR token'ı tekrar → REJECT(AUTH_FAILED) (tek kullanımlık)
 #   4b. Android uygulamasının gönderici çekirdeği (MirrorSession: kuyruk, bit hızı, IDR) ile 300 kare
+#   4c. Döndürme: akış ortasında 1280x720 → 720x1280 yeniden yapılandırma, kare kaybı yok
+#   4d. Wi-Fi kopması (netsim, 1,5 sn): oturum RESUME ile ≤ 3 sn'de sürer, tahtada aynı oturum
+#   4e. Dar bant (netsim 2,5 Mbps < 4 Mbps akış): gönderici kare atar, gecikme birikmez
 #   5. SIGTERM → alıcı düzgün kapanır
 #   6. (YANSIT_IT_GUI=1) Arayüz modu Xvfb + Mesa OpenGL'de: qml6glsink yolu 300 kareyi çizer
 set -eu
@@ -43,6 +46,16 @@ gst-launch-1.0 -q videotestsrc num-buffers=600 pattern=ball \
     ! video/x-h264,stream-format=byte-stream,profile=high \
     ! filesink location="$WORK/test.h264"
 [ -s "$WORK/test.h264" ] || fail "test videosu üretilemedi"
+# İsteğe bağlı IDR'yi taklit etmek için kısa GOP'lu (0,5 sn) yatay ve dikey videolar.
+for spec in "gop30 1280 720" "portrait 720 1280"; do
+    set -- $spec
+    gst-launch-1.0 -q videotestsrc num-buffers=600 pattern=smpte \
+        ! video/x-raw,width=$2,height=$3,framerate=60/1 \
+        ! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=30 bframes=0 bitrate=3000 \
+        ! video/x-h264,stream-format=byte-stream,profile=high \
+        ! filesink location="$WORK/test-$1.h264"
+    [ -s "$WORK/test-$1.h264" ] || fail "test-$1 üretilemedi"
+done
 
 log "Alıcı başlatılıyor (port $PORT)"
 rm -f "$WORK/pairing.json" "$WORK/stats.jsonl"
@@ -101,6 +114,40 @@ log "4b. Uygulamanın gönderici çekirdeği (MirrorSession) ile 300 kare"
 "$SENDER" --pairing-file "$WORK/pairing.json" --auth qr --engine mirror --input "$WORK/test.h264" --fps 60 \
     --frames 300 --device-name "Tablet M" --result "$WORK/s4b.json" || fail "senaryo 4b"
 wait_sessions 2
+
+log "4c. Döndürme (1280x720 → 720x1280)"
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth qr --engine mirror --input "$WORK/test-gop30.h264" \
+    --rotate-input "$WORK/test-portrait.h264" --rotate-after 120 --rotate-size 720x1280 --fps 60 --frames 300 \
+    --device-name "Tablet R" --result "$WORK/s4c.json" || fail "senaryo 4c"
+wait_sessions 3
+grep -q "video boyutu: \"720x1280\"" "$WORK/receiver.log" || fail "senaryo 4c: alıcı yeni boyuta geçmedi"
+
+log "4d. Wi-Fi kopması ve RESUME"
+python3 -I "$HERE/netsim.py" --listen $((PORT + 10)) --target 127.0.0.1:$PORT --blackout-ms 1500 \
+    >"$WORK/netsim-d.log" 2>&1 &
+NPID=$!
+sleep 0.5
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth qr --engine mirror --port $((PORT + 10)) \
+    --input "$WORK/test-gop30.h264" --fps 60 --frames 600 --device-name "Tablet W" --result "$WORK/s4d.json" &
+SPID=$!
+sleep 3
+kill -USR1 "$NPID"
+wait $SPID || fail "senaryo 4d: gönderici"
+sleep 1 # vekildeki son çerçeveler (BYE) alıcıya ulaşsın
+kill "$NPID" 2>/dev/null || true
+wait_sessions 4
+
+log "4e. Dar bant (2,5 Mbps, 20 ms)"
+python3 -I "$HERE/netsim.py" --listen $((PORT + 11)) --target 127.0.0.1:$PORT --rate-kbps 2500 --delay-ms 20 \
+    >"$WORK/netsim-e.log" 2>&1 &
+NPID=$!
+sleep 0.5
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth qr --engine mirror --port $((PORT + 11)) \
+    --input "$WORK/test-gop30.h264" --fps 60 --frames 600 --device-name "Tablet D" --result "$WORK/s4e.json" \
+    || fail "senaryo 4e: gönderici"
+sleep 1
+kill "$NPID" 2>/dev/null || true
+wait_sessions 5
 
 log "5. Düzgün kapanış"
 kill -TERM "$RPID"

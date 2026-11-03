@@ -14,7 +14,7 @@ def expect(cond, msg):
 
 
 stats = [json.loads(l) for l in (work / "stats.jsonl").read_text().splitlines() if l.strip()]
-expect(len(stats) == 2, f"iki oturum istatistiği (bulunan: {len(stats)})")
+expect(len(stats) == 5, f"beş oturum istatistiği (bulunan: {len(stats)})")
 s = stats[0] if stats else {}
 m = stats[1] if len(stats) > 1 else {}
 s2 = json.loads((work / "s2.json").read_text())
@@ -44,6 +44,38 @@ expect(m.get("frames_rendered") == 300 and m.get("frames_dropped") == 0,
        f"MirrorSession akışı: 300 kare çizildi, kayıp 0 ({m.get('frames_rendered')}/{m.get('frames_dropped')})")
 expect(s4b.get("keyframe_requests") == 0, f"MirrorSession: gereksiz IDR isteği yok ({s4b.get('keyframe_requests')})")
 expect(s4b.get("sender_dropped", 0) == 0, f"MirrorSession: gönderici kuyruğunda kare atılmadı ({s4b.get('sender_dropped')})")
+
+def load(name):
+    return json.loads((work / name).read_text())
+
+
+rot, rot_r = load("s4c.json"), (stats[2] if len(stats) > 2 else {})
+print(f"döndürme: {rot} / alıcı {rot_r}")
+expect(rot.get("ok") is True and rot.get("restarts") == 1, f"döndürme: kodlayıcı bir kez yeniden başladı ({rot.get('restarts')})")
+expect(rot_r.get("frames_rendered") == rot.get("frames_sent") and rot_r.get("frames_dropped") == 0,
+       f"döndürme: tüm kareler çizildi, kayıp yok ({rot_r.get('frames_rendered')}/{rot.get('frames_sent')}, "
+       f"atılan {rot_r.get('frames_dropped')})")
+
+res, res_r = load("s4d.json"), (stats[3] if len(stats) > 3 else {})
+print(f"RESUME: {res} / alıcı {res_r}")
+rc = res.get("reconnect_ms", [])
+expect(res.get("ok") is True and res.get("resume_count") == 1, f"Wi-Fi kopması: tek RESUME ({res.get('resume_count')})")
+expect(len(rc) == 1 and rc[0] <= 3000, f"Wi-Fi kopması: bağlantı ≤ 3 sn'de geri geldi ({rc} ms)")
+expect(res_r.get("frames_rendered", 0) >= 0.7 * res.get("frames_sent", 1),
+       f"Wi-Fi kopması: aynı oturumda akış sürdü ({res_r.get('frames_rendered')}/{res.get('frames_sent')})")
+
+con, con_r = load("s4e.json"), (stats[4] if len(stats) > 4 else {})
+print(f"dar bant: {con} / alıcı {con_r}")
+expect(con.get("ok") is True, "dar bant: oturum düzgün bitti")
+expect(con.get("final_bitrate_bps", 10**9) <= 2_500_000,
+       f"dar bant: bit hızı tabana indi ({con.get('final_bitrate_bps')})")
+expect(con.get("drain_count", 0) > 0 or con.get("sender_dropped", 0) > 0,
+       f"dar bant: gönderici kare attı (boşaltma {con.get('drain_count')}, atılan {con.get('sender_dropped')})")
+# Dosya kaynağı bit hızını düşüremez (≈3 Mbps > 2,5 Mbps): gecikme ancak kare atılarak sınırlı tutulabilir.
+samples = con.get("c2d_samples_ms", [])
+tail = samples[-5:]
+expect(len(samples) >= 5 and max(tail) < 800,
+       f"dar bant: gecikme birikmedi (son 5 sn'lik c2d en çok {max(tail) if tail else None} ms < 800; tümü {samples})")
 
 gui = work / "stats-gui.jsonl"
 if gui.exists():

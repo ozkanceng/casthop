@@ -71,3 +71,32 @@ class SendQueueTest {
         assertFalse(q.offer(key(8), 8))
     }
 }
+
+class SendQueueReconfigureTest {
+    private fun frame(pts: Long, flags: Int = 0) = EncodedFrame(ByteArray(10), pts, flags, pts)
+
+    @Test
+    fun newConfigClearsStaleFrames() {
+        val q = SendQueue(maxFrames = 4)
+        q.offer(frame(1, FrameFlags.KEYFRAME), 1)
+        q.offer(frame(2), 2)
+        assertTrue(q.offer(frame(3, FrameFlags.CONFIG), 3))
+        assertTrue(q.offer(frame(4, FrameFlags.KEYFRAME), 4))
+        assertTrue(q.take(0)!!.first.isConfig)
+        assertEquals(4L, q.take(0)!!.first.ptsUs)
+        assertNull(q.take(0))
+    }
+
+    @Test
+    fun dropUntilKeyframeAfterReconnect() {
+        val q = SendQueue(maxFrames = 4)
+        q.offer(frame(1, FrameFlags.KEYFRAME), 1)
+        q.offer(frame(2), 2)
+        q.dropUntilKeyframe()
+        assertFalse(q.offer(frame(3), 3))
+        assertTrue(q.offer(frame(4, FrameFlags.KEYFRAME), 4))
+        val (f, disc) = q.take(0)!!
+        assertEquals(4L, f.ptsUs)
+        assertTrue(disc)
+    }
+}

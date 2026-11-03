@@ -17,7 +17,8 @@ class EncodedFrame(val data: ByteArray, val ptsUs: Long, val flags: Int, val enq
  *
  * Ağ yavaşladığında gecikme biriktirmek yerine kare atar: kuyruk [maxFrames] kareyi veya en eski kare
  * [maxAgeUs] yaşını aşarsa bekleyen P-kareler atılır ve sonraki anahtar kareye kadar P-kare kabul edilmez
- * (H.264'te P-kareler önceki karelere dayandığından tek tek atılamaz). CONFIG çerçeveleri asla atılmaz.
+ * (H.264'te P-kareler önceki karelere dayandığından tek tek atılamaz). CONFIG çerçeveleri asla atılmaz; yeni bir
+ * CONFIG (çözünürlük değişimi) kuyruktaki eski biçimli kareleri siler.
  * Atma olayı [onDrop] ile bildirilir: çağıran kodlayıcıdan IDR ister ve bit hızını düşürür.
  */
 class SendQueue(
@@ -44,7 +45,14 @@ class SendQueue(
         var dropped = 0
         val accepted = lock.withLock {
             if (closed) return false
-            if (waitingForKeyframe && !frame.isKeyframe && !frame.isConfig) {
+            if (frame.isConfig) {
+                dropped = queue.count { !it.isConfig }
+                queue.clear()
+                queue.addLast(frame)
+                notEmpty.signal()
+                return@withLock true
+            }
+            if (waitingForKeyframe && !frame.isKeyframe) {
                 dropped = 1
                 discontinuity = true
                 return@withLock false
@@ -53,7 +61,7 @@ class SendQueue(
 
             val oldest = queue.peekFirst()
             val overflow = queue.size >= maxFrames || (oldest != null && nowUs - oldest.enqueuedUs > maxAgeUs)
-            if (overflow && !frame.isConfig) {
+            if (overflow) {
                 val before = queue.size
                 queue.removeAll { !it.isConfig }
                 dropped = before - queue.size
@@ -90,6 +98,18 @@ class SendQueue(
         val disc = discontinuity && !frame.isConfig
         if (disc) discontinuity = false
         frame to disc
+    }
+
+    /** Bekleyen tüm kareleri atar ve sonraki anahtar kareyi bekler (bağlantı yeniden kurulunca). */
+    fun dropUntilKeyframe() {
+        val dropped = lock.withLock {
+            val n = queue.count { !it.isConfig }
+            queue.removeAll { !it.isConfig }
+            waitingForKeyframe = true
+            discontinuity = true
+            n
+        }
+        if (dropped > 0) droppedTotal += dropped
     }
 
     fun close() = lock.withLock {
