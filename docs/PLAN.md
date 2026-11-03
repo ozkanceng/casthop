@@ -49,9 +49,9 @@ Her taş sonunda: derle → test → kabul kriterlerini kontrol et → commit + 
 **Test:** CI çalıştırması; yerelde `./gradlew test`, `cmake --build && ctest`.
 
 ### M1 — Protokol v1 (iki dilde) + ortak test vektörleri
-- `docs/PROTOCOL.md` tanımı → `protocol/vectors/*.hex` + `vectors.json` (beklenen ayrıştırma).
+- `docs/PROTOCOL.md` tanımı → bağımsız Python üreteci (`protocol/gen/`) → `protocol/vectors/vectors.json` (ham baytlar + beklenen ayrıştırma/hata kodu).
 - Kotlin (`android/protocol`, saf JVM) ve C++ (`receiver/src/protocol`, Qt'siz, yalnız STL) kodlayıcı/çözücü.
-- El sıkışma durum makinesi, token/PIN doğrulama (HMAC-SHA256, sabit-zamanlı karşılaştırma), saat senkronu (PING/PONG), bit hızı denetleyicisi (Kotlin, saf mantık).
+- Token/PIN/eşleştirme doğrulama (HMAC-SHA256, sabit-zamanlı karşılaştırma, `PairingManager`), saat senkronu (PING/PONG), bit hızı denetleyicisi (Kotlin, saf mantık). Bağlantı başına el sıkışma durum makinesi TLS sunucusuyla birlikte M2'de.
 - Fuzz-benzeri testler: rastgele/bozuk çerçeveler çökmeye yol açmamalı.
 
 **Kabul:** Her iki uygulama aynı vektörlerin %100'ünü geçer; bozuk girdide istisna/çökme yok, tanımlı hata kodu döner; bit hızı denetleyicisi senaryo testleri geçer.

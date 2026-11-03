@@ -1,10 +1,32 @@
+find_package(OpenSSL 3.0 REQUIRED COMPONENTS Crypto)
+
+# Protokol ve oturum mantığı: yalnız STL + OpenSSL (Qt yok). Kotlin uygulamasıyla aynı vektörleri geçer.
+add_library(yansit_protocol STATIC
+    protocol/Bytes.cpp
+    protocol/Bytes.h
+    protocol/Control.cpp
+    protocol/Control.h
+    protocol/Crypto.cpp
+    protocol/Crypto.h
+    protocol/Errors.cpp
+    protocol/Errors.h
+    protocol/Frame.cpp
+    protocol/Frame.h
+    protocol/Qr.cpp
+    protocol/Qr.h
+    session/PairingManager.cpp
+    session/PairingManager.h
+)
+target_include_directories(yansit_protocol PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(yansit_protocol PUBLIC OpenSSL::Crypto)
+
 # Qt GUI'den bağımsız, test edilebilir çekirdek.
 add_library(yansit_core STATIC
     app/AddressSelection.cpp
     app/AddressSelection.h
 )
 target_include_directories(yansit_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(yansit_core PUBLIC Qt6::Core Qt6::Network)
+target_link_libraries(yansit_core PUBLIC yansit_protocol Qt6::Core Qt6::Network)
 
 qt_add_executable(yansit-receiver
     app/main.cpp

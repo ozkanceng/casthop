@@ -20,12 +20,14 @@ kotlin {
 dependencies {
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.kotlinx.serialization.json)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 lint {
     abortOnError = true
-    disable += setOf("GradleDependency", "NewerVersionAvailable")
+    // TrulyRandom yalnız Android ≤ 4.3 içindir; uygulamanın minSdk değeri 29.
+    disable += setOf("GradleDependency", "NewerVersionAvailable", "TrulyRandom")
 }
 
 tasks.test {

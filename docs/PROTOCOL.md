@@ -1,11 +1,11 @@
 # Yansıt Protokolü — Sürüm 1
 
-Durum: **Taslak v1** (M1'de test vektörleriyle dondurulur). Anahtar sözcükler (MUST/SHOULD/MAY) RFC 2119 anlamındadır.
+Durum: **v1** — M1'de `protocol/vectors/vectors.json` test vektörleriyle donduruldu; Kotlin ve C++ uygulamaları bu vektörlere bayt bayt uyar. Anahtar sözcükler (MUST/SHOULD/MAY) RFC 2119 anlamındadır.
 
 ## 1. Kurallar
 
 - Tüm tamsayılar **işaretsiz, big-endian** (ağ bayt sırası).
-- `uN` = N bitlik işaretsiz tamsayı. `bytes[N]` = sabit N bayt. `str` = UTF-8, sonlandırıcısız.
+- `uN` = N bitlik işaretsiz tamsayı, `i64` = 64 bit iki tümleyenli işaretli tamsayı. `bytes[N]` = sabit N bayt. `str` = UTF-8, sonlandırıcısız.
 - `*_us` alanları gönderen tarafın **kendi monotonik saati**nin mikrosaniyesidir (Android: `CLOCK_MONOTONIC` = `System.nanoTime()/1000`; Linux: `CLOCK_MONOTONIC`). Saatler arası ilişki §7.4'teki PING/PONG ile kurulur.
 - S = gönderici (tablet), R = alıcı (tahta).
 
@@ -117,7 +117,9 @@ TLV:  tag u8 | len u16 | value[len]
 
 - `msg_flags` bit0 = **CRITICAL**: alıcı bu `msg_type`'ı tanımıyorsa `BYE(MALFORMED)` ile kapatmalı. Bit0=0 ve tanınmayan tip → yok sayılır (ileri uyumluluk).
 - Bilinmeyen `tag` → yok sayılır **MUST**. Aynı `tag` iki kez → MALFORMED. Zorunlu `tag` eksik → MALFORMED. Sabit uzunluklu tipte `len` uyuşmazlığı → MALFORMED.
-- Değer tipleri: `u8/u16/u32/u64` (len 1/2/4/8), `bytes[N]`, `str` (en fazla 255 bayt, geçerli UTF-8), `list<u8>` (len = eleman sayısı), `pairs` (`codec u8, flags u8` çiftleri).
+- Değer tipleri: `u8/u16/u32/u64/i64` (len 1/2/4/8/8), `bool` (len 1; 0 = yanlış, diğer her değer doğru; gönderen yalnız 0/1 yazar), `bytes[N]`, `str` (en fazla 255 bayt, geçerli UTF-8; aşırı uzun kodlama, vekil kod noktası ve U+10FFFF üstü geçersiz), `list<u8>` (len = eleman sayısı), `pairs` (`codec u8, flags u8` çiftleri; len çift **MUST**).
+- Gönderen TLV'leri **artan tag sırasıyla** yazar (kanonik kodlama; test vektörleri bu sırayı kullanır). Alıcı sıraya bağımlı olmamalıdır.
+- `len` değeri yük sonunu aşarsa → MALFORMED.
 - Aşağıda **Z** = zorunlu, **O** = opsiyonel.
 
 ### 7.1 Kimlik doğrulama ve oturum
@@ -140,13 +142,13 @@ TLV:  tag u8 | len u16 | value[len]
 | 0x05 | auth_method | u8 | Z — 1=QR token, 2=PIN, 3=eşleştirme anahtarı |
 | 0x06 | client_nonce | bytes[16] | Z |
 | 0x07 | auth_proof | bytes[32] | Z — §7.1.1 |
-| 0x08 | key_id | bytes[16] | auth_method=3 ise Z |
+| 0x08 | key_id | bytes[16] | O — auth_method=3 ise oturum katmanı **MUST** ister (yoksa REJECT(AUTH_FAILED)) |
 | 0x09 | video_codecs | list<u8> | Z — S'nin donanımla kodlayabildikleri, tercih sırasıyla |
 | 0x0A | audio_codecs | list<u8> | O |
 | 0x0B | max_width | u16 | Z — kodlayıcı üst sınırı |
 | 0x0C | max_height | u16 | Z |
 | 0x0D | max_fps | u8 | Z |
-| 0x0E | request_pairing | u8 | O — 1 ise WELCOME pair_key içerir |
+| 0x0E | request_pairing | bool | O — doğruysa WELCOME pair_key içerir |
 
 ##### 7.1.1 Kimlik kanıtı
 
@@ -185,8 +187,8 @@ Token/PIN kuralları: token ve PIN **tek kullanımlıktır**; başarılı HELLO 
 | 0x09 | attach_key | bytes[32] | Z — bu oturumun ATTACH anahtarı |
 | 0x0A | resume_token | bytes[32] | Z — her WELCOME'da yenilenir |
 | 0x0B | pair_key | bytes[32] | O — request_pairing=1 ve auth başarılıysa |
-| 0x0C | key_id | bytes[16] | pair_key varsa Z |
-| 0x0D | audio_enabled | u8 | Z — 0 ise S AUDIO bağlantısı açmaz |
+| 0x0C | key_id | bytes[16] | O — pair_key varsa R **MUST** ekler |
+| 0x0D | audio_enabled | bool | Z — yanlışsa S AUDIO bağlantısı açmaz |
 
 #### `0x03` REJECT (R→S, ardından R bağlantıyı kapatır)
 | Tag | Ad | Tip | Z/O |
@@ -225,18 +227,19 @@ Başka bir gönderici aktif; tahtada devralma diyalogu gösteriliyor. `0x01 time
 ### 7.2 Akış denetimi
 
 #### `0x10` STREAM_CONFIG (S→R, bilgilendirme)
-Yeni yapılandırmanın duyurusu; yetkili kaynak medya bağlantısındaki CONFIG çerçevesidir.
-| Tag | Ad | Tip |
-|---|---|---|
-| 0x01 | stream_kind | u8 |
-| 0x02 | codec | u8 |
-| 0x03 | width | u16 |
-| 0x04 | height | u16 |
-| 0x05 | fps | u8 |
-| 0x06 | bitrate_bps | u32 |
-| 0x07 | sample_rate | u32 |
-| 0x08 | channels | u8 |
-| 0x09 | rotation_deg | u16 |
+Yeni yapılandırmanın duyurusu; yetkili kaynak medya bağlantısındaki CONFIG çerçevesidir. Video için 0x03–0x06 ve 0x09, ses için 0x06–0x08 gönderilir.
+
+| Tag | Ad | Tip | Z/O |
+|---|---|---|---|
+| 0x01 | stream_kind | u8 | Z — 1=VIDEO, 2=AUDIO |
+| 0x02 | codec | u8 | Z |
+| 0x03 | width | u16 | O |
+| 0x04 | height | u16 | O |
+| 0x05 | fps | u8 | O |
+| 0x06 | bitrate_bps | u32 | O |
+| 0x07 | sample_rate | u32 | O |
+| 0x08 | channels | u8 | O |
+| 0x09 | rotation_deg | u16 | O |
 
 #### `0x11` KEYFRAME_REQUEST (R→S)
 `0x01 reason u8` (Z): 1 DECODER_RESET, 2 BACKLOG_DROPPED, 3 DECODE_ERROR, 4 USER. S en geç bir kare süresi içinde IDR üretmeli; 200 ms'den sık istekler birleştirilir.
@@ -247,6 +250,8 @@ PAUSE: S kodlayıcıya yeni kare beslemeyi durdurur (`VirtualDisplay.setSurface(
 ### 7.3 Durum raporları
 
 #### `0x30` RECEIVER_REPORT (R→S, 500 ms'de bir)
+Tüm alanlar Z. Aralıkta hiç kare gelmediyse gecikme alanları 0'dır.
+
 | Tag | Ad | Tip | Açıklama |
 |---|---|---|---|
 | 0x01 | interval_ms | u16 | Raporun kapsadığı süre |
@@ -262,7 +267,7 @@ PAUSE: S kodlayıcıya yeni kare beslemeyi durdurur (`VirtualDisplay.setSurface(
 | 0x0B | audio_late | u16 | Geç gelip atlanan ses paketi |
 
 #### `0x31` SENDER_STATS (S→R, 1 sn'de bir; tahta üst bilgisi için)
-`0x01 bitrate_bps u32`, `0x02 fps_x100 u16`, `0x03 frames_dropped u32`, `0x04 encoder_name str`.
+`0x01 bitrate_bps u32` (Z), `0x02 fps_x100 u16` (Z), `0x03 frames_dropped u32` (Z), `0x04 encoder_name str` (O).
 
 ### 7.4 Saat senkronu
 
@@ -276,7 +281,7 @@ PAUSE: S kodlayıcıya yeni kare beslemeyi durdurur (`VirtualDisplay.setSurface(
 offset = ((t1 − t0) + (t2 − t3)) / 2     # yanıtlayan_saat − başlatan_saat
 rtt    = (t3 − t0) − (t2 − t1)
 ```
-Son 8 örnekten en düşük `rtt`'li örneğin `offset`'i kullanılır. R, S'nin PING'lerinden aynı ofseti (işaret ters) hesaplayabilsin diye S her PING'e son hesapladığı ofseti `0x03 offset_us` (i64 olarak u64 alanda iki tümleyen, O) ekleyebilir.
+Son 8 örnekten en düşük `rtt`'li örneğin `offset`'i kullanılır. R, S'nin PING'lerinden aynı ofseti (işaret ters) hesaplayabilsin diye S her PING'e son hesapladığı ofseti `0x03 offset_us i64` (O) ekleyebilir.
 
 ### 7.5 Zaman aşımları (özet)
 
@@ -340,9 +345,31 @@ Token, tahtada QR ekranı göründükçe geçerlidir; kullanıldığında veya 1
 02 00 08 00 00 00 00 00 0F 42 40        # t0_us = 1 000 000
 ```
 
-**Geçersiz örnekler (beklenen sonuç):** magic `59 55` → BAD_MAGIC; version `02` → UNSUPPORTED_VERSION; CONTROL length `0x00010001` → TOO_LARGE; TLV len taşması → MALFORMED; aynı tag iki kez → MALFORMED; bilinmeyen tag `0x7F` → yok sayılır; bilinmeyen msg_type `0x99` flags=0 → yok sayılır, flags=1 → MALFORMED.
+**Geçersiz örnekler (beklenen sonuç):** magic `59 55` → BAD_MAGIC; version `02` → UNSUPPORTED_VERSION; CONTROL length `0x00010001` → FRAME_TOO_LARGE; TLV len taşması → MALFORMED_TLV; aynı tag iki kez → DUPLICATE_TAG; bilinmeyen tag `0x7F` → yok sayılır; bilinmeyen msg_type `0x99` flags=0 → yok sayılır, flags=1 → UNKNOWN_CRITICAL_MESSAGE.
 
-Tam vektör kümesi ve HMAC örnekleri M1'de `protocol/vectors/` altında yayımlanır.
+Tam vektör kümesi (`protocol/vectors/vectors.json`) bağımsız Python referans üretecinden (`protocol/gen/`) çıkar: çerçeveler, tüm mesaj tipleri, HMAC kanıtları ve QR URI'leri.
+
+### 9.1 Hata kodları
+
+Kodlayıcı/ayrıştırıcı hataları iki uygulamada da aynı adlarla bulunur ve vektörlerdeki `error` alanıyla karşılaştırılır:
+
+| Ad | Durum |
+|---|---|
+| BAD_MAGIC | magic ≠ `0x5954` |
+| UNSUPPORTED_VERSION | çerçeve sürümü ≠ 1 |
+| UNKNOWN_FRAME_TYPE | type ∉ {1,2,3} |
+| FRAME_TOO_LARGE | length türün üst sınırını aşıyor |
+| TRUNCATED | başlık veya yük eksik |
+| EMPTY_CONTROL | CONTROL yükü 2 bayttan kısa |
+| MALFORMED_TLV | TLV başlığı/uzunluğu yük sonunu aşıyor |
+| DUPLICATE_TAG | aynı tag iki kez |
+| MISSING_TAG | zorunlu tag yok |
+| BAD_FIELD_LENGTH | sabit uzunluklu tipte len uyuşmazlığı, tek uzunluklu `pairs` |
+| BAD_UTF8 | `str` geçerli UTF-8 değil |
+| STRING_TOO_LONG | `str` 255 bayttan uzun |
+| UNKNOWN_CRITICAL_MESSAGE | tanınmayan msg_type ve CRITICAL bayrağı |
+
+Bu hatalardan herhangi biri CONTROL'de `BYE(MALFORMED)`, medya bağlantısında doğrudan kapatma ile sonuçlanır.
 
 ## 10. Sürümleme
 
@@ -352,3 +379,4 @@ Tam vektör kümesi ve HMAC örnekleri M1'de `protocol/vectors/` altında yayım
 
 ## Değişiklikler
 - v1-taslak (2026-11-03): ilk tanım.
+- v1 (2026-11-03, M1): test vektörleriyle donduruldu. `offset_us` i64, `request_pairing`/`audio_enabled` bool, STREAM_CONFIG ve SENDER_STATS Z/O ayrımı, kanonik tag sırası ve hata kodu listesi eklendi.

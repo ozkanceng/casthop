@@ -1,0 +1,749 @@
+{
+  "protocol_version": 1,
+  "generator": "protocol/gen/gen_vectors.py",
+  "error_codes": [
+    "BAD_MAGIC",
+    "UNSUPPORTED_VERSION",
+    "UNKNOWN_FRAME_TYPE",
+    "FRAME_TOO_LARGE",
+    "TRUNCATED",
+    "EMPTY_CONTROL",
+    "MALFORMED_TLV",
+    "DUPLICATE_TAG",
+    "MISSING_TAG",
+    "BAD_FIELD_LENGTH",
+    "BAD_UTF8",
+    "STRING_TOO_LONG",
+    "UNKNOWN_CRITICAL_MESSAGE"
+  ],
+  "frames": [
+    {
+      "name": "frame_video_keyframe",
+      "hex": "595401010002000000000000000f4240000000010000000400000001",
+      "expect": {
+        "type": 1,
+        "flags": 2,
+        "pts_us": 1000000,
+        "seq": 1,
+        "length": 4,
+        "payload": "00000001"
+      }
+    },
+    {
+      "name": "frame_control_ping",
+      "hex": "595401030000000000000000000f4240000000070000001420000100040000000702000800000000000f4240",
+      "expect": {
+        "type": 3,
+        "flags": 0,
+        "pts_us": 1000000,
+        "seq": 7,
+        "length": 20,
+        "payload": "20000100040000000702000800000000000f4240"
+      }
+    },
+    {
+      "name": "frame_audio_config",
+      "hex": "595401020001000000000000000000000000000000000014104f707573486561640102380180bb0000000000",
+      "expect": {
+        "type": 2,
+        "flags": 1,
+        "pts_us": 0,
+        "seq": 0,
+        "length": 20,
+        "payload": "104f707573486561640102380180bb0000000000"
+      }
+    },
+    {
+      "name": "frame_ignores_reserved_and_unknown_flags",
+      "hex": "595401018006beef0123456789abcdefffffffff00000001ab",
+      "expect": {
+        "type": 1,
+        "flags": 32774,
+        "pts_us": 81985529216486895,
+        "seq": 4294967295,
+        "length": 1,
+        "payload": "ab"
+      }
+    },
+    {
+      "name": "frame_control_max_length",
+      "hex": "595401030000000000000000000000000000000000010000",
+      "header_only": true,
+      "expect": {
+        "type": 3,
+        "flags": 0,
+        "pts_us": 0,
+        "seq": 0,
+        "length": 65536
+      }
+    },
+    {
+      "name": "frame_bad_magic",
+      "hex": "595501010000000000000000000000000000000000000000",
+      "expect_error": "BAD_MAGIC"
+    },
+    {
+      "name": "frame_unsupported_version",
+      "hex": "595402010000000000000000000000000000000000000000",
+      "expect_error": "UNSUPPORTED_VERSION"
+    },
+    {
+      "name": "frame_unknown_type",
+      "hex": "595401040000000000000000000000000000000000000000",
+      "expect_error": "UNKNOWN_FRAME_TYPE"
+    },
+    {
+      "name": "frame_type_zero",
+      "hex": "595401000000000000000000000000000000000000000000",
+      "expect_error": "UNKNOWN_FRAME_TYPE"
+    },
+    {
+      "name": "frame_control_too_large",
+      "hex": "595401030000000000000000000000000000000000010001",
+      "header_only": true,
+      "expect_error": "FRAME_TOO_LARGE"
+    },
+    {
+      "name": "frame_audio_too_large",
+      "hex": "595401020000000000000000000000000000000000010001",
+      "header_only": true,
+      "expect_error": "FRAME_TOO_LARGE"
+    },
+    {
+      "name": "frame_video_too_large",
+      "hex": "595401010000000000000000000000000000000000800001",
+      "header_only": true,
+      "expect_error": "FRAME_TOO_LARGE"
+    },
+    {
+      "name": "frame_truncated_header",
+      "hex": "5954010100000000000000000000000000000000000000",
+      "expect_error": "TRUNCATED"
+    },
+    {
+      "name": "frame_truncated_payload",
+      "hex": "5954010100000000000000000000000000000000000000030001",
+      "expect_error": "TRUNCATED"
+    }
+  ],
+  "control": [
+    {
+      "name": "control_challenge",
+      "hex": "000001000200010200020001030010101112131415161718191a1b1c1d1e1f040013352d412053c4b16ec4b166c4b1205461687461",
+      "expect": {
+        "message": "CHALLENGE",
+        "fields": {
+          "min_version": 1,
+          "max_version": 1,
+          "server_nonce": "101112131415161718191a1b1c1d1e1f",
+          "receiver_name": "5-A Sınıfı Tahta"
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_challenge_min",
+      "hex": "000001000200010200020003030010101112131415161718191a1b1c1d1e1f",
+      "expect": {
+        "message": "CHALLENGE",
+        "fields": {
+          "min_version": 1,
+          "max_version": 3,
+          "server_nonce": "101112131415161718191a1b1c1d1e1f"
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_hello_qr",
+      "hex": "010001000200010200224179c59f6520c396c49f7265746d656e20e280932047616c61787920546162205339030010303132333435363738393a3b3c3d3e3f040005302e312e3005000101060010202122232425262728292a2b2c2d2e2f070020606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f09000202010a000210110b00020a000c000206400d00013c0e000101",
+      "expect": {
+        "message": "HELLO",
+        "fields": {
+          "version": 1,
+          "device_name": "Ayşe Öğretmen – Galaxy Tab S9",
+          "device_id": "303132333435363738393a3b3c3d3e3f",
+          "app_version": "0.1.0",
+          "auth_method": 1,
+          "client_nonce": "202122232425262728292a2b2c2d2e2f",
+          "auth_proof": "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+          "video_codecs": [
+            2,
+            1
+          ],
+          "audio_codecs": [
+            16,
+            17
+          ],
+          "max_width": 2560,
+          "max_height": 1600,
+          "max_fps": 60,
+          "request_pairing": true
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_hello_paired",
+      "hex": "010001000200010200065461626c6574030010303132333435363738393a3b3c3d3e3f040005312e322e3305000103060010202122232425262728292a2b2c2d2e2f070020606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f080010505152535455565758595a5b5c5d5e5f090001010b000207800c000204380d00011e",
+      "expect": {
+        "message": "HELLO",
+        "fields": {
+          "version": 1,
+          "device_name": "Tablet",
+          "device_id": "303132333435363738393a3b3c3d3e3f",
+          "app_version": "1.2.3",
+          "auth_method": 3,
+          "client_nonce": "202122232425262728292a2b2c2d2e2f",
+          "auth_proof": "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+          "key_id": "505152535455565758595a5b5c5d5e5f",
+          "video_codecs": [
+            1
+          ],
+          "max_width": 1920,
+          "max_height": 1080,
+          "max_fps": 30
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_welcome_full",
+      "hex": "020001000200010200055461687461030010404142434445464748494a4b4c4d4e4f0400020f0005000208700600013c0700040103020108000410001100090020808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f0a0020a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf0b0020c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf0c0010505152535455565758595a5b5c5d5e5f0d000101",
+      "expect": {
+        "message": "WELCOME",
+        "fields": {
+          "version": 1,
+          "receiver_name": "Tahta",
+          "session_id": "404142434445464748494a4b4c4d4e4f",
+          "display_width": 3840,
+          "display_height": 2160,
+          "display_refresh": 60,
+          "video_decoders": [
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              1
+            ]
+          ],
+          "audio_decoders": [
+            [
+              16,
+              0
+            ],
+            [
+              17,
+              0
+            ]
+          ],
+          "attach_key": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+          "resume_token": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+          "pair_key": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf",
+          "key_id": "505152535455565758595a5b5c5d5e5f",
+          "audio_enabled": true
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_welcome_min",
+      "hex": "02000100020001020000030010404142434445464748494a4b4c4d4e4f040002078005000204380600013c0700020100080000090020808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f0a0020a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf0d000100",
+      "expect": {
+        "message": "WELCOME",
+        "fields": {
+          "version": 1,
+          "receiver_name": "",
+          "session_id": "404142434445464748494a4b4c4d4e4f",
+          "display_width": 1920,
+          "display_height": 1080,
+          "display_refresh": 60,
+          "video_decoders": [
+            [
+              1,
+              0
+            ]
+          ],
+          "audio_decoders": [],
+          "attach_key": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+          "resume_token": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+          "audio_enabled": false
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_reject",
+      "hex": "03000100010502000400007530",
+      "expect": {
+        "message": "REJECT",
+        "fields": {
+          "reason": 5,
+          "retry_after_ms": 30000
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_reject_min",
+      "hex": "030001000102",
+      "expect": {
+        "message": "REJECT",
+        "fields": {
+          "reason": 2
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_pending_approval",
+      "hex": "040001000400004e20",
+      "expect": {
+        "message": "PENDING_APPROVAL",
+        "fields": {
+          "timeout_ms": 20000
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_stream_config_video",
+      "hex": "10000100010102000101030002078004000204b00500013c06000400f42400090002005a",
+      "expect": {
+        "message": "STREAM_CONFIG",
+        "fields": {
+          "stream_kind": 1,
+          "codec": 1,
+          "width": 1920,
+          "height": 1200,
+          "fps": 60,
+          "bitrate_bps": 16000000,
+          "rotation_deg": 90
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_stream_config_audio",
+      "hex": "100001000102020001100600040001f4000700040000bb8008000102",
+      "expect": {
+        "message": "STREAM_CONFIG",
+        "fields": {
+          "stream_kind": 2,
+          "codec": 16,
+          "bitrate_bps": 128000,
+          "sample_rate": 48000,
+          "channels": 2
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_keyframe_request",
+      "hex": "110001000102",
+      "expect": {
+        "message": "KEYFRAME_REQUEST",
+        "fields": {
+          "reason": 2
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_ping",
+      "hex": "20000100040000000702000800000000000f4240",
+      "expect": {
+        "message": "PING",
+        "fields": {
+          "ping_id": 7,
+          "t0_us": 1000000
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_ping_offset_negative",
+      "hex": "2000010004ffffffff0200087fffffffffffffff030008ffffffffffed2979",
+      "expect": {
+        "message": "PING",
+        "fields": {
+          "ping_id": 4294967295,
+          "t0_us": 9223372036854775807,
+          "offset_us": -1234567
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_pong",
+      "hex": "21000100040000000702000800000000000f424003000800000000004c4ff004000800000000004c5054",
+      "expect": {
+        "message": "PONG",
+        "fields": {
+          "ping_id": 7,
+          "t0_us": 1000000,
+          "t1_us": 5001200,
+          "t2_us": 5001300
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_receiver_report",
+      "hex": "300001000201f40200040000001e0300040000001d04000400000001050004000f42400600040000520807000400003a9808000400009c40090004000094700a000200000b00020002",
+      "expect": {
+        "message": "RECEIVER_REPORT",
+        "fields": {
+          "interval_ms": 500,
+          "frames_received": 30,
+          "frames_rendered": 29,
+          "frames_dropped": 1,
+          "bytes_received": 1000000,
+          "c2r_avg_us": 21000,
+          "c2r_min_us": 15000,
+          "c2r_max_us": 40000,
+          "c2d_avg_us": 38000,
+          "decode_backlog": 0,
+          "audio_late": 2
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_sender_stats",
+      "hex": "310001000400b71b00020002176a0300040000000304001663322e6578796e6f732e683236342e656e636f646572",
+      "expect": {
+        "message": "SENDER_STATS",
+        "fields": {
+          "bitrate_bps": 12000000,
+          "fps_x100": 5994,
+          "frames_dropped": 3,
+          "encoder_name": "c2.exynos.h264.encoder"
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_pause",
+      "hex": "4000",
+      "expect": {
+        "message": "PAUSE",
+        "fields": {}
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_unpause",
+      "hex": "4100",
+      "expect": {
+        "message": "UNPAUSE",
+        "fields": {}
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_attach",
+      "hex": "5000010010404142434445464748494a4b4c4d4e4f02000101030020606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+      "expect": {
+        "message": "ATTACH",
+        "fields": {
+          "session_id": "404142434445464748494a4b4c4d4e4f",
+          "stream_kind": 1,
+          "proof": "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_attach_result",
+      "hex": "510001000100",
+      "expect": {
+        "message": "ATTACH_RESULT",
+        "fields": {
+          "status": 0
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_resume",
+      "hex": "6000010010404142434445464748494a4b4c4d4e4f020020606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+      "expect": {
+        "message": "RESUME",
+        "fields": {
+          "session_id": "404142434445464748494a4b4c4d4e4f",
+          "proof": "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_bye",
+      "hex": "700001000101",
+      "expect": {
+        "message": "BYE",
+        "fields": {
+          "reason": 1
+        }
+      },
+      "roundtrip": true
+    },
+    {
+      "name": "control_unknown_tag_ignored",
+      "hex": "20000100040000000702000800000000000f42407f0003010203",
+      "expect": {
+        "message": "PING",
+        "fields": {
+          "ping_id": 7,
+          "t0_us": 1000000
+        }
+      },
+      "roundtrip": false
+    },
+    {
+      "name": "control_unknown_message_ignored",
+      "hex": "9900010001aa",
+      "expect": {
+        "message": "UNKNOWN",
+        "fields": {
+          "msg_type": 153
+        }
+      },
+      "roundtrip": false
+    },
+    {
+      "name": "control_unknown_message_critical",
+      "hex": "9901",
+      "expect_error": "UNKNOWN_CRITICAL_MESSAGE"
+    },
+    {
+      "name": "control_empty",
+      "hex": "",
+      "expect_error": "EMPTY_CONTROL"
+    },
+    {
+      "name": "control_only_type",
+      "hex": "20",
+      "expect_error": "TRUNCATED"
+    },
+    {
+      "name": "control_duplicate_tag",
+      "hex": "20000100040000000702000800000000000f424001000400000008",
+      "expect_error": "DUPLICATE_TAG"
+    },
+    {
+      "name": "control_missing_tag",
+      "hex": "200001000400000007",
+      "expect_error": "MISSING_TAG"
+    },
+    {
+      "name": "control_tlv_overflow",
+      "hex": "200001000a0000",
+      "expect_error": "MALFORMED_TLV"
+    },
+    {
+      "name": "control_tlv_truncated_header",
+      "hex": "20000100040000000702000800000000000f42400500",
+      "expect_error": "MALFORMED_TLV"
+    },
+    {
+      "name": "control_bad_field_length",
+      "hex": "20000100030000070200080000000000000001",
+      "expect_error": "BAD_FIELD_LENGTH"
+    },
+    {
+      "name": "control_bad_pairs_length",
+      "hex": "02000100020001020000030010404142434445464748494a4b4c4d4e4f040002078005000204380600013c070003010002080000090020808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f0a0020a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf0d000100",
+      "expect_error": "BAD_FIELD_LENGTH"
+    },
+    {
+      "name": "control_bad_utf8",
+      "hex": "310001000400000001020002000103000400000000040002c328",
+      "expect_error": "BAD_UTF8"
+    },
+    {
+      "name": "control_string_too_long",
+      "hex": "31000100040000000102000200010300040000000004010061616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161616161",
+      "expect_error": "STRING_TOO_LONG"
+    }
+  ],
+  "crypto": [
+    {
+      "name": "auth_qr_token",
+      "kind": "auth",
+      "inputs": {
+        "secret": "e0e1e2e3e4e5e6e7e8e9eaebecedeeef",
+        "auth_method": 1,
+        "server_nonce": "101112131415161718191a1b1c1d1e1f",
+        "client_nonce": "202122232425262728292a2b2c2d2e2f",
+        "receiver_cert_fp": "e7fe0f6248e66487ea98bd948990e9973633bc22ab3b698e9d96fd63274449d1",
+        "device_id": "303132333435363738393a3b3c3d3e3f"
+      },
+      "expect": "41806f59e5a177e0ea9a4bbe00b34ffec38a9cdcc329c43998a7784b25d67768"
+    },
+    {
+      "name": "auth_pin",
+      "kind": "auth",
+      "inputs": {
+        "secret": "303432393137",
+        "auth_method": 2,
+        "server_nonce": "101112131415161718191a1b1c1d1e1f",
+        "client_nonce": "202122232425262728292a2b2c2d2e2f",
+        "receiver_cert_fp": "e7fe0f6248e66487ea98bd948990e9973633bc22ab3b698e9d96fd63274449d1",
+        "device_id": "303132333435363738393a3b3c3d3e3f"
+      },
+      "expect": "60b3a11966bd14343dd0dec157e269ffbfdfd307046203cc32b526821170c29a"
+    },
+    {
+      "name": "auth_paired",
+      "kind": "auth",
+      "inputs": {
+        "secret": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf",
+        "auth_method": 3,
+        "server_nonce": "101112131415161718191a1b1c1d1e1f",
+        "client_nonce": "202122232425262728292a2b2c2d2e2f",
+        "receiver_cert_fp": "e7fe0f6248e66487ea98bd948990e9973633bc22ab3b698e9d96fd63274449d1",
+        "device_id": "303132333435363738393a3b3c3d3e3f"
+      },
+      "expect": "016311afac95aa9e71c3c2f7e1d2abbfbc128d420c7bac78e6b60618ec4c2aae"
+    },
+    {
+      "name": "attach_proof_kind1",
+      "kind": "attach",
+      "inputs": {
+        "attach_key": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+        "session_id": "404142434445464748494a4b4c4d4e4f",
+        "stream_kind": 1,
+        "server_nonce": "101112131415161718191a1b1c1d1e1f"
+      },
+      "expect": "18d626d654441ff311253d022802e2a3a076803b872fdd9dc0c5f1f412841c6b"
+    },
+    {
+      "name": "attach_proof_kind2",
+      "kind": "attach",
+      "inputs": {
+        "attach_key": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+        "session_id": "404142434445464748494a4b4c4d4e4f",
+        "stream_kind": 2,
+        "server_nonce": "101112131415161718191a1b1c1d1e1f"
+      },
+      "expect": "691456b05dc1e222ed50a09581730cf573717c2a6e86912cc80aa6c13049eeb4"
+    },
+    {
+      "name": "resume_proof",
+      "kind": "resume",
+      "inputs": {
+        "resume_token": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+        "session_id": "404142434445464748494a4b4c4d4e4f",
+        "server_nonce": "101112131415161718191a1b1c1d1e1f"
+      },
+      "expect": "cf662d38b187d0d01fa57a3e1149c503993cc2387569f76b175161bd436dbbcd"
+    },
+    {
+      "name": "cert_fingerprint",
+      "kind": "sha256",
+      "inputs": {
+        "data": "79616e7369742074657374206365727469666963617465"
+      },
+      "expect": "e7fe0f6248e66487ea98bd948990e9973633bc22ab3b698e9d96fd63274449d1"
+    }
+  ],
+  "qr": [
+    {
+      "name": "qr_two_hosts",
+      "kind": "qr",
+      "fields": {
+        "hosts": [
+          "192.168.1.20",
+          "10.42.0.1"
+        ],
+        "port": 47800,
+        "token": "e0e1e2e3e4e5e6e7e8e9eaebecedeeef",
+        "cert_fp": "e7fe0f6248e66487ea98bd948990e9973633bc22ab3b698e9d96fd63274449d1",
+        "name": "5-A Sınıfı"
+      },
+      "uri": "yansit://c?v=1&h=192.168.1.20,10.42.0.1&p=47800&t=4OHi4-Tl5ufo6err7O3u7w&f=5_4PYkjmZIfqmL2UiZDplzYzvCKrO2mOnZb9YydESdE&n=5-A%20S%C4%B1n%C4%B1f%C4%B1"
+    },
+    {
+      "name": "qr_one_host_ascii",
+      "kind": "qr",
+      "fields": {
+        "hosts": [
+          "10.0.0.5"
+        ],
+        "port": 50000,
+        "token": "e0e1e2e3e4e5e6e7e8e9eaebecedeeef",
+        "cert_fp": "e7fe0f6248e66487ea98bd948990e9973633bc22ab3b698e9d96fd63274449d1",
+        "name": "Lab"
+      },
+      "uri": "yansit://c?v=1&h=10.0.0.5&p=50000&t=4OHi4-Tl5ufo6err7O3u7w&f=5_4PYkjmZIfqmL2UiZDplzYzvCKrO2mOnZb9YydESdE&n=Lab"
+    },
+    {
+      "name": "qr_four_hosts_special_name",
+      "kind": "qr",
+      "fields": {
+        "hosts": [
+          "10.0.0.1",
+          "10.0.0.2",
+          "172.16.5.4",
+          "192.168.43.1"
+        ],
+        "port": 47800,
+        "token": "e0e1e2e3e4e5e6e7e8e9eaebecedeeef",
+        "cert_fp": "e7fe0f6248e66487ea98bd948990e9973633bc22ab3b698e9d96fd63274449d1",
+        "name": "Fen & Matematik / Kat 2"
+      },
+      "uri": "yansit://c?v=1&h=10.0.0.1,10.0.0.2,172.16.5.4,192.168.43.1&p=47800&t=4OHi4-Tl5ufo6err7O3u7w&f=5_4PYkjmZIfqmL2UiZDplzYzvCKrO2mOnZb9YydESdE&n=Fen%20%26%20Matematik%20%2F%20Kat%202"
+    },
+    {
+      "name": "qr_wrong_scheme",
+      "kind": "qr",
+      "uri": "http://c?v=1&h=10.0.0.5&p=47800&t=4OHi4-Tl5ufo6err7O3u7w&f=5_4PYkjmZIfqmL2UiZDplzYzvCKrO2mOnZb9YydESdE&n=Lab",
+      "expect_error": "BAD_SCHEME"
+    },
+    {
+      "name": "qr_unsupported_version",
+      "kind": "qr",
+      "uri": "yansit://c?v=2&h=10.0.0.5&p=47800&t=4OHi4-Tl5ufo6err7O3u7w&f=5_4PYkjmZIfqmL2UiZDplzYzvCKrO2mOnZb9YydESdE&n=Lab",
+      "expect_error": "UNSUPPORTED_VERSION"
+    },
+    {
+      "name": "qr_missing_token",
+      "kind": "qr",
+      "uri": "yansit://c?v=1&h=10.0.0.5&p=47800&f=5_4PYkjmZIfqmL2UiZDplzYzvCKrO2mOnZb9YydESdE&n=Lab",
+      "expect_error": "MISSING_FIELD"
+    },
+    {
+      "name": "qr_bad_token_length",
+      "kind": "qr",
+      "uri": "yansit://c?v=1&h=10.0.0.5&p=47800&t=AAAA&f=5_4PYkjmZIfqmL2UiZDplzYzvCKrO2mOnZb9YydESdE&n=Lab",
+      "expect_error": "BAD_FIELD"
+    },
+    {
+      "name": "qr_bad_fp_base64",
+      "kind": "qr",
+      "uri": "yansit://c?v=1&h=10.0.0.5&p=47800&t=4OHi4-Tl5ufo6err7O3u7w&f=!!!&n=Lab",
+      "expect_error": "BAD_FIELD"
+    },
+    {
+      "name": "qr_bad_host",
+      "kind": "qr",
+      "uri": "yansit://c?v=1&h=10.0.0.256&p=47800&t=4OHi4-Tl5ufo6err7O3u7w&f=5_4PYkjmZIfqmL2UiZDplzYzvCKrO2mOnZb9YydESdE&n=Lab",
+      "expect_error": "BAD_FIELD"
+    },
+    {
+      "name": "qr_too_many_hosts",
+      "kind": "qr",
+      "uri": "yansit://c?v=1&h=10.0.0.1,10.0.0.2,10.0.0.3,10.0.0.4,10.0.0.5&p=47800&t=4OHi4-Tl5ufo6err7O3u7w&f=5_4PYkjmZIfqmL2UiZDplzYzvCKrO2mOnZb9YydESdE&n=Lab",
+      "expect_error": "BAD_FIELD"
+    },
+    {
+      "name": "qr_bad_port",
+      "kind": "qr",
+      "uri": "yansit://c?v=1&h=10.0.0.5&p=70000&t=4OHi4-Tl5ufo6err7O3u7w&f=5_4PYkjmZIfqmL2UiZDplzYzvCKrO2mOnZb9YydESdE&n=Lab",
+      "expect_error": "BAD_FIELD"
+    }
+  ]
+}

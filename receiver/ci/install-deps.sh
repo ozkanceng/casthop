@@ -15,5 +15,5 @@ $SUDO apt-get install -y -qq --no-install-recommends \
     gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav \
     gstreamer1.0-gl gstreamer1.0-qt6 \
     libssl-dev libqrencode-dev libavahi-client-dev \
-    libgtest-dev \
+    libgtest-dev nlohmann-json3-dev \
     debhelper devscripts fakeroot

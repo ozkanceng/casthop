@@ -12,7 +12,9 @@ Build-Depends: debhelper-compat (= 13),
                qt6-tools-dev-tools,
                qt6-l10n-tools,
                libgl-dev,
-               libgtest-dev
+               libgtest-dev,
+               libssl-dev,
+               nlohmann-json3-dev
 Standards-Version: 4.6.2
 Homepage: https://github.com/ozkanceng/yansit
 Vcs-Browser: https://github.com/ozkanceng/yansit

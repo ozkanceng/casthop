@@ -8,6 +8,9 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 cp -a "$SRC" "$WORK/yansit-receiver"
+# Birim testleri depo kökündeki ortak protokol vektörlerini kullanır.
+mkdir -p "$WORK/protocol"
+cp -a "$SRC/../protocol/vectors" "$WORK/protocol/vectors"
 cd "$WORK/yansit-receiver"
 rm -rf build build-*
 

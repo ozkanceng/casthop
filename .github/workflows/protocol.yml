@@ -1,0 +1,22 @@
+name: Protocol vectors
+
+on:
+  push:
+    branches: [main]
+    paths: ["protocol/**", ".github/workflows/protocol.yml"]
+  pull_request:
+    paths: ["protocol/**", ".github/workflows/protocol.yml"]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Vectors match the reference generator
+        run: python3 -I protocol/gen/gen_vectors.py --check
