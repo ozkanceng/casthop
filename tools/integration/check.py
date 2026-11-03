@@ -14,7 +14,7 @@ def expect(cond, msg):
 
 
 stats = [json.loads(l) for l in (work / "stats.jsonl").read_text().splitlines() if l.strip()]
-expect(len(stats) == 9, f"dokuz oturum istatistiği (bulunan: {len(stats)})")
+expect(len(stats) == 11, f"on bir oturum istatistiği (bulunan: {len(stats)})")
 s = stats[0] if stats else {}
 m = stats[1] if len(stats) > 1 else {}
 s2 = json.loads((work / "s2.json").read_text())
@@ -98,6 +98,14 @@ for idx, name, label in [(7, "s4h.json", "Opus"), (8, "s4i.json", "AAC")]:
     else:
         expect(False, f"ses ({label}): gecikme ölçülemedi (ses {a}, görüntü {v})")
     expect(rcv.get("frames_dropped") == 0, f"ses ({label}): görüntü kaybı yok ({rcv.get('frames_dropped')})")
+
+hv, hv_r = load("s4j.json"), (stats[9] if len(stats) > 9 else {})
+print(f"H.265: {hv} / alıcı {hv_r}")
+expect(hv.get("ok") is True and hv_r.get("decoder") == "avdec_h265", f"H.265: h265 çözücüsüyle ({hv_r.get('decoder')})")
+expect(hv_r.get("frames_rendered") == hv.get("frames_sent") and hv_r.get("frames_dropped") == 0,
+       f"H.265: tüm kareler çizildi ({hv_r.get('frames_rendered')}/{hv.get('frames_sent')})")
+
+expect(load("s4k.json").get("ok") is True, "PIN: doğru kodla bağlanıldı")
 
 gui = work / "stats-gui.jsonl"
 if gui.exists():

@@ -47,6 +47,7 @@ import io.github.ozkanceng.yansit.ui.theme.YansitTheme
 /** Ana ekran eylemleri. */
 class HomeActions(
     val onScan: () -> Unit,
+    val onCode: () -> Unit,
     val onBoard: (RememberedBoard) -> Unit,
     val onForget: (RememberedBoard) -> Unit,
     val onStop: () -> Unit,
@@ -130,6 +131,9 @@ fun HomeScreen(state: MirrorState, boards: List<RememberedBoard>, versionName: S
 private fun ConnectChoices(boards: List<RememberedBoard>, actions: HomeActions, modifier: Modifier) {
     if (boards.isEmpty()) {
         BigButton(R.string.action_connect, actions.onScan, modifier)
+        OutlinedButton(onClick = actions.onCode, modifier = modifier.heightIn(min = 56.dp)) {
+            Text(stringResource(R.string.action_code))
+        }
         return
     }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -148,6 +152,9 @@ private fun ConnectChoices(boards: List<RememberedBoard>, actions: HomeActions, 
         }
         OutlinedButton(onClick = actions.onScan, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
             Text(stringResource(R.string.action_scan_qr), style = MaterialTheme.typography.titleMedium)
+        }
+        OutlinedButton(onClick = actions.onCode, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+            Text(stringResource(R.string.action_code))
         }
         Text(
             stringResource(R.string.boards_hint),
@@ -209,6 +216,10 @@ private fun MirroringCard(state: MirrorState.Mirroring, modifier: Modifier) {
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.secondary,
                 )
+                state.stats != null -> QualityLabel(state.stats)
+            }
+            when {
+                state.reconnecting || state.paused -> Unit
                 state.stats != null -> Text(
                     stringResource(
                         R.string.mirroring_stats,
@@ -261,6 +272,18 @@ private fun EndedCard(error: MirrorError?, modifier: Modifier) {
     }
 }
 
+/** Bağlantı kalitesi: yakalama→ekran gecikmesine göre (hedef ≤ 80 ms, kabul ≤ 120 ms). */
+@Composable
+private fun QualityLabel(stats: MirrorStats) {
+    val latency = stats.latencyMs ?: return
+    val (label, color) = when {
+        latency <= 120 -> R.string.quality_good to MaterialTheme.colorScheme.primary
+        latency <= 250 -> R.string.quality_fair to MaterialTheme.colorScheme.secondary
+        else -> R.string.quality_poor to MaterialTheme.colorScheme.error
+    }
+    Text(stringResource(label), style = MaterialTheme.typography.titleMedium, color = color)
+}
+
 private fun audioText(a: AudioState): Int = when (a) {
     AudioState.ON -> R.string.audio_on
     AudioState.OFF_SETTING -> R.string.audio_off_setting
@@ -278,6 +301,7 @@ private fun errorText(error: MirrorError?): Pair<Int, Int?> = when (error) {
     MirrorError.REFUSED -> R.string.err_refused to R.string.err_refused_body
     MirrorError.WRONG_BOARD -> R.string.err_wrong_board to R.string.err_wrong_board_body
     MirrorError.AUTH_FAILED -> R.string.err_auth to R.string.err_auth_body
+    MirrorError.WRONG_PIN -> R.string.err_wrong_pin to R.string.err_wrong_pin_body
     MirrorError.BOARD_FORGOT_TABLET -> R.string.err_board_forgot to R.string.err_board_forgot_body
     MirrorError.BUSY_DENIED -> R.string.err_busy_denied to R.string.err_busy_denied_body
     MirrorError.BUSY_TIMEOUT -> R.string.err_busy_timeout to R.string.err_busy_timeout_body
@@ -295,7 +319,7 @@ private fun errorText(error: MirrorError?): Pair<Int, Int?> = when (error) {
     MirrorError.INTERNAL -> R.string.err_internal to null
 }
 
-private val previewActions = HomeActions({}, {}, {}, {}, {}, {}, {}, {})
+private val previewActions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {})
 private val previewBoard = RememberedBoard(
     "7-A Sınıfı", listOf("192.168.1.20"), 47800, Bytes.fromHex("00".repeat(32)), Bytes.fromHex("00".repeat(16)),
     Bytes.fromHex("00".repeat(32)), 0,

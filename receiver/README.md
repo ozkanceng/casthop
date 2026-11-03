@@ -23,7 +23,7 @@ Derleme seçenekleri: `-DYANSIT_SANITIZE=ON` (ASan + UBSan), `-DYANSIT_BUILD_TES
 | Seçenek | Açıklama |
 |---|---|
 | `--windowed` | Tam ekran yerine pencerede başlat |
-| `--name AD` | Tabletlerde görünen tahta adı (varsayılan: bilgisayar adı) |
+| `--board-name AD` | Tabletlerde görünen tahta adı (varsayılan: ayarlar, yoksa bilgisayar adı). Not: `--name` Qt'nin X11 seçeneğidir |
 | `--port N` | TCP portu (varsayılan 47800) |
 | `--verbose` | Ayrıntılı günlük (`yansit.*` kategorileri) |
 | `--headless` | Pencere yok; video çözülür ama gösterilmez (otomatik testler) |
@@ -35,6 +35,14 @@ Derleme seçenekleri: `-DYANSIT_SANITIZE=ON` (ASan + UBSan), `-DYANSIT_BUILD_TES
 
 Ortam değişkenleri: `YANSIT_DECODER=avdec_h264` çözücüyü zorlar; `YANSIT_VA_DMABUF=1` VA → GL sıfır kopya yolunu
 dener (GStreamer 1.22'de sürücüye bağlı, bkz. RISKS R6).
+
+Ayarlar (`~/.config/Yansit/yansit-receiver.conf`) bekleme ekranındaki **Ayarlar** düğmesinden değiştirilir; komut
+satırı seçenekleri o çalışma için önceliklidir. "Tahta açılınca başlat" `~/.config/autostart/` altına bir XDG
+autostart dosyası yazar. Ekran görüntüleri `~/Resimler/Yansıt/` altına kaydedilir.
+
+mDNS: `avahi-daemon` çalışıyorsa tahta `_yansit._tcp` olarak yayınlanır (tabletler QR'sız bulup 6 haneli kodla
+bağlanabilir). Avahi yoksa yalnız bu kolaylık olmaz; QR akışı etkilenmez. `YANSIT_ALLOW_SW_HEVC=1` H.265'i yazılım
+çözücüyle de sunar (yalnız test).
 
 Kalıcı veriler `~/.local/share/Yansit/yansit-receiver/`: `identity/` (TLS sertifikası, anahtar 0600) ve
 `trusted.json` (eşleştirilmiş tabletler, 0600). Sertifika silinirse QR parmak izi değişir ve eşleştirmeler

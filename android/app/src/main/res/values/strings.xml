@@ -111,4 +111,18 @@
     <string name="audio_failed">Ses aktarılamadı; görüntü sürüyor.</string>
     <string name="settings_audio">Sesi tahtaya aktar</string>
     <string name="settings_audio_desc">Video ve uygulama sesleri tahtanın hoparlöründen çalar. Bazı uygulamalar (ör. telefon görüşmeleri, bazı video uygulamaları) sesini paylaşmaya izin vermez.</string>
+    <string name="action_code">Kodla bağlan (QR olmadan)</string>
+    <string name="discover_title">Ağdaki tahtalar</string>
+    <string name="discover_searching">Aynı ağdaki tahtalar aranıyor…</string>
+    <string name="discover_hint">Tahta listede yoksa: tahtada Yansıt açık ve tablet aynı ağda mı? Okul ağları aramayı engelleyebilir; QR kodu her zaman çalışır.</string>
+    <string name="pin_title">%1$s</string>
+    <string name="pin_hint">Tahtanın ekranındaki 6 haneli kodu girin.</string>
+    <string name="pin_label">Kod</string>
+    <string name="err_wrong_pin">Kod yanlış</string>
+    <string name="err_wrong_pin_body">Tahtanın ekranındaki güncel 6 haneli kodu girin. 5 hatalı denemeden sonra kod değişir ve 30 saniye beklemek gerekir.</string>
+    <string name="settings_hevc">H.265 kullan (deneysel)</string>
+    <string name="settings_hevc_desc">Tahta donanımla çözebiliyorsa aynı kalitede daha az veri gönderilir. Tahta desteklemiyorsa H.264 kullanılır.</string>
+    <string name="quality_good">Bağlantı: iyi</string>
+    <string name="quality_fair">Bağlantı: orta</string>
+    <string name="quality_poor">Bağlantı: zayıf — Ayarlar\'dan \"Zayıf ağ\"ı deneyin</string>
 </resources>

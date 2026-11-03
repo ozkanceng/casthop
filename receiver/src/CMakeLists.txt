@@ -2,6 +2,7 @@ find_package(OpenSSL 3.0 REQUIRED COMPONENTS Crypto)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GST REQUIRED IMPORTED_TARGET gstreamer-1.0>=1.22 gstreamer-app-1.0>=1.22)
 pkg_check_modules(QRENCODE REQUIRED IMPORTED_TARGET libqrencode)
+pkg_check_modules(AVAHI REQUIRED IMPORTED_TARGET avahi-client)
 
 # Protokol, oturum mantığı ve TLS kimliği: yalnız STL + OpenSSL (Qt yok). Kotlin uygulamasıyla aynı vektörleri geçer.
 add_library(yansit_protocol STATIC
@@ -35,6 +36,8 @@ add_library(yansit_core STATIC
     app/NetInfo.h
     app/ReceiverService.cpp
     app/ReceiverService.h
+    app/ReceiverSettings.cpp
+    app/ReceiverSettings.h
     common/Clock.h
     media/AudioPipeline.cpp
     media/AudioPipeline.h
@@ -42,16 +45,20 @@ add_library(yansit_core STATIC
     media/VideoPipeline.h
     net/Connection.cpp
     net/Connection.h
+    net/MdnsPublisher.cpp
+    net/MdnsPublisher.h
     net/Server.cpp
     net/Server.h
 )
 target_include_directories(yansit_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(yansit_core PUBLIC yansit_protocol Qt6::Core Qt6::Network PkgConfig::GST)
+target_link_libraries(yansit_core PUBLIC yansit_protocol Qt6::Core Qt6::Network PkgConfig::GST PkgConfig::AVAHI)
 
 qt_add_executable(yansit-receiver
     app/main.cpp
     app/QrImageProvider.cpp
     app/QrImageProvider.h
+    app/ScreenshotTool.cpp
+    app/ScreenshotTool.h
 )
 
 target_compile_definitions(yansit-receiver PRIVATE
@@ -67,6 +74,7 @@ qt_add_qml_module(yansit-receiver
     QML_FILES
         qml/ApprovalDialog.qml
         qml/Main.qml
+        qml/SettingsPanel.qml
         qml/StreamOverlay.qml
         qml/Theme.qml
         qml/TouchButton.qml

@@ -1,5 +1,7 @@
 #include "app/QrImageProvider.h"
 #include "app/ReceiverService.h"
+#include "app/ReceiverSettings.h"
+#include "app/ScreenshotTool.h"
 
 #include <gst/gst.h>
 
@@ -78,7 +80,8 @@ bool glVideoPossible() {
 struct CommonOptions {
     QCommandLineOption port{QStringLiteral("port"), QStringLiteral("TCP port (default 47800)"), QStringLiteral("port"),
                             QStringLiteral("47800")};
-    QCommandLineOption name{QStringLiteral("name"), QStringLiteral("Board name shown on tablets"),
+    // Not: "--name" Qt'nin X11 seçeneğidir (QGuiApplication tüketir); bu yüzden "--board-name".
+    QCommandLineOption name{QStringLiteral("board-name"), QStringLiteral("Board name shown on tablets"),
                             QStringLiteral("name")};
     QCommandLineOption dataDir{QStringLiteral("data-dir"),
                                QStringLiteral("Directory for certificate and pairings"), QStringLiteral("dir")};
@@ -200,6 +203,14 @@ int runGui(int argc, char* argv[]) {
     if (!opt)
         return 2;
     opt->sinkMode = gl ? SinkMode::Gl : SinkMode::Fake;
+    // Kalıcı ayarlar; komut satırı seçenekleri bu çalışma için önceliklidir.
+    yansit::ReceiverSettings settings;
+    if (!parser.isSet(o.name))
+        opt->name = settings.boardName();
+    if (!parser.isSet(o.port))
+        opt->port = quint16(settings.port());
+    if (!parser.isSet(o.noAudio))
+        opt->audio = settings.audioEnabled();
     if (const QScreen* screen = QGuiApplication::primaryScreen()) {
         const QSize px = screen->size() * screen->devicePixelRatio();
         opt->displayWidth = std::uint16_t(std::clamp(px.width(), 1, 0xFFFF));
@@ -226,11 +237,20 @@ int runGui(int argc, char* argv[]) {
     ReceiverService service(*opt);
     installQuitOnSignal(service);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &service, &ReceiverService::shutdown);
+    QObject::connect(&settings, &yansit::ReceiverSettings::changed, &service, [&] {
+        if (!parser.isSet(o.name))
+            service.setReceiverName(settings.boardName());
+        if (!parser.isSet(o.noAudio))
+            service.setAudioEnabled(settings.audioEnabled());
+    });
+    yansit::ScreenshotTool screenshots;
 
     auto engine = std::make_unique<QQmlApplicationEngine>();
     engine->addImageProvider(QStringLiteral("qr"), new yansit::QrImageProvider);
     engine->setInitialProperties({{QStringLiteral("startFullScreen"), !parser.isSet(o.windowed)},
-                                  {QStringLiteral("receiver"), QVariant::fromValue(&service)}});
+                                  {QStringLiteral("receiver"), QVariant::fromValue(&service)},
+                                  {QStringLiteral("settings"), QVariant::fromValue(&settings)},
+                                  {QStringLiteral("screenshots"), QVariant::fromValue(&screenshots)}});
     QObject::connect(
         engine.get(), &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); },
         Qt::QueuedConnection);

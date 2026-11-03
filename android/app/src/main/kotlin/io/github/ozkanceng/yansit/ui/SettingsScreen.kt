@@ -53,11 +53,15 @@ fun SettingsScreen(
     overrides: StreamOverrides,
     options: SettingsOptions,
     audioEnabled: Boolean,
+    hevcAvailable: Boolean,
+    hevcEnabled: Boolean,
     onChange: (Preset, StreamOverrides) -> Unit,
     onAudioChange: (Boolean) -> Unit,
+    onHevcChange: (Boolean) -> Unit,
     onBack: () -> Unit,
 ) {
     var audio by remember { mutableStateOf(audioEnabled) }
+    var hevc by remember { mutableStateOf(hevcEnabled) }
     BackHandler(onBack = onBack)
     var current by remember { mutableStateOf(preset) }
     var adv by remember { mutableStateOf(overrides) }
@@ -124,6 +128,29 @@ fun SettingsScreen(
             }
             ChoiceRow(R.string.settings_fps, options.fps, adv.fps, { stringResourceFor(R.string.option_fps, it) }) {
                 update(o = adv.copy(fps = it))
+            }
+            // Desteklenmeyen seçenek gösterilmez: tablette donanım H.265 kodlayıcı yoksa anahtar da yok.
+            if (hevcAvailable) {
+                Row(
+                    width
+                        .heightIn(min = 64.dp)
+                        .toggleable(value = hevc, role = Role.Switch, onValueChange = {
+                            hevc = it
+                            onHevcChange(it)
+                        }),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.settings_hevc), style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            stringResource(R.string.settings_hevc_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(checked = hevc, onCheckedChange = null)
+                }
             }
             ChoiceRow(
                 R.string.settings_bitrate,

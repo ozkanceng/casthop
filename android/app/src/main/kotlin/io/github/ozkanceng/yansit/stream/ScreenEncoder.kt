@@ -43,27 +43,43 @@ class AndroidEncoderCaps private constructor(
     val supportsCbr: Boolean
         get() = encoder.isBitrateModeSupported(MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR)
 
-    /** High → Main → Baseline: B-kare kapalıyken High profil aynı bit hızında daha iyi kalite verir. */
+    val mime: String = mime
+
+    /**
+     * H.264: High → Main → Baseline (B-kare kapalıyken High aynı bit hızında daha iyi kalite verir).
+     * H.265: Main (8 bit; alıcıdaki VA çözücülerin hepsi destekler).
+     */
     val bestProfile: Int?
         get() {
             val profiles = caps.profileLevels.map { it.profile }.toSet()
-            return listOf(
-                MediaCodecInfo.CodecProfileLevel.AVCProfileHigh,
-                MediaCodecInfo.CodecProfileLevel.AVCProfileMain,
-                MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline,
-            ).firstOrNull { it in profiles }
+            val order = if (codec == Codec.H265) {
+                listOf(MediaCodecInfo.CodecProfileLevel.HEVCProfileMain)
+            } else {
+                listOf(
+                    MediaCodecInfo.CodecProfileLevel.AVCProfileHigh,
+                    MediaCodecInfo.CodecProfileLevel.AVCProfileMain,
+                    MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline,
+                )
+            }
+            return order.firstOrNull { it in profiles }
         }
 
     companion object {
         /** Cihazdaki H.264 kodlayıcıları (takma adlar hariç), donanım önce. */
-        fun h264Encoders(): List<AndroidEncoderCaps> =
+        fun h264Encoders(): List<AndroidEncoderCaps> = encodersFor(MediaFormat.MIMETYPE_VIDEO_AVC)
+
+        /** Cihazdaki donanım H.265 kodlayıcıları (yazılım HEVC kodlama gerçek zamanlı yetişmez). */
+        fun hevcHardwareEncoders(): List<AndroidEncoderCaps> =
+            encodersFor(MediaFormat.MIMETYPE_VIDEO_HEVC).filter { it.hardware }
+
+        private fun encodersFor(mime: String): List<AndroidEncoderCaps> =
             MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
-                .filter { it.isEncoder && !it.isAlias && MediaFormat.MIMETYPE_VIDEO_AVC in it.supportedTypes }
+                .filter { it.isEncoder && !it.isAlias && mime in it.supportedTypes }
                 .mapNotNull { info ->
-                    val caps = info.getCapabilitiesForType(MediaFormat.MIMETYPE_VIDEO_AVC)
+                    val caps = info.getCapabilitiesForType(mime)
                     val video = caps.videoCapabilities ?: return@mapNotNull null
                     val encoder = caps.encoderCapabilities ?: return@mapNotNull null
-                    AndroidEncoderCaps(info, MediaFormat.MIMETYPE_VIDEO_AVC, caps, video, encoder)
+                    AndroidEncoderCaps(info, mime, caps, video, encoder)
                 }
                 .sortedByDescending { it.hardware }
     }
@@ -83,7 +99,7 @@ class ScreenEncoder(private val caps: AndroidEncoderCaps) : VideoSource {
     @Volatile private var codec: MediaCodec? = null
 
     override fun start(plan: StreamPlan, sink: (EncodedFrame) -> Unit, onError: (Throwable) -> Unit) {
-        val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, plan.width, plan.height).apply {
+        val format = MediaFormat.createVideoFormat(caps.mime, plan.width, plan.height).apply {
             setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
             setInteger(MediaFormat.KEY_BIT_RATE, plan.startBps.toInt())
             setInteger(MediaFormat.KEY_FRAME_RATE, plan.fps)

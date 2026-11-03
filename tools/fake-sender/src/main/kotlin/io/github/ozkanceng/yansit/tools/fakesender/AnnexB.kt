@@ -80,6 +80,47 @@ object AnnexB {
         return H264Stream(config.toByteArray(), units)
     }
 
+    /**
+     * H.265 Annex-B (ITU-T H.265 §7.4.2.4.4): NAL türü = (bayt0 >> 1) & 0x3F, VCL 0–31, IRAP 16–23 (anahtar kare),
+     * VPS/SPS/PPS 32/33/34, AUD 35, önek SEI 39. first_slice_segment_in_pic_flag = NAL başlığından sonraki ilk bit.
+     */
+    fun parseHevc(data: ByteArray): H264Stream {
+        val config = ByteArrayOutputStream()
+        val seen = HashSet<Int>()
+        val units = ArrayList<AccessUnit>()
+        var current = ByteArrayOutputStream()
+        var hasVcl = false
+        var hasIrap = false
+
+        fun flush() {
+            if (hasVcl) units.add(AccessUnit(current.toByteArray(), hasIrap))
+            current = ByteArrayOutputStream()
+            hasVcl = false
+            hasIrap = false
+        }
+
+        for (nal in splitNals(data)) {
+            if (nal.size < 2) continue
+            val type = (nal[0].toInt() shr 1) and 0x3F
+            val isVcl = type < 32
+            val firstSlice = isVcl && nal.size > 2 && (nal[2].toInt() and 0x80) != 0
+            val startsNew = hasVcl && (type in 32..35 || type == 39 || type in 41..44 || type in 48..55 || firstSlice)
+            if (startsNew) flush()
+            if (type in 32..34 && seen.add(type)) {
+                config.write(START); config.write(nal)
+            }
+            if (type == 35) continue
+            current.write(START)
+            current.write(nal)
+            if (isVcl) hasVcl = true
+            if (type in 16..23) hasIrap = true
+        }
+        flush()
+        require(seen.containsAll(listOf(32, 33, 34))) { "akışta VPS/SPS/PPS yok" }
+        require(units.isNotEmpty()) { "akışta kare yok" }
+        return H264Stream(config.toByteArray(), units)
+    }
+
     private fun trimTrailingZeros(data: ByteArray, from: Int, to: Int): ByteArray {
         var end = to
         while (end > from && data[end - 1].toInt() == 0) end--

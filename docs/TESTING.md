@@ -169,3 +169,25 @@ tahtanın hoparlöründen gerçek ses ve dudak senkronu denetlenir.
 
 **Sonuç bildirimi:** `adb logcat -s YansitAudio YansitMirror` ve alıcının `--verbose` günlüğü (`yansit.audio`
 satırları), 3. ve 10. adımlardaki gözlem.
+
+---
+
+## M6 — Ayarlar, ağda bulma, H.265
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Tahtada **Ayarlar** → adı "7-A Sınıfı" yapıp **Kaydet** | Bekleme ekranında yeni ad; QR yenilenir | ☐ |
+| 2 | Tema **Açık** | Arayüz açık renge geçer, yazılar okunaklı | ☐ |
+| 3 | **Doldur (kenarları kırp)** ile dikey tableti yansıtın | Görüntü ekranı doldurur (üst/alt kırpılır), bozulma yok; **Sığdır** ile kenar boşluklu | ☐ |
+| 4 | "Tahta açılınca Yansıt'ı başlat" açıp tahtayı yeniden başlatın | Oturum açılınca Yansıt tam ekran gelir | ☐ |
+| 5 | Yansıtırken ekrana dokunup **Ekran görüntüsü** | "Ekran görüntüsü kaydedildi: …/Resimler/Yansıt/…png"; dosya açılınca tablet görüntüsü (bilgi çubuğu yok) | ☐ |
+| 6 | **Eşleştirilmiş tabletler** → bir tableti **Unut** | O tablet bir sonraki bağlanışta "Tahta bu tableti tanımıyor" alır | ☐ |
+| 7 | Tablette **Kodla bağlan (QR olmadan)** | Android 17: sistemin tahta seçicisi; daha eskide "Ağdaki tahtalar" listesi | ☐ |
+| 8 | Tahtayı seçip ekrandaki 6 haneli kodu girin | Bağlanır; tahta "Hatırlanan tahtalar"a eklenir | ☐ |
+| 9 | Yanlış kod girin | "Kod yanlış"; 5 yanlıştan sonra tahtada kod değişir | ☐ |
+| 10 | Okul ağında `avahi-daemon` kapalıyken (`sudo systemctl stop avahi-daemon`) | Tahta listede görünmez; QR ile bağlanma normal çalışır | ☐ |
+| 11 | Tabletin H.265 donanım kodlayıcısı varsa Ayarlar → "H.265 kullan" | Tahta VA ile H.265 çözüyorsa günlükte `vah265dec`; değilse H.264 sürer | ☐ |
+| 12 | Yansıtırken bağlantı kalitesi etiketi | 5 GHz'de "Bağlantı: iyi"; kalabalık ağda "orta/zayıf" | ☐ |
+
+**Sonuç bildirimi:** `vainfo` çıktısında HEVC satırları; `avahi-browse -rt _yansit._tcp` çıktısı (tahtada veya aynı
+ağdaki bir Linux bilgisayarda); 3. ve 5. adımların fotoğrafı.

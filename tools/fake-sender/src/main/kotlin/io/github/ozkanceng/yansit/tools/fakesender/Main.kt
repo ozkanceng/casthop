@@ -47,7 +47,8 @@ private const val USAGE = """fake-sender — Yansıt test göndericisi
   --pin NNNNNN        tahtadaki 6 haneli kod (--auth pin için; pairing dosyasındakinin yerine)
   --auth M            qr | pin | bad-token | bad-pin | paired   (varsayılan qr)
   --pairing-key F     paired: kayıtlı eşleştirme (JSON); --request-pairing ile WELCOME'daki anahtar buraya yazılır
-  --input F           H.264 Annex-B dosyası (akış için)
+  --input F           H.264/H.265 Annex-B dosyası (akış için)
+  --codec C           h264 | h265  (varsayılan h264)
   --fps N             gönderim hızı (varsayılan 60)
   --frames N          gönderilecek kare (0 = dosyanın tamamı; dosya kısaysa başa sarar)
   --device-name S     HELLO cihaz adı
@@ -85,11 +86,15 @@ private data class Options(
     val engine: String,
     val pairingKey: File?,
     val audioInput: File?,
+    val codec: Int,
     val port: Int?,
     val rotateInput: File?,
     val rotateAfter: Int,
     val rotateSize: Pair<Int, Int>,
 )
+
+private fun parseVideo(o: Options, f: File): H264Stream =
+    if (o.codec == Codec.H265) AnnexB.parseHevc(f.readBytes()) else AnnexB.parse(f.readBytes())
 
 private fun usage(msg: String): Nothing {
     System.err.println("hata: $msg\n\n$USAGE")
@@ -145,6 +150,11 @@ private fun parseArgs(args: Array<String>): Options {
         engine = (m["--engine"] ?: "raw").also { if (it != "raw" && it != "mirror") usage("--engine: raw | mirror") },
         pairingKey = m["--pairing-key"]?.let(::File),
         audioInput = m["--audio-input"]?.let(::File),
+        codec = when (m["--codec"] ?: "h264") {
+            "h264" -> Codec.H264
+            "h265" -> Codec.H265
+            else -> usage("--codec: h264 | h265")
+        },
         port = m["--port"]?.toIntOrNull()?.takeIf { it in 1..65535 } ?: if ("--port" in m) usage("--port") else null,
         rotateInput = m["--rotate-input"]?.let(::File),
         rotateAfter = m["--rotate-after"]?.toIntOrNull() ?: 0,
@@ -189,7 +199,7 @@ private class StreamResult {
 }
 
 private fun stream(o: Options, session: Session, result: StreamResult) {
-    val h264 = AnnexB.parse(o.input!!.readBytes())
+    val h264 = parseVideo(o, o.input!!)
     val total = if (o.frames == 0) h264.units.size else o.frames
     val control = session.control
     val stopped = AtomicBoolean(false)
@@ -245,8 +255,8 @@ private fun stream(o: Options, session: Session, result: StreamResult) {
     }, "pinger").apply { isDaemon = true; start() }
 
     val video = SenderClient.attach(session, StreamKind.VIDEO)
-    control.send(ControlMessage.StreamConfig(StreamKind.VIDEO, Codec.H264, fps = o.fps))
-    video.send(FrameFlags.CONFIG, MonotonicClock.nowUs(), byteArrayOf(Codec.H264.toByte()) + h264.config)
+    control.send(ControlMessage.StreamConfig(StreamKind.VIDEO, o.codec, fps = o.fps))
+    video.send(FrameFlags.CONFIG, MonotonicClock.nowUs(), byteArrayOf(o.codec.toByte()) + h264.config)
 
     val intervalNs = 1_000_000_000L / o.fps
     val start = System.nanoTime()
@@ -288,15 +298,15 @@ private fun streamWithMirrorSession(
     session: Session,
     summary: MutableMap<String, kotlinx.serialization.json.JsonElement>,
 ): Boolean {
-    val main = AnnexB.parse(o.input!!.readBytes())
-    val rotated = o.rotateInput?.let { AnnexB.parse(it.readBytes()) }
+    val main = parseVideo(o, o.input!!)
+    val rotated = o.rotateInput?.let { parseVideo(o, it) }
     val total = if (o.frames == 0) main.units.size else o.frames
     val ended = CountDownLatch(1)
     val endReason = AtomicReference<SessionEnd?>()
     val lastStats = AtomicReference<MirrorStats?>()
     val latencySamples = java.util.Collections.synchronizedList(ArrayList<Int>())
     val linkEvents = java.util.Collections.synchronizedList(ArrayList<Pair<LinkState, Long>>())
-    val planA = StreamPlan("file", Codec.H264, false, 1280, 720, o.fps, 8_000_000, 2_000_000, 12_000_000)
+    val planA = StreamPlan("file", o.codec, false, 1280, 720, o.fps, 8_000_000, 2_000_000, 12_000_000)
     val planB = planA.copy(width = o.rotateSize.first, height = o.rotateSize.second)
     lateinit var mirror: MirrorSession
     val reconfigured = AtomicBoolean(false)
@@ -384,7 +394,7 @@ fun main(args: Array<String>) {
         name = o.deviceName,
         deviceId = o.deviceId,
         appVersion = "fake-sender",
-        videoCodecs = listOf(Codec.H264),
+        videoCodecs = listOf(o.codec),
         maxWidth = 1920,
         maxHeight = 1080,
         maxFps = 60,

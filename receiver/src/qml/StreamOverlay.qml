@@ -9,6 +9,14 @@ Item {
 
     required property QtObject receiver
 
+    signal screenshotRequested
+
+    function showToast(message) {
+        toastText.text = message
+        toast.visible = true
+        toastTimer.restart()
+    }
+
     readonly property string state: receiver.stateName
     readonly property var stats: receiver.stats
     property bool barShown: false
@@ -23,6 +31,12 @@ Item {
     function showBar() {
         barShown = true
         hideTimer.restart()
+    }
+
+    Timer {
+        id: shotDelay
+        interval: 250
+        onTriggered: root.screenshotRequested()
     }
 
     Timer {
@@ -78,6 +92,15 @@ Item {
             }
 
             TouchButton {
+                text: qsTr("Screenshot")
+                onClicked: {
+                    // Bilgi çubuğu görüntüye girmesin: gizlenme animasyonundan sonra al.
+                    root.barShown = false
+                    shotDelay.start()
+                }
+            }
+
+            TouchButton {
                 text: qsTr("Stop mirroring")
                 onClicked: root.receiver.stopSession()
             }
@@ -101,6 +124,36 @@ Item {
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontTitle
             font.weight: Font.DemiBold
+        }
+    }
+
+    // Kısa bildirim (ör. ekran görüntüsü kaydedildi).
+    Rectangle {
+        id: toast
+        visible: false
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Theme.space4
+        width: Math.min(parent.width - Theme.space4 * 2, toastText.implicitWidth + Theme.space3 * 2)
+        height: toastText.implicitHeight + Theme.space2 * 2
+        radius: Theme.radius
+        color: Theme.scrim
+
+        Text {
+            id: toastText
+            anchors.fill: parent
+            anchors.margins: Theme.space2
+            color: Theme.text
+            wrapMode: Text.WrapAnywhere
+            horizontalAlignment: Text.AlignHCenter
+            font.family: Theme.fontFamily
+            font.pixelSize: Theme.fontLabel
+        }
+
+        Timer {
+            id: toastTimer
+            interval: 4000
+            onTriggered: toast.visible = false
         }
     }
 }

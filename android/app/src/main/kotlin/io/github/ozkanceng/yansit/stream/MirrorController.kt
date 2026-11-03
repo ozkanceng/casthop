@@ -59,6 +59,7 @@ enum class MirrorError {
     REFUSED,
     WRONG_BOARD,
     AUTH_FAILED,
+    WRONG_PIN,
     BOARD_FORGOT_TABLET,
     BUSY_DENIED,
     BUSY_TIMEOUT,
@@ -98,10 +99,11 @@ sealed interface MirrorState {
     data class Ended(val board: String, val error: MirrorError?) : MirrorState
 }
 
-/** Bağlantı hedefi: yeni QR ya da hatırlanan tahta. */
+/** Bağlantı hedefi: yeni QR, hatırlanan tahta ya da ağda bulunup PIN'i girilen tahta. */
 sealed interface ConnectTarget {
     data class Qr(val payload: QrPayload) : ConnectTarget
     data class Remembered(val board: RememberedBoard) : ConnectTarget
+    data class Discovered(val board: DiscoveredBoard, val pin: String) : ConnectTarget
 }
 
 /**
@@ -159,6 +161,7 @@ object MirrorController {
         board = when (target) {
             is ConnectTarget.Qr -> target.payload.name
             is ConnectTarget.Remembered -> target.board.name
+            is ConnectTarget.Discovered -> target.board.name
         }
         _state.value = MirrorState.Connecting(board)
         val attempt = synchronized(lock) { ++generation }
@@ -196,7 +199,10 @@ object MirrorController {
         val (hosts, port, fp) = when (target) {
             is ConnectTarget.Qr -> Triple(target.payload.hosts, target.payload.port, target.payload.certFingerprint)
             is ConnectTarget.Remembered -> Triple(target.board.hosts, target.board.port, target.board.fingerprint)
+            // mDNS'te yalnız parmak izi öneki var: ilk bağlantıda öneki denetlenir, tam iz eşleştirmeyle kaydedilir.
+            is ConnectTarget.Discovered -> Triple(target.board.hosts, target.board.port, null)
         }
+        val fpPrefix = (target as? ConnectTarget.Discovered)?.board?.fingerprintPrefix
         val host = when (val r = Reachability.firstReachable(hosts, port)) {
             is ReachResult.Reachable -> r.host
             is ReachResult.Unreachable -> return HelloResult.Failed(
@@ -210,21 +216,26 @@ object MirrorController {
         val credentials = when (target) {
             is ConnectTarget.Qr -> Credentials.QrToken(target.payload.token)
             is ConnectTarget.Remembered -> Credentials.Paired(target.board.keyId, target.board.pairKey)
+            is ConnectTarget.Discovered -> Credentials.Pin(target.pin)
         }
         val outcome = try {
             SenderClient.hello(
-                Endpoint(host, port, fp),
+                Endpoint(host, port, fp, fpPrefix),
                 credentials,
                 DeviceInfo(
                     name = settings.deviceName,
                     deviceId = settings.deviceId,
                     appVersion = BuildConfig.VERSION_NAME,
-                    videoCodecs = listOf(Codec.H264),
+                    videoCodecs = if (settings.hevcEnabled && AndroidEncoderCaps.hevcHardwareEncoders().isNotEmpty()) {
+                        listOf(Codec.H265, Codec.H264)
+                    } else {
+                        listOf(Codec.H264)
+                    },
                     maxWidth = 3840,
                     maxHeight = 2160,
                     maxFps = 60,
                 ),
-                requestPairing = target is ConnectTarget.Qr,
+                requestPairing = target !is ConnectTarget.Remembered,
                 onPending = onPending,
             )
         } catch (e: FingerprintMismatchException) {
@@ -241,7 +252,9 @@ object MirrorController {
         val boards = BoardStore(appContext)
         return when (outcome) {
             is HelloOutcome.Rejected -> {
-                if (target is ConnectTarget.Remembered && outcome.reason == RejectReason.AUTH_FAILED) {
+                if (target is ConnectTarget.Discovered && outcome.reason == RejectReason.AUTH_FAILED) {
+                    HelloResult.Failed(MirrorError.WRONG_PIN)
+                } else if (target is ConnectTarget.Remembered && outcome.reason == RejectReason.AUTH_FAILED) {
                     // Tahta eşleştirmeyi unutmuş (silinmiş veya sertifika yenilenmiş): yeniden QR gerekir.
                     boards.remove(target.board.fingerprint)
                     HelloResult.Failed(MirrorError.BOARD_FORGOT_TABLET)
@@ -252,16 +265,20 @@ object MirrorController {
             is HelloOutcome.Accepted -> {
                 val w = outcome.session.welcome
                 val now = System.currentTimeMillis()
+                val keyId = w.keyId
+                val pairKey = w.pairKey
                 when (target) {
-                    is ConnectTarget.Qr -> {
-                        val keyId = w.keyId
-                        val pairKey = w.pairKey
-                        if (keyId != null && pairKey != null) {
-                            boards.save(
-                                RememberedBoard(w.receiverName, target.payload.hosts, target.payload.port,
-                                    outcome.session.fingerprint, keyId, pairKey, now),
-                            )
-                        }
+                    is ConnectTarget.Qr -> if (keyId != null && pairKey != null) {
+                        boards.save(
+                            RememberedBoard(w.receiverName, target.payload.hosts, target.payload.port,
+                                outcome.session.fingerprint, keyId, pairKey, now),
+                        )
+                    }
+                    is ConnectTarget.Discovered -> if (keyId != null && pairKey != null) {
+                        boards.save(
+                            RememberedBoard(w.receiverName, target.board.hosts, target.board.port,
+                                outcome.session.fingerprint, keyId, pairKey, now),
+                        )
                     }
                     is ConnectTarget.Remembered -> boards.save(target.board.copy(name = w.receiverName, lastUsedMs = now))
                 }
@@ -312,18 +329,25 @@ object MirrorController {
         val settings = AppSettings(context)
         return StreamPlanner.plan(
             srcW, srcH, preset ?: settings.preset, ReceiverDisplay(w.displayWidth, w.displayHeight, w.displayRefresh),
-            AndroidEncoderCaps.h264Encoders(), settings.overrides,
+            encodersFor(settings, w), settings.overrides,
         )
+    }
+
+    /** H.265 yalnız ayar açık, tahta donanımla çözüyor ve tablette donanım kodlayıcı varsa; önce denenir. */
+    private fun encodersFor(settings: AppSettings, w: ControlMessage.Welcome): List<AndroidEncoderCaps> {
+        val boardHevcHw = w.videoDecoders.any { it.codec == Codec.H265 && it.hardware }
+        val hevc = if (settings.hevcEnabled && boardHevcHw) AndroidEncoderCaps.hevcHardwareEncoders() else emptyList()
+        return hevc + AndroidEncoderCaps.h264Encoders()
     }
 
     private fun startCapture(service: MirrorService, projection: MediaProjection, s: MirrorSession) {
         val plan = currentPlan(service, s)
         if (plan == null) {
-            Log.e(TAG, "uygun kodlayıcı yok: ${AndroidEncoderCaps.h264Encoders().map { it.name }}")
+            Log.e(TAG, "uygun kodlayıcı yok: ${encodersFor(AppSettings(service), s.welcome).map { it.name }}")
             fail(MirrorError.NO_ENCODER)
             return
         }
-        val caps = AndroidEncoderCaps.h264Encoders().first { it.name == plan.encoderName }
+        val caps = encodersFor(AppSettings(service), s.welcome).first { it.name == plan.encoderName }
         val encoder = ScreenEncoder(caps)
         try {
             val display = projection.createVirtualDisplay(
@@ -532,6 +556,9 @@ object MirrorController {
         return when (val t = target) {
             is ConnectTarget.Remembered -> boards.find(t.board.fingerprint)
             is ConnectTarget.Qr -> boards.find(t.payload.certFingerprint)
+            is ConnectTarget.Discovered -> boards.list().firstOrNull { b ->
+                (0 until t.board.fingerprintPrefix.size).all { b.fingerprint[it] == t.board.fingerprintPrefix[it] }
+            }
             null -> null
         }
     }

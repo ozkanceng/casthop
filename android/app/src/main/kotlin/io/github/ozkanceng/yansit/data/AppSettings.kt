@@ -39,6 +39,11 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_AUDIO, true)
         set(value) = prefs.edit { putBoolean(KEY_AUDIO, value) }
 
+    /** Tahta donanımla çözebiliyorsa H.265 kullan (deneysel; aynı kalitede ≈ %30–40 daha az bit hızı). */
+    var hevcEnabled: Boolean
+        get() = prefs.getBoolean(KEY_HEVC, false)
+        set(value) = prefs.edit { putBoolean(KEY_HEVC, value) }
+
     var overrides: StreamOverrides
         get() = StreamOverrides(
             longSide = prefs.getInt(KEY_LONG_SIDE, 0).takeIf { it > 0 },
@@ -55,6 +60,7 @@ class AppSettings(context: Context) {
         const val KEY_DEVICE_ID = "device_id"
         const val KEY_PRESET = "preset"
         const val KEY_AUDIO = "audio"
+        const val KEY_HEVC = "hevc"
         const val KEY_LONG_SIDE = "override_long_side"
         const val KEY_FPS = "override_fps"
         const val KEY_MAX_BITRATE = "override_max_bitrate"

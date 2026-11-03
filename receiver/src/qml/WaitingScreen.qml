@@ -13,6 +13,7 @@ Rectangle {
 
     signal toggleFullScreen
     signal quitRequested
+    signal settingsRequested
 
     readonly property bool failed: receiver.stateName === "failed"
     readonly property bool hasQr: receiver.qrImageSource !== ""
@@ -194,6 +195,11 @@ Rectangle {
         RowLayout {
             spacing: Theme.space3
             Layout.alignment: Qt.AlignHCenter
+
+            TouchButton {
+                text: qsTr("Settings")
+                onClicked: root.settingsRequested()
+            }
 
             TouchButton {
                 text: root.fullScreen ? qsTr("Exit full screen") : qsTr("Full screen")

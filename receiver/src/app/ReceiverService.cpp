@@ -3,6 +3,7 @@
 #include "app/NetInfo.h"
 #include "common/Clock.h"
 #include "net/Connection.h"
+#include "net/MdnsPublisher.h"
 #include "net/Server.h"
 #include "protocol/Qr.h"
 
@@ -82,6 +83,7 @@ ReceiverService::ReceiverService(Options options, QObject* parent) : QObject(par
         qCInfo(lcRecv) << "video boyutu:" << QStringLiteral("%1x%2").arg(w).arg(h);
         m_videoWidth = w;
         m_videoHeight = h;
+        emit videoSizeChanged();
     });
 
     m_tickTimer.setInterval(kTickIntervalMs);
@@ -91,6 +93,8 @@ ReceiverService::ReceiverService(Options options, QObject* parent) : QObject(par
 }
 
 ReceiverService::~ReceiverService() {
+    if (m_mdns)
+        m_mdns->stop();
     // Bağlantıların kapanma geri çağrıları yok edilen nesneye ulaşmasın.
     for (const auto& c : std::as_const(m_conns))
         if (c)
@@ -104,12 +108,15 @@ session::ReceiverInfo ReceiverService::receiverInfo() const {
     info.displayWidth = m_options.displayWidth;
     info.displayHeight = m_options.displayHeight;
     info.displayRefresh = m_options.displayRefresh;
-    const auto decoders = media::availableH264Decoders();
-    std::uint8_t flags = CodecSupport::Preferred;
-    if (!decoders.empty() && decoders.front().hardware)
-        flags |= CodecSupport::Hardware;
-    if (!decoders.empty())
-        info.videoDecoders.push_back({Codec::H264, flags});
+    const auto h264 = media::availableDecoders(Codec::H264);
+    if (!h264.empty())
+        info.videoDecoders.push_back(
+            {Codec::H264, std::uint8_t(CodecSupport::Preferred | (h264.front().hardware ? CodecSupport::Hardware : 0))});
+    // H.265 yalnız donanımla çözülebiliyorsa sunulur: yazılımda 1080p60 HEVC eski tahtalarda yetişmez (RISKS R5).
+    // YANSIT_ALLOW_SW_HEVC=1 yazılım çözücüyü de sunar (testler).
+    const auto h265 = media::availableDecoders(Codec::H265);
+    if (!h265.empty() && (h265.front().hardware || qEnvironmentVariableIntValue("YANSIT_ALLOW_SW_HEVC") == 1))
+        info.videoDecoders.push_back({Codec::H265, std::uint8_t(h265.front().hardware ? CodecSupport::Hardware : 0)});
     const auto audioMode = m_options.sinkMode == media::VideoPipeline::SinkMode::Gl ? media::AudioPipeline::SinkMode::Device
                                                                                    : media::AudioPipeline::SinkMode::Fake;
     if (media::AudioPipeline::opusAvailable(audioMode))
@@ -131,8 +138,12 @@ bool ReceiverService::start() {
 
     m_pairing = std::make_unique<session::PairingManager>(steadyNow());
     loadTrusted();
+    emit trustedChanged();
     m_pairing->onCredentialsChanged = [this] { updateCredentials(); };
-    m_pairing->onTrustedChanged = [this] { saveTrusted(); };
+    m_pairing->onTrustedChanged = [this] {
+        saveTrusted();
+        emit trustedChanged();
+    };
 
     const session::ReceiverInfo info = receiverInfo();
     if (info.videoDecoders.empty()) {
@@ -158,6 +169,10 @@ bool ReceiverService::start() {
     m_net = new NetInfo(this);
     connect(m_net, &NetInfo::addressesChanged, this, &ReceiverService::updateCredentials);
     updateCredentials();
+
+    // mDNS yalnız bulma kolaylığı; başarısızlığı QR akışını etkilemez.
+    m_mdns = std::make_unique<net::MdnsPublisher>();
+    m_mdns->publish(m_options.name.toStdString(), m_options.port, m_identity.fingerprint);
 
     m_tickTimer.start();
     m_reportTimer.start();
@@ -560,6 +575,48 @@ void ReceiverService::saveTrusted() {
     if (!writeJsonFile(QDir(m_options.dataDir).filePath(QStringLiteral("trusted.json")), QJsonDocument(arr).toJson(),
                        true))
         qCWarning(lcRecv) << "eşleştirmeler kaydedilemedi";
+}
+
+void ReceiverService::setReceiverName(const QString& name) {
+    const QString n = name.trimmed();
+    if (n.isEmpty() || n == m_options.name)
+        return;
+    m_options.name = n;
+    if (m_sessions)
+        m_sessions->setReceiverInfo(receiverInfo());
+    if (m_mdns)
+        m_mdns->publish(n.toStdString(), m_options.port, m_identity.fingerprint);
+    if (m_pairing)
+        updateCredentials();
+    emit receiverNameChanged();
+}
+
+void ReceiverService::setAudioEnabled(bool on) {
+    if (on == m_options.audio)
+        return;
+    m_options.audio = on;
+    if (m_sessions)
+        m_sessions->setReceiverInfo(receiverInfo());
+}
+
+QVariantList ReceiverService::trustedSenders() const {
+    QVariantList out;
+    if (!m_pairing)
+        return out;
+    for (const auto& t : m_pairing->trustedSenders()) {
+        QVariantMap m;
+        m.insert(QStringLiteral("keyId"), hex(t.keyId));
+        m.insert(QStringLiteral("name"), QString::fromStdString(t.deviceName));
+        out.append(m);
+    }
+    return out;
+}
+
+void ReceiverService::forgetSender(const QString& keyIdHex) {
+    if (!m_pairing)
+        return;
+    if (const auto id = arrayFromHex<16>(keyIdHex))
+        m_pairing->removeTrusted(*id);
 }
 
 void ReceiverService::approvePending() {

@@ -25,12 +25,12 @@ struct DecoderChoice {
     bool hardware = false;
 };
 
-/// Çalışma anında kullanılabilir H.264 çözücüleri, tercih sırasıyla (donanım önce).
-/// `YANSIT_DECODER` ortam değişkeni listeyi tek bir fabrikaya indirir.
-std::vector<DecoderChoice> availableH264Decoders();
+/// Çalışma anında kullanılabilir çözücüler (codec: `Codec::H264` / `Codec::H265`), tercih sırasıyla (donanım önce).
+/// `YANSIT_DECODER` (H.264) / `YANSIT_DECODER_H265` ortam değişkenleri listeyi tek bir fabrikaya indirir.
+std::vector<DecoderChoice> availableDecoders(std::uint8_t codec);
 
 /**
- * appsrc → h264parse → çözücü → (GL: glupload → glcolorconvert → qml6glsink | başsız: fakesink).
+ * appsrc → h264parse|h265parse → çözücü → (GL: glupload → glcolorconvert → qml6glsink | başsız: fakesink).
  * sync=false: kare geldiği anda çizilir. Gecikme birikirse anahtar kareye kadar kare atılır ve
  * göndericiden IDR istenir. Donanım çözücü hata verirse yazılım çözücüye düşülür.
  */
@@ -113,6 +113,7 @@ private:
     GstElement* m_appsrc = nullptr;
     QTimer m_busTimer;
 
+    std::uint8_t m_codec = 0;
     std::vector<DecoderChoice> m_decoders;
     std::size_t m_decoderIndex = 0;
     DecoderChoice m_decoder;

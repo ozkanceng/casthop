@@ -28,6 +28,9 @@ class Server;
 } // namespace net
 
 class NetInfo;
+namespace net {
+class MdnsPublisher;
+}
 
 /**
  * Alıcının çekirdeği: TLS sunucusu, bağlantılar, oturum durum makinesi ve video boru hattını
@@ -36,7 +39,10 @@ class NetInfo;
 class ReceiverService : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString stateName READ stateName NOTIFY stateChanged)
-    Q_PROPERTY(QString receiverName READ receiverName CONSTANT)
+    Q_PROPERTY(QString receiverName READ receiverName NOTIFY receiverNameChanged)
+    Q_PROPERTY(int videoWidth READ videoWidth NOTIFY videoSizeChanged)
+    Q_PROPERTY(int videoHeight READ videoHeight NOTIFY videoSizeChanged)
+    Q_PROPERTY(QVariantList trustedSenders READ trustedSenders NOTIFY trustedChanged)
     Q_PROPERTY(int port READ port CONSTANT)
     Q_PROPERTY(QString qrUri READ qrUri NOTIFY credentialsChanged)
     Q_PROPERTY(QString qrImageSource READ qrImageSource NOTIFY credentialsChanged)
@@ -103,6 +109,17 @@ public:
     Q_INVOKABLE void approvePending();
     Q_INVOKABLE void denyPending();
     Q_INVOKABLE void stopSession();
+    /// Ad değişince QR, mDNS ve yeni oturumların WELCOME'u güncellenir.
+    Q_INVOKABLE void setReceiverName(const QString& name);
+    /// Yeni oturumlarda geçerli olur.
+    Q_INVOKABLE void setAudioEnabled(bool on);
+    /// Eşleştirilmiş tableti unutur (bir dahaki bağlantıda QR/PIN gerekir).
+    Q_INVOKABLE void forgetSender(const QString& keyIdHex);
+
+    int videoWidth() const { return m_videoWidth; }
+    int videoHeight() const { return m_videoHeight; }
+    /// Her öğe: {keyId, name}.
+    QVariantList trustedSenders() const;
 
 signals:
     void stateChanged();
@@ -110,6 +127,9 @@ signals:
     void pendingChanged();
     void errorChanged();
     void statsChanged();
+    void receiverNameChanged();
+    void videoSizeChanged();
+    void trustedChanged();
 
 private:
     void accept(QSslSocket* socket);
@@ -138,6 +158,7 @@ private:
     std::unique_ptr<session::SessionManager> m_sessions;
     net::Server* m_server = nullptr;
     NetInfo* m_net = nullptr;
+    std::unique_ptr<net::MdnsPublisher> m_mdns;
     media::VideoPipeline* m_video = nullptr;
     media::AudioPipeline* m_audio = nullptr;
     QHash<session::ConnId, QPointer<net::Connection>> m_conns;

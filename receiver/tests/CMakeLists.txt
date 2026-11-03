@@ -12,6 +12,7 @@ add_executable(yansit_tests
     test_address_selection.cpp
     test_frame_parser.cpp
     test_identity.cpp
+    test_mdns.cpp
     test_pairing.cpp
     test_session.cpp
     test_vectors.cpp

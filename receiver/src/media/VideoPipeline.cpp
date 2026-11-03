@@ -9,6 +9,7 @@
 #include <QLoggingCategory>
 
 #include <algorithm>
+#include <array>
 #include <cstdlib>
 
 Q_LOGGING_CATEGORY(lcVideo, "yansit.video")
@@ -43,9 +44,10 @@ constexpr std::uint64_t kMinRebuildIntervalUs = 1'000'000;
 
 } // namespace
 
-std::vector<DecoderChoice> availableH264Decoders() {
+std::vector<DecoderChoice> availableDecoders(std::uint8_t codec) {
     std::vector<DecoderChoice> out;
-    if (const char* forced = std::getenv("YANSIT_DECODER"); forced && *forced) {
+    const bool hevc = codec == Codec::H265;
+    if (const char* forced = std::getenv(hevc ? "YANSIT_DECODER_H265" : "YANSIT_DECODER"); forced && *forced) {
         if (factoryExists(forced))
             out.push_back({forced, isHardwareFactory(forced)});
         else
@@ -54,7 +56,10 @@ std::vector<DecoderChoice> availableH264Decoders() {
     }
     // vah264dec: GStreamer 1.22 VA eklentisi (yalnız çalışan bir VA sürücüsü varsa kayıtlı olur).
     // vaapih264dec: eski gstreamer-vaapi. avdec_h264: FFmpeg yazılım çözücü (her zaman yedek).
-    for (const char* name : {"vah264dec", "vaapih264dec", "avdec_h264"})
+    static constexpr std::array<const char*, 3> kH264{"vah264dec", "vaapih264dec", "avdec_h264"};
+    static constexpr std::array<const char*, 3> kH265{"vah265dec", "vaapih265dec", "avdec_h265"};
+    const auto& names = hevc ? kH265 : kH264;
+    for (const char* name : names)
         if (factoryExists(name))
             out.push_back({name, isHardwareFactory(name)});
     return out;
@@ -74,6 +79,8 @@ void VideoPipeline::setClockOffset(std::optional<std::int64_t> offsetUs) {
 
 void VideoPipeline::reset() {
     teardown();
+    m_codec = 0;
+    m_decoders.clear();
     m_config.clear();
     m_configPending = false;
     m_waitKeyframe = true;
@@ -110,10 +117,12 @@ void VideoPipeline::teardown() {
 bool VideoPipeline::build() {
     teardown();
     m_lastRebuildUs = monotonicUs();
-    if (m_decoders.empty())
-        m_decoders = availableH264Decoders();
+    if (m_decoders.empty()) {
+        m_decoders = availableDecoders(m_codec);
+        m_decoderIndex = 0;
+    }
     if (m_decoderIndex >= m_decoders.size()) {
-        qCCritical(lcVideo) << "kullanılabilir H.264 çözücü yok (gstreamer1.0-libav kurulu mu?)";
+        qCCritical(lcVideo) << "kullanılabilir çözücü yok, codec" << m_codec << "(gstreamer1.0-libav kurulu mu?)";
         return false;
     }
     m_decoder = m_decoders[m_decoderIndex];
@@ -133,7 +142,8 @@ bool VideoPipeline::build() {
     };
 
     GstElement* src = make("appsrc", "src");
-    make("h264parse");
+    const bool hevc = m_codec == Codec::H265;
+    make(hevc ? "h265parse" : "h264parse");
     GstElement* dec = make(m_decoder.factory.c_str(), "decoder");
     GstElement* sink = nullptr;
     if (m_mode == SinkMode::Gl) {
@@ -168,7 +178,7 @@ bool VideoPipeline::build() {
         return false;
     }
 
-    GstCaps* caps = gst_caps_new_simple("video/x-h264", "stream-format", G_TYPE_STRING, "byte-stream", "alignment",
+    GstCaps* caps = gst_caps_new_simple(hevc ? "video/x-h265" : "video/x-h264", "stream-format", G_TYPE_STRING, "byte-stream", "alignment",
                                         G_TYPE_STRING, "au", nullptr);
     g_object_set(src, "caps", caps, "is-live", TRUE, "format", GST_FORMAT_TIME, "do-timestamp", FALSE, "max-bytes",
                  guint64(0), "block", FALSE, nullptr);
@@ -286,9 +296,15 @@ void VideoPipeline::pushFrame(const FrameHeader& header, Bytes&& payload, std::u
     if (header.isConfig()) {
         if (payload.empty())
             return;
-        if (payload[0] != Codec::H264) {
+        if (payload[0] != Codec::H264 && payload[0] != Codec::H265) {
             qCWarning(lcVideo) << "desteklenmeyen video codec'i:" << payload[0];
             return;
+        }
+        if (payload[0] != m_codec) {
+            // Codec değişti (ör. H.264 → H.265): boru hattı yeni çözücüyle kurulur.
+            teardown();
+            m_codec = payload[0];
+            m_decoders.clear();
         }
         m_config.assign(payload.begin() + 1, payload.end());
         m_configPending = true;

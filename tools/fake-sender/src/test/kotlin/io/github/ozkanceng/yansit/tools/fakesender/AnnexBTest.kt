@@ -52,6 +52,22 @@ class AnnexBTest {
     }
 
     @Test
+    fun groupsHevcAccessUnits() {
+        fun nal(type: Int, vararg rest: Int) = byteArrayOf((type shl 1).toByte(), 1) + rest.map { it.toByte() }.toByteArray()
+        val vps = nal(32, 0x0C); val sps = nal(33, 0x01); val pps = nal(34, 0xC1)
+        val idrFirst = nal(19, 0x80, 0x11) // IDR_W_RADL, first_slice_segment_in_pic_flag = 1
+        val idrNext = nal(19, 0x40, 0x22)  // aynı resmin ikinci dilimi
+        val trailFirst = nal(1, 0x80, 0x33)
+        val data = join(sc4, nal(35, 0x50), sc4, vps, sc4, sps, sc4, pps, sc4, idrFirst, sc4, idrNext, sc4, trailFirst)
+        val s = AnnexB.parseHevc(data)
+        assertArrayEquals(join(sc4, vps, sc4, sps, sc4, pps), s.config)
+        assertEquals(2, s.units.size)
+        assertTrue(s.units[0].keyframe)
+        assertFalse(s.units[1].keyframe)
+        assertArrayEquals(join(sc4, vps, sc4, sps, sc4, pps, sc4, idrFirst, sc4, idrNext), s.units[0].data)
+    }
+
+    @Test
     fun rejectsStreamWithoutParameterSets() {
         assertThrows<IllegalArgumentException> { AnnexB.parse(join(sc4, idr(true))) }
     }

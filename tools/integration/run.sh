@@ -14,6 +14,8 @@
 #   4e. Dar bant (netsim 2,5 Mbps < 4 Mbps akış): gönderici kare atar, gecikme birikmez
 #   4f. QR ile bağlanıp kalıcı eşleştirme alma; 4g. eşleştirme anahtarıyla QR'sız bağlanma
 #   4h. Görüntü + Opus ses; 4i. görüntü + AAC ses: paketler çalınır, ses görüntüyle senkron (±60 ms)
+#   4j. H.265 akışı (CI'da yazılım çözücü YANSIT_ALLOW_SW_HEVC=1 ile sunulur)
+#   4k. PIN ile bağlanma (mDNS ile bulunan tahtanın akışı; QR yok)
 #   5. SIGTERM → alıcı düzgün kapanır
 #   5b. Alıcı yeniden başlatılınca eşleştirme geçerli (trusted.json kalıcı)
 #   6. (YANSIT_IT_GUI=1) Arayüz modu Xvfb + Mesa OpenGL'de: qml6glsink yolu 300 kareyi çizer
@@ -67,12 +69,16 @@ gst-launch-1.0 -q audiotestsrc num-buffers=470 samplesperbuffer=1024 wave=sine f
     ! audio/x-raw,rate=48000,channels=2 ! avenc_aac bitrate=128000 ! aacparse \
     ! audio/mpeg,mpegversion=4,stream-format=adts ! filesink location="$WORK/test.aac"
 [ -s "$WORK/test.opus" ] && [ -s "$WORK/test.aac" ] || fail "test sesi üretilemedi"
+gst-launch-1.0 -q videotestsrc num-buffers=300 pattern=ball ! video/x-raw,width=1280,height=720,framerate=60/1 \
+    ! x265enc tune=zerolatency speed-preset=ultrafast key-int-max=30 bitrate=3000 \
+    ! video/x-h265,stream-format=byte-stream ! filesink location="$WORK/test.h265"
+[ -s "$WORK/test.h265" ] || fail "H.265 test videosu üretilemedi"
 
 log "Alıcı başlatılıyor (port $PORT)"
 rm -f "$WORK/pairing.json" "$WORK/stats.jsonl"
-XDG_RUNTIME_DIR="$RUNTIME" "$RECEIVER" --headless --verbose --port "$PORT" --data-dir "$WORK/data" \
-    --pairing-file "$WORK/pairing.json" --stats-file "$WORK/stats.jsonl" \
-    --approval-timeout 3000 --qr-host 127.0.0.1 --name "CI Tahta" >"$WORK/receiver.log" 2>&1 &
+XDG_RUNTIME_DIR="$RUNTIME" YANSIT_ALLOW_SW_HEVC=1 "$RECEIVER" --headless --verbose --port "$PORT" \
+    --data-dir "$WORK/data" --pairing-file "$WORK/pairing.json" --stats-file "$WORK/stats.jsonl" \
+    --approval-timeout 3000 --qr-host 127.0.0.1 --board-name "CI Tahta" >"$WORK/receiver.log" 2>&1 &
 RPID=$!
 i=0
 until [ -s "$WORK/pairing.json" ]; do
@@ -186,6 +192,18 @@ log "4i. Görüntü + AAC ses"
     || fail "senaryo 4i"
 wait_sessions 9
 
+log "4j. H.265"
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth qr --engine mirror --codec h265 --input "$WORK/test.h265" \
+    --fps 60 --frames 300 --device-name "Tablet H" --result "$WORK/s4j.json" || fail "senaryo 4j"
+wait_sessions 10
+
+log "4k. PIN ile bağlanma"
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth pin --input "$WORK/test.h264" --frames 60 --hold-ms 300 \
+    --device-name "Tablet K" --result "$WORK/s4k.json" || fail "senaryo 4k"
+wait_sessions 11
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth bad-pin --expect reject:AUTH_FAILED --result "$WORK/s4k2.json" \
+    || fail "senaryo 4k: yanlış PIN reddedilmeli"
+
 log "5. Düzgün kapanış"
 kill -TERM "$RPID"
 RC=0
@@ -196,7 +214,7 @@ RPID=""
 log "5b. Yeniden başlatma sonrası eşleştirme"
 XDG_RUNTIME_DIR="$RUNTIME" "$RECEIVER" --headless --verbose --port "$PORT" --data-dir "$WORK/data" \
     --pairing-file "$WORK/pairing2.json" --stats-file "$WORK/stats-restart.jsonl" --qr-host 127.0.0.1 \
-    --name "CI Tahta" >"$WORK/receiver-restart.log" 2>&1 &
+    --board-name "CI Tahta" >"$WORK/receiver-restart.log" 2>&1 &
 RPID=$!
 i=0
 until [ -s "$WORK/pairing2.json" ]; do
@@ -218,7 +236,7 @@ if [ "${YANSIT_IT_GUI:-0}" = 1 ]; then
     rm -f "$PAIR6" "$WORK/stats-gui.jsonl"
     XDG_RUNTIME_DIR="$RUNTIME" xvfb-run -a -s "-screen 0 1920x1080x24" "$RECEIVER" --windowed --verbose \
         --port "$PORT" --data-dir "$WORK/data" --pairing-file "$PAIR6" --stats-file "$WORK/stats-gui.jsonl" \
-        --qr-host 127.0.0.1 --name "CI Tahta" >"$WORK/receiver.log" 2>&1 &
+        --qr-host 127.0.0.1 --board-name "CI Tahta" >"$WORK/receiver.log" 2>&1 &
     RPID=$!
     i=0
     until [ -s "$PAIR6" ]; do

@@ -17,6 +17,7 @@ Build-Depends: debhelper-compat (= 13),
                libgstreamer1.0-dev (>= 1.22),
                libgstreamer-plugins-base1.0-dev (>= 1.22),
                libqrencode-dev,
+               libavahi-client-dev,
                nlohmann-json3-dev
 Standards-Version: 4.6.2
 Homepage: https://github.com/ozkanceng/yansit
@@ -44,7 +45,7 @@ Depends: ${shlibs:Depends},
          gstreamer1.0-pulseaudio | gstreamer1.0-pipewire | gstreamer1.0-alsa,
          fonts-noto-core,
          fonts-noto-mono
-Recommends: va-driver-all
+Recommends: va-driver-all, avahi-daemon
 Description: Wireless screen mirroring receiver for interactive whiteboards
  Yansıt receives the screen and audio of an Android tablet over the local
  network and shows it full screen on a Pardus ETAP interactive whiteboard.

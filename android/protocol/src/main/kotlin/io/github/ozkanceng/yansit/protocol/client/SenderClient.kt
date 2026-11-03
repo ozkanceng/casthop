@@ -9,8 +9,16 @@ import io.github.ozkanceng.yansit.protocol.ProtocolError
 import io.github.ozkanceng.yansit.protocol.ProtocolException
 import java.io.IOException
 
-/** Tahtanın adresi. [fingerprint] QR'dan veya kayıtlı eşleştirmeden gelir; PIN ile ilk bağlantıda `null`. */
-public data class Endpoint(val host: String, val port: Int, val fingerprint: Bytes?)
+/**
+ * Tahtanın adresi. [fingerprint] QR'dan veya kayıtlı eşleştirmeden gelir. mDNS ile bulunan tahtada tam parmak izi
+ * bilinmez (`null`); o zaman TXT kaydındaki ilk 16 bayt [fingerprintPrefix] TLS'te görülenle karşılaştırılır.
+ */
+public data class Endpoint(
+    val host: String,
+    val port: Int,
+    val fingerprint: Bytes?,
+    val fingerprintPrefix: Bytes? = null,
+)
 
 /** Kimlik doğrulama yöntemi (PROTOCOL.md §7.1.1). */
 public sealed interface Credentials {
@@ -183,7 +191,16 @@ public object SenderClient {
     }
 
     private fun open(endpoint: Endpoint): ControlChannel {
-        val channel = ControlChannel(PinnedTls.connect(endpoint.host, endpoint.port, endpoint.fingerprint))
+        val tls = PinnedTls.connect(endpoint.host, endpoint.port, endpoint.fingerprint)
+        endpoint.fingerprintPrefix?.let { prefix ->
+            val seen = tls.fingerprint
+            val matches = prefix.size <= seen.size && (0 until prefix.size).all { prefix[it] == seen[it] }
+            if (!matches) {
+                tls.close()
+                throw FingerprintMismatchException(prefix, seen)
+            }
+        }
+        val channel = ControlChannel(tls)
         channel.readTimeoutMs = FIRST_MESSAGE_TIMEOUT_MS
         return channel
     }

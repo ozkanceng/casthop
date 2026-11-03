@@ -110,4 +110,18 @@
     <string name="audio_failed">Sound could not be shared; video continues.</string>
     <string name="settings_audio">Play sound on the board</string>
     <string name="settings_audio_desc">Video and app sounds play from the board\'s speakers. Some apps (e.g. calls, some video apps) do not allow their sound to be shared.</string>
+    <string name="action_code">Connect with code (no QR)</string>
+    <string name="discover_title">Boards on this network</string>
+    <string name="discover_searching">Searching for boards on the same network…</string>
+    <string name="discover_hint">Board not listed? Is Yansıt open on the board and the tablet on the same network? School networks may block discovery; the QR code always works.</string>
+    <string name="pin_title">%1$s</string>
+    <string name="pin_hint">Enter the 6-digit code shown on the board.</string>
+    <string name="pin_label">Code</string>
+    <string name="err_wrong_pin">Wrong code</string>
+    <string name="err_wrong_pin_body">Enter the current 6-digit code shown on the board. After 5 wrong attempts the code changes and you must wait 30 seconds.</string>
+    <string name="settings_hevc">Use H.265 (experimental)</string>
+    <string name="settings_hevc_desc">If the board can decode it in hardware, the same quality needs less data. Otherwise H.264 is used.</string>
+    <string name="quality_good">Connection: good</string>
+    <string name="quality_fair">Connection: fair</string>
+    <string name="quality_poor">Connection: poor — try \"Weak network\" in Settings</string>
 </resources>
