@@ -1,7 +1,12 @@
-# Çıkışta serbest bırakılmayan üçüncü taraf iş parçacığı verileri (sızıntı değil, süreç sonu).
-# GLib iş parçacığı başına veri: QML görüntü okuyucu iş parçacığı ve GStreamer, çıkışta birleştirilmez.
+# LeakSanitizer bastırmaları — yalnız app_smoke testi için, yalnız üçüncü taraf kod.
+#
+# GLib iş parçacığı başına verisi: QML görüntü okuyucu ve sahne grafiği iş parçacıkları çıkışta birleştirilmez.
 leak:libglib-2.0.so
 leak:libgstreamer-1.0.so
+# Qt 6.4 yazılım sahne grafiği (QT_QUICK_BACKEND=software) pencere kapanınca doku önbelleğini bırakmaz.
+leak:QQuickPixmap::load
+leak:QSGRenderContext::textureForFactory
+leak:QQuickImage::updatePaintNode
 # Mesa GLX/EGL ve GStreamer GL bağlam bilgisi (sürücü içi, süreç ömrü boyunca tutulur).
 leak:libGLX_mesa.so
 leak:libEGL_mesa.so

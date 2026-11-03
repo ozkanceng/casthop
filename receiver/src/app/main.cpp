@@ -225,21 +225,27 @@ int runGui(int argc, char* argv[]) {
     installQuitOnSignal(service);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &service, &ReceiverService::shutdown);
 
-    QQmlApplicationEngine engine;
-    engine.addImageProvider(QStringLiteral("qr"), new yansit::QrImageProvider);
-    engine.setInitialProperties({{QStringLiteral("startFullScreen"), !parser.isSet(o.windowed)},
-                                 {QStringLiteral("receiver"), QVariant::fromValue(&service)}});
+    auto engine = std::make_unique<QQmlApplicationEngine>();
+    engine->addImageProvider(QStringLiteral("qr"), new yansit::QrImageProvider);
+    engine->setInitialProperties({{QStringLiteral("startFullScreen"), !parser.isSet(o.windowed)},
+                                  {QStringLiteral("receiver"), QVariant::fromValue(&service)}});
     QObject::connect(
-        &engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); },
+        engine.get(), &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); },
         Qt::QueuedConnection);
     // Qt 6.4: loadFromModule() yok (6.5+); qt_add_qml_module kaynak yolunu kullan.
-    engine.load(QUrl(QStringLiteral("qrc:/Yansit/qml/Main.qml")));
-    if (engine.rootObjects().isEmpty())
+    engine->load(QUrl(QStringLiteral("qrc:/Yansit/qml/Main.qml")));
+    if (engine->rootObjects().isEmpty())
         return 1;
     // Arayüz yüklendikten sonra dinlemeye başla: el sıkışmaları yükleme sırasında bekletilmesin.
     // Hata olsa da arayüz açık kalır ve sorunu anlaşılır biçimde gösterir.
     service.start();
-    return QGuiApplication::exec();
+    const int rc = QGuiApplication::exec();
+
+    // Pencere ve sahne grafiği kaynakları (QR dokusu, görüntü önbelleği) deleteLater ile bırakılır;
+    // olay döngüsü bittikten sonra bekleyen silmeleri işleyerek düzgün kapan.
+    engine.reset();
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    return rc;
 }
 
 } // namespace
