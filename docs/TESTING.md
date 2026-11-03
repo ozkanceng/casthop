@@ -15,7 +15,7 @@ yollar.
 
 ### Hazırlık
 
-1. [Actions](https://github.com/ozkanceng/yansit/actions) → son başarılı **Receiver** çalışması → `receiver-deb`
+1. [Actions](https://github.com/ozkanceng/tablet-mirror/actions) → son başarılı **Receiver** çalışması → `receiver-deb`
    artefaktını indirin. **Integration** çalışmasından `fake-sender` artefaktını indirin.
 2. Tahtada kurun:
    ```bash

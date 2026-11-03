@@ -23,7 +23,7 @@ yeter.
 
 ### Tahta (Pardus ETAP 23 / Debian 12)
 
-[Sürümler](https://github.com/ozkanceng/yansit/releases) sayfasından iki seçenekten birini indirin:
+[Sürümler](https://github.com/ozkanceng/tablet-mirror/releases) sayfasından iki seçenekten birini indirin:
 
 **A. Paket (önerilen, yönetici şifresi gerekir)**
 
@@ -48,7 +48,7 @@ Uygulama `~/.local/opt/yansit` altına kurulur ve menüye eklenir.
 
 ### Tablet (Android 10 ve üstü)
 
-[Sürümler](https://github.com/ozkanceng/yansit/releases) sayfasından `yansit-*.apk` dosyasını tablete indirip açın.
+[Sürümler](https://github.com/ozkanceng/tablet-mirror/releases) sayfasından `yansit-*.apk` dosyasını tablete indirip açın.
 İlk kurulumda Android "bilinmeyen kaynaklardan yüklemeye" izin isteyebilir.
 
 ## Kullanım
@@ -75,7 +75,7 @@ yeter. Kamera kullanmak istemezseniz **Kodla bağlan** ile aynı ağdaki tahtay�
 | Ses gelmiyor | Tablette ses izni verildi mi ve **Ayarlar → Sesi tahtaya aktar** açık mı? Bazı uygulamalar (ör. bazı video uygulamaları, telefon görüşmeleri) sesini paylaşmaya izin vermez. |
 | Ekran kilitlenince yansıtma duruyor | Android 15 ve üstünde bu bir güvenlik kuralıdır; ekran zaman aşımını uzatın. |
 
-Daha fazla yardım ve hata bildirimi için: [Issues](https://github.com/ozkanceng/yansit/issues). Hata bildirirken
+Daha fazla yardım ve hata bildirimi için: [Issues](https://github.com/ozkanceng/tablet-mirror/issues). Hata bildirirken
 tahtada `yansit-receiver --verbose` çıktısını ve tablet modelini ekleyin.
 
 ## Ölçülen performans

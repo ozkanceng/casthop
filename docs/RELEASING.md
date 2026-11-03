@@ -16,10 +16,10 @@ keytool -genkeypair -v -keystore yansit-release.jks -alias yansit \
 Depo → **Settings → Secrets and variables → Actions → New repository secret**, ya da `gh` ile:
 
 ```bash
-base64 -i yansit-release.jks | gh secret set YANSIT_KEYSTORE_BASE64 --repo ozkanceng/yansit
-gh secret set YANSIT_KEYSTORE_PASSWORD --repo ozkanceng/yansit
-gh secret set YANSIT_KEY_ALIAS --repo ozkanceng/yansit --body yansit
-gh secret set YANSIT_KEY_PASSWORD --repo ozkanceng/yansit
+base64 -i yansit-release.jks | gh secret set YANSIT_KEYSTORE_BASE64 --repo ozkanceng/tablet-mirror
+gh secret set YANSIT_KEYSTORE_PASSWORD --repo ozkanceng/tablet-mirror
+gh secret set YANSIT_KEY_ALIAS --repo ozkanceng/tablet-mirror --body yansit
+gh secret set YANSIT_KEY_PASSWORD --repo ozkanceng/tablet-mirror
 ```
 
 (`gh secret set` şifreyi gizli olarak sorar; komut geçmişine yazılmaz.)

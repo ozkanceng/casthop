@@ -23,7 +23,7 @@ network.
 
 ### Board (Pardus ETAP 23 / Debian 12)
 
-Download one of these from [Releases](https://github.com/ozkanceng/yansit/releases):
+Download one of these from [Releases](https://github.com/ozkanceng/tablet-mirror/releases):
 
 **A. Package (recommended, needs the administrator password)**
 
@@ -47,7 +47,7 @@ It installs into `~/.local/opt/yansit` and adds a menu entry.
 
 ### Tablet (Android 10 or later)
 
-Download `yansit-*.apk` from [Releases](https://github.com/ozkanceng/yansit/releases) on the tablet and open it.
+Download `yansit-*.apk` from [Releases](https://github.com/ozkanceng/tablet-mirror/releases) on the tablet and open it.
 Android may ask to allow installing from unknown sources the first time.
 
 ## Use
@@ -74,7 +74,7 @@ use **Connect with code** to pick the board on the network and enter its 6-digit
 | No sound | Was the sound permission granted, and is **Settings → Play sound on the board** on? Some apps do not allow their audio to be shared. |
 | Mirroring stops when the screen locks | A security rule on Android 15+; increase the screen timeout. |
 
-Help and bug reports: [Issues](https://github.com/ozkanceng/yansit/issues) — include `yansit-receiver --verbose`
+Help and bug reports: [Issues](https://github.com/ozkanceng/tablet-mirror/issues) — include `yansit-receiver --verbose`
 output and the tablet model.
 
 ## Measured performance
