@@ -8,6 +8,7 @@
 #   2. QR ile 600 karelik 60 fps akış → ilk kare ≤ 1 sn, 600 kare çizilir, kayıp 0
 #   3. Akış sürerken ikinci gönderici (PIN) → PENDING_APPROVAL, onay gelmeyince REJECT(BUSY_TIMEOUT)
 #   4. Kullanılmış QR token'ı tekrar → REJECT(AUTH_FAILED) (tek kullanımlık)
+#   4b. Android uygulamasının gönderici çekirdeği (MirrorSession: kuyruk, bit hızı, IDR) ile 300 kare
 #   5. SIGTERM → alıcı düzgün kapanır
 #   6. (YANSIT_IT_GUI=1) Arayüz modu Xvfb + Mesa OpenGL'de: qml6glsink yolu 300 kareyi çizer
 set -eu
@@ -85,14 +86,23 @@ log "4. Kullanılmış QR token'ı reddedilir"
 "$SENDER" --pairing-file "$WORK/pairing-initial.json" --auth qr --expect reject:AUTH_FAILED \
     --result "$WORK/s4.json" || fail "senaryo 4"
 
+# Oturum istatistiği oturum bitince yazılır (satır sayısı = biten oturum sayısı).
+wait_sessions() {
+    i=0
+    until [ "$(wc -l <"$WORK/stats.jsonl" 2>/dev/null || echo 0)" -ge "$1" ]; do
+        i=$((i + 1))
+        [ $i -gt 50 ] && fail "oturum istatistiği yazılmadı ($1 bekleniyordu)"
+        sleep 0.1
+    done
+}
+wait_sessions 1
+
+log "4b. Uygulamanın gönderici çekirdeği (MirrorSession) ile 300 kare"
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth qr --engine mirror --input "$WORK/test.h264" --fps 60 \
+    --frames 300 --device-name "Tablet M" --result "$WORK/s4b.json" || fail "senaryo 4b"
+wait_sessions 2
+
 log "5. Düzgün kapanış"
-# Oturum istatistiği oturum bitince yazılır; BYE işlenmiş olmalı.
-i=0
-until [ -s "$WORK/stats.jsonl" ]; do
-    i=$((i + 1))
-    [ $i -gt 50 ] && fail "oturum istatistiği yazılmadı"
-    sleep 0.1
-done
 kill -TERM "$RPID"
 RC=0
 wait "$RPID" || RC=$?

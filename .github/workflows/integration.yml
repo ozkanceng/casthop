@@ -7,6 +7,7 @@ on:
     paths:
       - "receiver/**"
       - "android/protocol/**"
+      - "android/sender/**"
       - "android/gradle/**"
       - "android/*.kts"
       - "tools/**"
@@ -16,6 +17,7 @@ on:
     paths:
       - "receiver/**"
       - "android/protocol/**"
+      - "android/sender/**"
       - "android/gradle/**"
       - "android/*.kts"
       - "tools/**"

@@ -46,6 +46,8 @@ public:
     static constexpr std::uint64_t kBacklogGraceUs = 250'000;
     /// Her durumda aşılmayan sınır (60 fps'te ≈ 0,5 sn).
     static constexpr std::size_t kHardMaxInFlight = 30;
+    /// İlk kare çizilmeden önceki sınır: GL bağlamı/çözücü kurulumu yavaş tahtalarda ≈ 0,5–1 sn sürebilir.
+    static constexpr std::size_t kStartupMaxInFlight = 120;
 
     /// Bir rapor aralığının istatistikleri (takeStats ile sıfırlanır).
     struct Stats {

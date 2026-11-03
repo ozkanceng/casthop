@@ -347,7 +347,8 @@ void VideoPipeline::pushFrame(const FrameHeader& header, Bytes&& payload, std::u
         m_backlogSinceUs = recvUs;
     const bool sustained = m_backlogSinceUs != 0 && m_firstRendered.load() &&
                            recvUs - m_backlogSinceUs >= kBacklogGraceUs;
-    if (!key && (sustained || inFlight >= kHardMaxInFlight)) {
+    const std::size_t hardLimit = m_firstRendered.load() ? kHardMaxInFlight : kStartupMaxInFlight;
+    if (!key && (sustained || inFlight >= hardLimit)) {
         // Gecikme biriktirmek yerine anahtar kareye kadar atla.
         m_backlogSinceUs = 0;
         qCDebug(lcVideo) << "kare atıldı: çözücü önünde" << inFlight << "kare, seq" << header.seq;

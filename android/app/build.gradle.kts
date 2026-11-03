@@ -89,13 +89,17 @@ android {
 }
 
 dependencies {
-    implementation(project(":protocol"))
+    implementation(project(":sender"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.camera.camera2)
+    implementation(libs.camera.lifecycle)
+    implementation(libs.camera.view)
+    implementation(libs.zxing.cpp)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

@@ -24,7 +24,7 @@ application {
 }
 
 dependencies {
-    implementation(project(":protocol"))
+    implementation(project(":sender"))
     implementation(libs.kotlinx.serialization.json)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

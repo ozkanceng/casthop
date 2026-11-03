@@ -70,3 +70,53 @@ alıcıyı `yansit-receiver --pairing-file ~/yansit-pairing.json` ile başlatıp
   `~/yansit.log` (özellikle `video boru hattı: … (donanım|yazılım)` satırı)
 - Sahte göndericinin son satırındaki JSON özet (`last_c2d_ms`, `receiver_frames_dropped`)
 - Başarısız adımların numarası ve mümkünse fotoğraf
+
+---
+
+## M3 — Tablet uygulaması (yalnız görüntü)
+
+Amaç: Gerçek bir tablette QR ile bağlanıp ekranın tahtada akıcı göründüğünü, durdurmanın hızlı olduğunu ve
+ayarların yalnız desteklenen değerleri gösterdiğini doğrulamak.
+
+### Hazırlık
+
+1. **Android** iş akışının son başarılı çalışmasından `android-apk` artefaktını indirin
+   (`app-debug.apk`; imzalı sürüm M8'de).
+2. Tablette **Ayarlar → Güvenlik → Bilinmeyen uygulamalar**'dan kuruluma izin verip APK'yı kurun.
+   Bilgisayardan: `adb install -r app-debug.apk`
+3. Tahta yoksa bir dizüstü bilgisayar alıcı olabilir (Debian/Ubuntu veya Docker):
+   ```bash
+   docker build -t yansit-deb12 -f receiver/ci/Dockerfile receiver/ci
+   docker run --rm -it --network host -v "$PWD":/src -w /src yansit-deb12 sh -c \
+     'receiver/ci/build-and-test.sh /tmp/b >/dev/null && /tmp/b/src/yansit-receiver --headless --verbose --pairing-file /src/p.json'
+   ```
+   QR yerine `p.json` içindeki `uri` değerini bir QR üreticisiyle (ör. `qrencode -t ansiutf8 "$(jq -r .uri p.json)"`)
+   ekrana basıp okutun.
+4. Tablet bilgileri: model, Android sürümü (`adb shell getprop ro.build.version.release`), Wi-Fi bandı (2,4/5 GHz).
+
+### Denetimler
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Uygulamayı ilk kez açıp **Tahtaya Bağlan** | İzin ekranı: kamera, (Android 17) yerel ağ, (Android 13+) bildirim — her biri gerekçesiyle | ☐ |
+| 2 | **Devam** → izinleri verin | QR tarayıcı açılır | ☐ |
+| 3 | Tahtadaki QR'ı okutun | "… tahtasına bağlanılıyor" → sistem "Ekranınız paylaşılsın mı?" penceresi (Android 14+: yalnız "tüm ekran") | ☐ |
+| 4 | **Başlat** | 1 sn içinde tablet ekranı tahtada; ana ekranda "… tahtasına yansıtılıyor" ve gecikme/fps/Mbps | ☐ |
+| 5 | Tabletin ana ekranına dönüp uygulamalar arasında gezinin, bir video açın | Tahtada akıcı (5 GHz'de 60 fps); kartta fps ≈ 60 | ☐ |
+| 6 | Bildirimi açıp **Durdur** | ≤ 1 sn içinde tahta bekleme ekranına döner; uygulamada "Yansıtma durduruldu" | ☐ |
+| 7 | Yeniden bağlanıp uygulamadaki **Yansıtmayı Durdur** | ≤ 1 sn içinde durur | ☐ |
+| 8 | Yansıtırken tahtada ekrana dokunup **Yansıtmayı durdur** | Tablette "Yansıtma tahtadan durduruldu" | ☐ |
+| 9 | Aynı (kullanılmış) QR'ın fotoğrafını okutun | "QR kodu artık geçerli değil" | ☐ |
+| 10 | Tahtada Yansıt kapalıyken QR okutun | "Tahtada Yansıt açık değil" | ☐ |
+| 11 | Tableti başka bir Wi-Fi ağına bağlayıp okutun | "Tahtaya ulaşılamadı" + hotspot önerisi | ☐ |
+| 12 | Sistem penceresinde **İptal** | "Ekran paylaşımına izin verilmedi"; tahta bekleme ekranına döner | ☐ |
+| 13 | **Ayarlar** → Gelişmiş | Yalnız tabletin desteklediği çözünürlük/fps/bit hızı seçenekleri görünür | ☐ |
+| 14 | **Zayıf ağ** seçip bağlanın | Kartta ≈ 30 fps ve ≤ 5 Mbps | ☐ |
+| 15 | Yansıtırken ekranı kilitleyin (Android 15+) | Yansıtma durur; uygulamada "Yansıtma durdu" mesajı, tahta bekleme ekranında | ☐ |
+
+### Sonuç bildirimi
+
+- Tablet modeli, Android sürümü, Wi-Fi bandı
+- `adb logcat -s YansitMirror YansitEncoder YansitService` çıktısı (bağlanmadan durdurmaya kadar)
+- 4–5. adımda kartta görünen gecikme/fps/Mbps ve çözünürlük
+- Başarısız adımların numarası ve ekran görüntüsü

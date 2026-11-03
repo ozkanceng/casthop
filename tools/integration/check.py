@@ -14,8 +14,9 @@ def expect(cond, msg):
 
 
 stats = [json.loads(l) for l in (work / "stats.jsonl").read_text().splitlines() if l.strip()]
-expect(len(stats) == 1, f"tek oturum istatistiği (bulunan: {len(stats)})")
+expect(len(stats) == 2, f"iki oturum istatistiği (bulunan: {len(stats)})")
 s = stats[0] if stats else {}
+m = stats[1] if len(stats) > 1 else {}
 s2 = json.loads((work / "s2.json").read_text())
 s3 = json.loads((work / "s3.json").read_text())
 
@@ -35,14 +36,27 @@ expect(off is not None and abs(off) < 5000, f"saat ofseti aynı makinede ≈ 0 (
 expect(s.get("c2d_avg_ms") is not None, f"yakalama→çizim gecikmesi ölçüldü ({s.get('c2d_avg_ms')} ms)")
 expect(s3.get("pending_seen") is True, "ikinci gönderici onay ekranına düştü")
 
+s4b = json.loads((work / "s4b.json").read_text())
+print(f"MirrorSession: alıcı {m}")
+print(f"MirrorSession: gönderici {s4b}")
+expect(s4b.get("ok") is True and s4b.get("frames_sent") == 300, "MirrorSession 300 kare yolladı ve BYE ile bitti")
+expect(m.get("frames_rendered") == 300 and m.get("frames_dropped") == 0,
+       f"MirrorSession akışı: 300 kare çizildi, kayıp 0 ({m.get('frames_rendered')}/{m.get('frames_dropped')})")
+expect(s4b.get("keyframe_requests") == 0, f"MirrorSession: gereksiz IDR isteği yok ({s4b.get('keyframe_requests')})")
+expect(s4b.get("sender_dropped", 0) == 0, f"MirrorSession: gönderici kuyruğunda kare atılmadı ({s4b.get('sender_dropped')})")
+
 gui = work / "stats-gui.jsonl"
 if gui.exists():
     g = [json.loads(l) for l in gui.read_text().splitlines() if l.strip()]
     expect(len(g) == 1, f"arayüz modu: tek oturum ({len(g)})")
     g = g[0] if g else {}
     print(f"arayüz modu: {g}")
-    expect(g.get("frames_rendered") == 300, f"arayüz modu: qml6glsink 300 kare çizdi ({g.get('frames_rendered')})")
-    expect(g.get("frames_dropped") == 0, f"arayüz modu: kayıp 0 ({g.get('frames_dropped')})")
+    # Yazılım OpenGL (llvmpipe) 60 fps'e yetişemeyebilir; o zaman alıcı gecikme biriktirmek yerine kare atar.
+    # Burada GL yolunun çalıştığı ve her karenin hesabının verildiği denetlenir; kayıpsızlık başsız senaryoda.
+    g6 = json.loads((work / "s6.json").read_text())
+    rec, ren, drop = g.get("frames_received", 0), g.get("frames_rendered", 0), g.get("frames_dropped", 0)
+    expect(ren + drop == rec, f"arayüz modu: çizilen + atılan = alınan ({ren} + {drop} = {rec})")
+    expect(ren >= 0.9 * g6.get("frames_sent", 300), f"arayüz modu: qml6glsink karelerin ≥ %90'ını çizdi ({ren})")
     ff = g.get("first_frame_ms")
     expect(ff is not None and ff <= 1000, f"arayüz modu: ilk kare ≤ 1000 ms ({ff})")
 

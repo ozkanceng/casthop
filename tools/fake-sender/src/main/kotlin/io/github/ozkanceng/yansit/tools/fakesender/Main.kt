@@ -17,6 +17,10 @@ import io.github.ozkanceng.yansit.protocol.client.HelloOutcome
 import io.github.ozkanceng.yansit.protocol.client.MonotonicClock
 import io.github.ozkanceng.yansit.protocol.client.SenderClient
 import io.github.ozkanceng.yansit.protocol.client.Session
+import io.github.ozkanceng.yansit.sender.MirrorSession
+import io.github.ozkanceng.yansit.sender.MirrorStats
+import io.github.ozkanceng.yansit.sender.SessionEnd
+import io.github.ozkanceng.yansit.sender.StreamPlan
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -25,7 +29,10 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.LockSupport
@@ -48,6 +55,8 @@ private const val USAGE = """fake-sender — Yansıt test göndericisi
   --expect-pending    tahta onayı beklemesi (PENDING_APPROVAL) zorunlu
   --hold-ms N         son kareden sonra BYE'dan önce bekleme (varsayılan 1500)
   --result F          sonuç özeti (JSON)
+  --engine E          raw | mirror  (varsayılan raw). mirror: Android uygulamasının gönderici çekirdeği
+                      (MirrorSession: kuyruk, bit hızı uyarlaması, IDR istekleri) dosya kaynağıyla
 
 Çıkış kodu: 0 beklenti tuttu, 1 tutmadı, 2 kullanım hatası, 3 bağlantı hatası."""
 
@@ -66,6 +75,7 @@ private class Options(
     val expectPending: Boolean,
     val holdMs: Long,
     val result: File?,
+    val engine: String,
 )
 
 private fun usage(msg: String): Nothing {
@@ -119,6 +129,7 @@ private fun parseArgs(args: Array<String>): Options {
         expectPending = "--expect-pending" in flags,
         holdMs = m["--hold-ms"]?.toLongOrNull() ?: 1500,
         result = m["--result"]?.let(::File),
+        engine = (m["--engine"] ?: "raw").also { if (it != "raw" && it != "mirror") usage("--engine: raw | mirror") },
     )
 }
 
@@ -243,6 +254,48 @@ private fun stream(o: Options, session: Session, result: StreamResult) {
     reader.join(2000)
 }
 
+/** Uygulamanın gönderici çekirdeğiyle (MirrorSession) akış. Oturum düzgün biterse true. */
+private fun streamWithMirrorSession(
+    o: Options,
+    session: Session,
+    summary: MutableMap<String, kotlinx.serialization.json.JsonElement>,
+): Boolean {
+    val h264 = AnnexB.parse(o.input!!.readBytes())
+    val total = if (o.frames == 0) h264.units.size else o.frames
+    val ended = CountDownLatch(1)
+    val endReason = AtomicReference<SessionEnd?>()
+    val lastStats = AtomicReference<MirrorStats?>()
+    lateinit var mirror: MirrorSession
+    val source = FileVideoSource(h264, o.fps, total) {
+        Thread.sleep(o.holdMs)
+        mirror.stop(ByeReason.USER_STOP)
+    }
+    mirror = MirrorSession(session, { lastStats.set(it) }) { endReason.set(it); ended.countDown() }
+    mirror.start()
+    val plan = StreamPlan("file", Codec.H264, false, 1280, 720, o.fps, 8_000_000, 2_000_000, 12_000_000)
+    try {
+        mirror.startVideo(plan, source)
+    } catch (e: IOException) {
+        System.err.println("video bağlantısı: $e")
+        mirror.stop(ByeReason.ERROR)
+        return false
+    }
+    val finished = ended.await(total * 1000L / o.fps + o.holdMs + 15_000, TimeUnit.MILLISECONDS)
+    val end = endReason.get()
+    summary["engine"] = JsonPrimitive("mirror")
+    summary["frames_sent"] = JsonPrimitive(source.framesProduced.get())
+    summary["keyframe_requests"] = JsonPrimitive(source.keyframeRequests.get())
+    summary["bitrate_changes"] = JsonPrimitive(source.bitrateChanges.get())
+    summary["final_bitrate_bps"] = JsonPrimitive(source.lastBitrate.get())
+    summary["end"] = JsonPrimitive(end?.toString() ?: "timeout")
+    lastStats.get()?.let { st ->
+        st.latencyMs?.let { summary["last_c2d_ms"] = JsonPrimitive(it) }
+        summary["sender_dropped"] = JsonPrimitive(st.droppedFrames)
+    }
+    println("MirrorSession: ${source.framesProduced.get()} kare, son: $end")
+    return finished && end == SessionEnd.Local(ByeReason.USER_STOP)
+}
+
 fun main(args: Array<String>) {
     val o = parseArgs(args)
     val qr = QrPayload.parse(o.uri)
@@ -298,6 +351,14 @@ fun main(args: Array<String>) {
                 outcome.session.control.send(ControlMessage.Bye(ByeReason.USER_STOP))
                 outcome.session.close()
             } else {
+                if (o.engine == "mirror") {
+                    ok = streamWithMirrorSession(o, outcome.session, summary) && ok
+                    summary["ok"] = JsonPrimitive(ok)
+                    val text = kotlinx.serialization.json.JsonObject(summary).toString()
+                    o.result?.writeText(text + "\n")
+                    println(text)
+                    exitProcess(if (ok) 0 else 1)
+                }
                 try {
                     stream(o, outcome.session, streamResult)
                 } catch (e: IOException) {

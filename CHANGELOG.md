@@ -18,3 +18,5 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 - Gönderici istemci kütüphanesi (`android/protocol` → `client`): parmak izi sabitlemeli TLS, HELLO/ATTACH/RESUME el sıkışmaları.
 - `tools/fake-sender` ve `tools/integration`: CI'da uçtan uca test (yanlış token, 600 kare akış, ikinci gönderici onayı, tek kullanımlık token, Xvfb + Mesa ile GL arayüz yolu).
 - `docs/TESTING.md`: tahtada M2 kontrol listesi.
+- Android gönderici MVP (M3): izin ekranı (kamera, yerel ağ [Android 17], bildirim), QR tarama (CameraX + zxing-cpp), tahtaya bağlanma (paralel adres denemesi, parmak izi denetimi, tahta onayı), sistem ekran paylaşımı onayı, `MirrorService` ön plan servisi ve bildirimden durdurma, MediaCodec H.264 kodlayıcı (kalıcı giriş Surface'ı, düşük gecikme anahtarları, CBR, IDR isteği), ön ayarlar ve yalnız desteklenen değerleri gösteren gelişmiş ayarlar, anlaşılır hata mesajları; Türkçe/İngilizce.
+- `android/sender`: saf JVM gönderici çekirdeği (yayın planlama, kare atmalı gönderim kuyruğu, oturum ve bit hızı uyarlaması); `fake-sender --engine mirror` ile CI'da gerçek alıcıya karşı test edilir.

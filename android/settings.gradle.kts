@@ -24,6 +24,7 @@ rootProject.name = "yansit"
 
 include(":app")
 include(":protocol")
+include(":sender")
 
 // Test aracı: android/ dışında durur ama aynı version catalog ve :protocol modülünü kullanır.
 include(":fake-sender")
