@@ -1,0 +1,552 @@
+#include "app/ReceiverService.h"
+
+#include "app/NetInfo.h"
+#include "common/Clock.h"
+#include "net/Connection.h"
+#include "net/Server.h"
+#include "protocol/Qr.h"
+
+#include <QDir>
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QLoggingCategory>
+#include <QSaveFile>
+#include <QSslSocket>
+
+#include <type_traits>
+
+Q_LOGGING_CATEGORY(lcRecv, "yansit.receiver")
+
+namespace yansit {
+
+using namespace protocol;
+using session::Actions;
+using session::ConnId;
+using session::SessionManager;
+using Role = net::Connection::Role;
+
+namespace {
+
+constexpr int kTickIntervalMs = 250;
+constexpr int kReportIntervalMs = 500;
+
+SessionManager::Clock::time_point steadyNow() { return SessionManager::Clock::now(); }
+
+QString hex(ByteView b) { return QString::fromStdString(toHex(b)); }
+
+template <std::size_t N>
+std::optional<std::array<std::uint8_t, N>> arrayFromHex(const QString& s) {
+    try {
+        const Bytes b = fromHex(s.toStdString());
+        if (b.size() != N)
+            return std::nullopt;
+        return toArray<N>(b);
+    } catch (const std::invalid_argument&) {
+        return std::nullopt;
+    }
+}
+
+bool writeJsonFile(const QString& path, const QByteArray& data, bool privateFile) {
+    QSaveFile f(path);
+    if (!f.open(QIODevice::WriteOnly))
+        return false;
+    if (privateFile)
+        f.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    f.write(data);
+    return f.commit();
+}
+
+} // namespace
+
+ReceiverService::ReceiverService(Options options, QObject* parent) : QObject(parent), m_options(std::move(options)) {
+    m_video = new media::VideoPipeline(m_options.sinkMode, this);
+    connect(m_video, &media::VideoPipeline::keyframeNeeded, this, [this](std::uint8_t reason) {
+        KeyframeRequest r;
+        r.reason = reason;
+        sendToControl(r);
+    });
+    connect(m_video, &media::VideoPipeline::firstFrameRendered, this, [this] {
+        if (!m_sessionId || m_firstFrameUs)
+            return;
+        m_firstFrameUs = monotonicUs();
+        qCInfo(lcRecv) << "ilk kare çizildi:" << (*m_firstFrameUs - m_sessionStartUs) / 1000 << "ms";
+        refreshState();
+    });
+    connect(m_video, &media::VideoPipeline::videoSizeChanged, this, [this](int w, int h) {
+        m_videoWidth = w;
+        m_videoHeight = h;
+    });
+
+    m_tickTimer.setInterval(kTickIntervalMs);
+    connect(&m_tickTimer, &QTimer::timeout, this, &ReceiverService::tick);
+    m_reportTimer.setInterval(kReportIntervalMs);
+    connect(&m_reportTimer, &QTimer::timeout, this, &ReceiverService::sendReport);
+}
+
+ReceiverService::~ReceiverService() {
+    // Bağlantıların kapanma geri çağrıları yok edilen nesneye ulaşmasın.
+    for (const auto& c : std::as_const(m_conns))
+        if (c)
+            c->detachHandlers();
+    m_conns.clear();
+}
+
+session::ReceiverInfo ReceiverService::receiverInfo() const {
+    session::ReceiverInfo info;
+    info.name = m_options.name.toStdString();
+    info.displayWidth = m_options.displayWidth;
+    info.displayHeight = m_options.displayHeight;
+    info.displayRefresh = m_options.displayRefresh;
+    const auto decoders = media::availableH264Decoders();
+    std::uint8_t flags = CodecSupport::Preferred;
+    if (!decoders.empty() && decoders.front().hardware)
+        flags |= CodecSupport::Hardware;
+    if (!decoders.empty())
+        info.videoDecoders.push_back({Codec::H264, flags});
+    info.audioEnabled = false; // ses M5'te
+    return info;
+}
+
+bool ReceiverService::start() {
+    const QString identityDir = QDir(m_options.dataDir).filePath(QStringLiteral("identity"));
+    try {
+        m_identity = net::loadOrCreateIdentity(identityDir.toStdString(), m_options.name.toStdString());
+    } catch (const std::exception& e) {
+        setError(tr("Security certificate could not be created: %1").arg(QString::fromUtf8(e.what())));
+        return false;
+    }
+
+    m_pairing = std::make_unique<session::PairingManager>(steadyNow());
+    loadTrusted();
+    m_pairing->onCredentialsChanged = [this] { updateCredentials(); };
+    m_pairing->onTrustedChanged = [this] { saveTrusted(); };
+
+    const session::ReceiverInfo info = receiverInfo();
+    if (info.videoDecoders.empty()) {
+        setError(tr("No H.264 video decoder found. Install the gstreamer1.0-libav package."));
+        return false;
+    }
+    m_sessions = std::make_unique<SessionManager>(*m_pairing, info,
+                                                  SessionManager::Policy{m_options.approvalTimeout,
+                                                                         std::chrono::seconds(10)});
+
+    try {
+        m_server = new net::Server(m_identity, this);
+    } catch (const std::exception& e) {
+        setError(QString::fromUtf8(e.what()));
+        return false;
+    }
+    m_server->onEncrypted = [this](QSslSocket* s) { accept(s); };
+    if (!m_server->listen(QHostAddress::AnyIPv4, m_options.port)) {
+        setError(tr("Port %1 is in use. Is another copy of Yansıt already running?").arg(m_options.port));
+        return false;
+    }
+
+    m_net = new NetInfo(this);
+    connect(m_net, &NetInfo::addressesChanged, this, &ReceiverService::updateCredentials);
+    updateCredentials();
+
+    m_tickTimer.start();
+    m_reportTimer.start();
+    m_state = State::Waiting;
+    emit stateChanged();
+    qCInfo(lcRecv) << "dinleniyor: port" << m_options.port << "parmak izi" << hex(m_identity.fingerprint);
+    return true;
+}
+
+void ReceiverService::shutdown() {
+    if (m_sessions)
+        apply(m_sessions->endSession(ByeReason::ReceiverClosing));
+    m_tickTimer.stop();
+    m_reportTimer.stop();
+    if (m_server)
+        m_server->close();
+    m_video->stop();
+}
+
+void ReceiverService::setError(const QString& message) {
+    qCCritical(lcRecv).noquote() << message;
+    m_error = message;
+    m_state = State::Failed;
+    emit errorChanged();
+    emit stateChanged();
+}
+
+QString ReceiverService::stateName() const {
+    switch (m_state) {
+    case State::Starting:
+        return QStringLiteral("starting");
+    case State::Waiting:
+        return QStringLiteral("waiting");
+    case State::Connecting:
+        return QStringLiteral("connecting");
+    case State::Streaming:
+        return QStringLiteral("streaming");
+    case State::Paused:
+        return QStringLiteral("paused");
+    case State::Reconnecting:
+        return QStringLiteral("reconnecting");
+    case State::Failed:
+        return QStringLiteral("failed");
+    }
+    return {};
+}
+
+QString ReceiverService::qrImageSource() const {
+    if (m_qrUri.isEmpty())
+        return {};
+    return QStringLiteral("image://qr/") + QString::fromLatin1(m_qrUri.toUtf8().toHex());
+}
+
+QString ReceiverService::pin() const { return m_pairing ? QString::fromStdString(m_pairing->pin()) : QString(); }
+
+QString ReceiverService::senderName() const {
+    if (!m_sessions || !m_sessions->session())
+        return {};
+    return QString::fromStdString(m_sessions->session()->sender.deviceName);
+}
+
+QString ReceiverService::pendingSenderName() const {
+    if (!m_sessions || !m_sessions->pending())
+        return {};
+    return QString::fromStdString(m_sessions->pending()->hello.deviceName);
+}
+
+void ReceiverService::setVideoItem(QObject* item) { m_video->setVideoItem(item); }
+
+void ReceiverService::accept(QSslSocket* socket) {
+    const ConnId id = ++m_nextId;
+    net::Connection::Handlers h;
+    h.control = [this](net::Connection& c, ControlMessage m, std::uint64_t t) { onControl(c, std::move(m), t); };
+    h.media = [this](net::Connection& c, const FrameHeader& hd, Bytes&& p, std::uint64_t t) {
+        onMedia(c, hd, std::move(p), t);
+    };
+    h.closed = [this](net::Connection& c) { onClosed(c); };
+    auto* conn = new net::Connection(id, socket, m_options.name.toStdString(), std::move(h), this);
+    m_conns.insert(id, conn);
+    qCDebug(lcRecv) << "yeni bağlantı" << id << conn->peer();
+}
+
+void ReceiverService::onControl(net::Connection& c, ControlMessage msg, std::uint64_t recvUs) {
+    if (c.role() == Role::Unknown)
+        onFirstMessage(c, std::move(msg));
+    else
+        onSessionMessage(c, std::move(msg), recvUs);
+}
+
+void ReceiverService::onFirstMessage(net::Connection& c, ControlMessage&& msg) {
+    const ConnId id = c.id();
+    if (auto* hello = std::get_if<Hello>(&msg)) {
+        qCInfo(lcRecv) << "HELLO:" << QString::fromStdString(hello->deviceName) << "yöntem" << hello->authMethod
+                       << c.peer();
+        Actions a = m_sessions->onHello(id, *hello, c.serverNonce(), m_identity.fingerprint, steadyNow());
+        if (m_sessions->isControl(id))
+            c.setRole(Role::Control);
+        else if (m_sessions->pending() && m_sessions->pending()->conn == id)
+            c.setRole(Role::Pending);
+        apply(std::move(a));
+    } else if (auto* resume = std::get_if<Resume>(&msg)) {
+        Actions a = m_sessions->onResume(id, *resume, c.serverNonce());
+        if (m_sessions->isControl(id)) {
+            c.setRole(Role::Control);
+            qCInfo(lcRecv) << "oturum sürdürüldü";
+        }
+        apply(std::move(a));
+    } else if (auto* attach = std::get_if<Attach>(&msg)) {
+        Actions a = m_sessions->onAttach(id, *attach, c.serverNonce());
+        if (m_sessions->mediaSlotOf(id) != SessionManager::MediaSlot::None)
+            c.setRole(Role::Media);
+        apply(std::move(a));
+    } else {
+        Reject r;
+        r.reason = RejectReason::Malformed;
+        c.sendControl(r);
+        c.closeGracefully();
+    }
+}
+
+void ReceiverService::onSessionMessage(net::Connection& c, ControlMessage&& msg, std::uint64_t recvUs) {
+    const ConnId id = c.id();
+    if (std::holds_alternative<Bye>(msg)) {
+        qCInfo(lcRecv) << "gönderici BYE:" << std::get<Bye>(msg).reason;
+        apply(m_sessions->onBye(id));
+        return;
+    }
+    if (!m_sessions->isControl(id))
+        return; // onay bekleyen bağlantı: BYE dışında bir şey beklenmiyor
+
+    std::visit(
+        [&](auto& m) {
+            using T = std::decay_t<decltype(m)>;
+            if constexpr (std::is_same_v<T, Ping>) {
+                Pong p;
+                p.pingId = m.pingId;
+                p.t0Us = m.t0Us;
+                p.t1Us = recvUs;
+                p.t2Us = monotonicUs();
+                c.sendControl(p);
+                if (m.offsetUs)
+                    m_video->setClockOffset(*m.offsetUs);
+            } else if constexpr (std::is_same_v<T, StreamConfig>) {
+                qCInfo(lcRecv) << "akış:" << m.streamKind << "codec" << m.codec << m.width.value_or(0) << "x"
+                               << m.height.value_or(0) << "@" << m.fps.value_or(0);
+            } else if constexpr (std::is_same_v<T, SenderStats>) {
+                m_senderBitrate = m.bitrateBps;
+                m_senderFpsX100 = m.fpsX100;
+            } else if constexpr (std::is_same_v<T, Pause>) {
+                m_paused = true;
+                refreshState();
+            } else if constexpr (std::is_same_v<T, Unpause>) {
+                m_paused = false;
+                refreshState();
+            } else {
+                qCDebug(lcRecv) << "beklenmeyen CONTROL mesajı yok sayıldı";
+            }
+        },
+        msg);
+}
+
+void ReceiverService::onMedia(net::Connection& c, const FrameHeader& header, Bytes&& payload, std::uint64_t recvUs) {
+    if (m_sessions->mediaSlotOf(c.id()) == SessionManager::MediaSlot::Video && header.type == FrameType::Video)
+        m_video->pushFrame(header, std::move(payload), recvUs);
+    // AUDIO: M5.
+}
+
+void ReceiverService::onClosed(net::Connection& c) {
+    m_conns.remove(c.id());
+    if (m_sessions)
+        apply(m_sessions->onConnectionClosed(c.id(), steadyNow()));
+}
+
+void ReceiverService::apply(Actions actions) {
+    for (const auto& [id, msg] : actions.send)
+        if (auto c = m_conns.value(id))
+            c->sendControl(msg);
+    for (ConnId id : actions.close)
+        if (auto c = m_conns.value(id))
+            c->closeGracefully();
+    refreshState();
+}
+
+void ReceiverService::sendToControl(const ControlMessage& msg) {
+    if (!m_sessions || !m_sessions->session() || !m_sessions->session()->control)
+        return;
+    if (auto c = m_conns.value(*m_sessions->session()->control))
+        c->sendControl(msg);
+}
+
+void ReceiverService::refreshState() {
+    if (!m_sessions)
+        return;
+    const auto& s = m_sessions->session();
+
+    // Oturum değişimi: yeni oturumda boru hattı sıfırdan başlar.
+    const std::optional<Id16> current = s ? std::optional<Id16>(s->sessionId) : std::nullopt;
+    if (current != m_sessionId) {
+        if (m_sessionId)
+            finishSessionStats();
+        m_sessionId = current;
+        m_video->reset();
+        m_firstFrameUs.reset();
+        m_paused = false;
+        m_sessionC2dSumUs = m_sessionC2dCount = 0;
+        m_senderBitrate = 0;
+        m_senderFpsX100 = 0;
+        m_videoWidth = m_videoHeight = 0;
+        m_lastReportUs = monotonicUs();
+        m_sessionStartUs = m_lastReportUs;
+        if (current)
+            qCInfo(lcRecv) << "oturum başladı:" << senderName();
+        else
+            qCInfo(lcRecv) << "oturum bitti";
+    }
+
+    State next = State::Waiting;
+    if (m_state == State::Failed)
+        next = State::Failed;
+    else if (s && !s->control)
+        next = State::Reconnecting;
+    else if (s && m_paused)
+        next = State::Paused;
+    else if (s && m_firstFrameUs)
+        next = State::Streaming;
+    else if (s)
+        next = State::Connecting;
+    if (next != m_state) {
+        m_state = next;
+        emit stateChanged();
+    }
+
+    const bool hasPending = m_sessions->pending().has_value();
+    if (hasPending != m_hadPending) {
+        m_hadPending = hasPending;
+        emit pendingChanged();
+    }
+}
+
+void ReceiverService::tick() {
+    if (!m_sessions)
+        return;
+    m_pairing->tick(steadyNow());
+    const Actions a = m_sessions->tick(steadyNow());
+    if (!a.empty())
+        apply(a);
+}
+
+void ReceiverService::sendReport() {
+    const std::uint64_t now = monotonicUs();
+    const std::uint64_t intervalUs = std::max<std::uint64_t>(now - m_lastReportUs, 1);
+    m_lastReportUs = now;
+    const media::VideoPipeline::Stats st = m_video->takeStats();
+    if (!m_sessions || !m_sessions->session() || !m_sessions->session()->control)
+        return;
+
+    ReceiverReport r;
+    r.intervalMs = std::uint16_t(std::min<std::uint64_t>(intervalUs / 1000, 0xFFFF));
+    r.framesReceived = st.framesReceived;
+    r.framesRendered = st.framesRendered;
+    r.framesDropped = st.framesDropped;
+    r.bytesReceived = std::uint32_t(std::min<std::uint64_t>(st.bytesReceived, 0xFFFFFFFF));
+    r.c2rAvgUs = st.c2rCount ? std::uint32_t(st.c2rSumUs / st.c2rCount) : 0;
+    r.c2rMinUs = st.c2rMinUs;
+    r.c2rMaxUs = st.c2rMaxUs;
+    r.c2dAvgUs = st.c2dCount ? std::uint32_t(std::min<std::uint64_t>(st.c2dSumUs / st.c2dCount, 0xFFFFFFFF)) : 0;
+    r.decodeBacklog = st.backlog;
+    r.audioLate = 0;
+    sendToControl(r);
+
+    m_sessionC2dSumUs += st.c2dSumUs;
+    m_sessionC2dCount += st.c2dCount;
+
+    QVariantMap map;
+    map.insert(QStringLiteral("latencyMs"), st.c2dCount ? int(r.c2dAvgUs / 1000) : -1);
+    map.insert(QStringLiteral("fps"), double(st.framesRendered) * 1e6 / double(intervalUs));
+    map.insert(QStringLiteral("bitrateKbps"), int(double(st.bytesReceived) * 8e3 / double(intervalUs)));
+    map.insert(QStringLiteral("dropped"), int(m_video->totalDropped()));
+    map.insert(QStringLiteral("decoder"), m_video->decoderName());
+    map.insert(QStringLiteral("hardware"), m_video->hardwareDecoding());
+    map.insert(QStringLiteral("width"), m_videoWidth);
+    map.insert(QStringLiteral("height"), m_videoHeight);
+    m_statsMap = map;
+    emit statsChanged();
+}
+
+void ReceiverService::finishSessionStats() {
+    if (m_options.statsFile.isEmpty())
+        return;
+    QJsonObject o;
+    o.insert(QStringLiteral("session_id"), hex(*m_sessionId));
+    o.insert(QStringLiteral("frames_received"), qint64(m_video->totalReceived()));
+    o.insert(QStringLiteral("frames_rendered"), qint64(m_video->totalRendered()));
+    o.insert(QStringLiteral("frames_dropped"), qint64(m_video->totalDropped()));
+    o.insert(QStringLiteral("first_frame_ms"),
+             m_firstFrameUs ? QJsonValue(double(*m_firstFrameUs - m_sessionStartUs) / 1000.0) : QJsonValue());
+    o.insert(QStringLiteral("c2d_avg_ms"),
+             m_sessionC2dCount ? QJsonValue(double(m_sessionC2dSumUs) / double(m_sessionC2dCount) / 1000.0)
+                               : QJsonValue());
+    o.insert(QStringLiteral("decoder"), m_video->decoderName());
+    o.insert(QStringLiteral("hardware"), m_video->hardwareDecoding());
+    QFile f(m_options.statsFile);
+    if (f.open(QIODevice::Append | QIODevice::WriteOnly)) {
+        f.write(QJsonDocument(o).toJson(QJsonDocument::Compact));
+        f.write("\n");
+    } else {
+        qCWarning(lcRecv) << "istatistik dosyası yazılamadı:" << m_options.statsFile;
+    }
+}
+
+void ReceiverService::updateCredentials() {
+    QStringList hosts = m_options.qrHosts;
+    if (hosts.isEmpty() && m_net)
+        hosts = m_net->addresses();
+    while (hosts.size() > int(kMaxQrHosts))
+        hosts.removeLast();
+    m_addresses = hosts;
+
+    QrPayload qr;
+    for (const QString& h : hosts)
+        qr.hosts.push_back(h.toStdString());
+    qr.port = m_options.port;
+    qr.token = m_pairing->qrToken();
+    qr.certFingerprint = m_identity.fingerprint;
+    qr.name = m_options.name.toStdString();
+    try {
+        m_qrUri = qr.hosts.empty() ? QString() : QString::fromStdString(buildQrUri(qr));
+    } catch (const std::invalid_argument& e) {
+        qCWarning(lcRecv) << "QR üretilemedi:" << e.what();
+        m_qrUri.clear();
+    }
+    emit credentialsChanged();
+    writePairingFile();
+}
+
+void ReceiverService::writePairingFile() {
+    if (m_options.pairingFile.isEmpty())
+        return;
+    QJsonObject o;
+    o.insert(QStringLiteral("uri"), m_qrUri);
+    o.insert(QStringLiteral("pin"), pin());
+    o.insert(QStringLiteral("port"), m_options.port);
+    o.insert(QStringLiteral("fingerprint"), hex(m_identity.fingerprint));
+    o.insert(QStringLiteral("token"), QString::fromStdString(base64UrlNoPad(m_pairing->qrToken())));
+    if (!writeJsonFile(m_options.pairingFile, QJsonDocument(o).toJson(QJsonDocument::Compact), true))
+        qCWarning(lcRecv) << "eşleştirme dosyası yazılamadı:" << m_options.pairingFile;
+}
+
+void ReceiverService::loadTrusted() {
+    QFile f(QDir(m_options.dataDir).filePath(QStringLiteral("trusted.json")));
+    if (!f.open(QIODevice::ReadOnly))
+        return;
+    const QJsonArray arr = QJsonDocument::fromJson(f.readAll()).array();
+    std::vector<session::TrustedSender> list;
+    for (const QJsonValue& v : arr) {
+        const QJsonObject o = v.toObject();
+        const auto keyId = arrayFromHex<16>(o.value(QStringLiteral("key_id")).toString());
+        const auto pairKey = arrayFromHex<32>(o.value(QStringLiteral("pair_key")).toString());
+        const auto deviceId = arrayFromHex<16>(o.value(QStringLiteral("device_id")).toString());
+        if (!keyId || !pairKey || !deviceId)
+            continue;
+        list.push_back({*keyId, *pairKey, *deviceId, o.value(QStringLiteral("device_name")).toString().toStdString()});
+    }
+    m_pairing->setTrustedSenders(std::move(list));
+}
+
+void ReceiverService::saveTrusted() {
+    QJsonArray arr;
+    for (const auto& t : m_pairing->trustedSenders()) {
+        QJsonObject o;
+        o.insert(QStringLiteral("key_id"), hex(t.keyId));
+        o.insert(QStringLiteral("pair_key"), hex(t.pairKey));
+        o.insert(QStringLiteral("device_id"), hex(t.deviceId));
+        o.insert(QStringLiteral("device_name"), QString::fromStdString(t.deviceName));
+        arr.append(o);
+    }
+    QDir().mkpath(m_options.dataDir);
+    if (!writeJsonFile(QDir(m_options.dataDir).filePath(QStringLiteral("trusted.json")), QJsonDocument(arr).toJson(),
+                       true))
+        qCWarning(lcRecv) << "eşleştirmeler kaydedilemedi";
+}
+
+void ReceiverService::approvePending() {
+    if (!m_sessions || !m_sessions->pending())
+        return;
+    const ConnId id = m_sessions->pending()->conn;
+    Actions a = m_sessions->resolvePending(true);
+    if (auto c = m_conns.value(id); c && m_sessions->isControl(id))
+        c->setRole(Role::Control);
+    apply(std::move(a));
+}
+
+void ReceiverService::denyPending() {
+    if (m_sessions)
+        apply(m_sessions->resolvePending(false));
+}
+
+void ReceiverService::stopSession() {
+    if (m_sessions)
+        apply(m_sessions->endSession(ByeReason::UserStop));
+}
+
+} // namespace yansit

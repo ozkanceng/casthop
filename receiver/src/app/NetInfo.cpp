@@ -51,12 +51,14 @@ void NetInfo::refresh() {
         }
     }
 
+    const QList<QHostAddress> selected = selectAddresses(candidates);
     QStringList next;
-    for (const auto& addr : selectAddresses(candidates))
+    for (const auto& addr : selected)
         next.append(addr.toString());
 
     if (next != m_addresses) {
         m_addresses = next;
+        m_hostAddresses = selected;
         emit addressesChanged();
     }
 }

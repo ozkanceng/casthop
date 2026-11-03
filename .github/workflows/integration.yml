@@ -1,0 +1,102 @@
+name: Integration
+
+# Uçtan uca: Kotlin sahte gönderici ↔ C++ alıcı (başsız + Xvfb/Mesa ile GL arayüz yolu).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "receiver/**"
+      - "android/protocol/**"
+      - "android/gradle/**"
+      - "android/*.kts"
+      - "tools/**"
+      - "protocol/**"
+      - ".github/workflows/integration.yml"
+  pull_request:
+    paths:
+      - "receiver/**"
+      - "android/protocol/**"
+      - "android/gradle/**"
+      - "android/*.kts"
+      - "tools/**"
+      - "protocol/**"
+      - ".github/workflows/integration.yml"
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fake-sender:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # android/ derlemesi :app'i de yapılandırır; SDK yolu gerekli.
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-37.0"
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build fake-sender
+        run: ./gradlew --stacktrace :fake-sender:test :fake-sender:installDist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: fake-sender
+          path: tools/fake-sender/build/install/fake-sender
+          retention-days: 7
+
+  e2e:
+    needs: fake-sender
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container: debian:12
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install dependencies
+        run: |
+          receiver/ci/install-deps.sh
+          tools/integration/install-deps.sh
+
+      - name: Build receiver
+        run: |
+          cmake -S receiver -B receiver/build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DYANSIT_BUILD_TESTS=OFF
+          cmake --build receiver/build
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: fake-sender
+          path: fake-sender
+
+      - name: End-to-end scenarios
+        env:
+          YANSIT_IT_GUI: "1"
+        run: |
+          chmod +x fake-sender/bin/fake-sender
+          tools/integration/run.sh receiver/build/src/yansit-receiver fake-sender/bin/fake-sender it-work
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: integration-logs
+          path: |
+            it-work/*.log
+            it-work/*.json
+            it-work/*.jsonl
+          retention-days: 14

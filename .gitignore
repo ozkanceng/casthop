@@ -50,3 +50,6 @@ tools/**/out/
 # Python
 __pycache__/
 *.pyc
+
+# Entegrasyon testi çalışma dizini
+it-work/

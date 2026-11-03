@@ -1,9 +1,10 @@
 #pragma once
 
+#include <QHostAddress>
+#include <QList>
 #include <QObject>
 #include <QStringList>
 #include <QTimer>
-#include <QtQml/qqmlregistration.h>
 
 namespace yansit {
 
@@ -11,7 +12,6 @@ namespace yansit {
 /// (Wi-Fi ↔ hotspot geçişinde QR'ın kendiliğinden yenilenmesi için).
 class NetInfo : public QObject {
     Q_OBJECT
-    QML_ELEMENT
     Q_PROPERTY(QStringList addresses READ addresses NOTIFY addressesChanged)
     Q_PROPERTY(QString hostName READ hostName CONSTANT)
 
@@ -22,12 +22,15 @@ public:
     QString hostName() const { return m_hostName; }
 
     Q_INVOKABLE void refresh();
+    /// QR'a konacak adresler (en fazla 4).
+    QList<QHostAddress> hostAddresses() const { return m_hostAddresses; }
 
 signals:
     void addressesChanged();
 
 private:
     QStringList m_addresses;
+    QList<QHostAddress> m_hostAddresses;
     QString m_hostName;
     QTimer m_pollTimer;
 };

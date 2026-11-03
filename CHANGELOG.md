@@ -13,3 +13,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 - Kotlin protokol kütüphanesi (`android/protocol`): çerçeve/TLV kodlama, akış okuyucu/yazıcı, kimlik kanıtları, QR ayrıştırma, saat senkronu, AIMD bit hızı denetleyicisi; vektör, fuzz ve senaryo testleri.
 - C++ protokol kütüphanesi (`receiver/src/protocol`): aynı kodlama ve hata kodları, artımlı çerçeve ayrıştırıcı, OpenSSL ile HMAC; `PairingManager` (tek kullanımlık QR token, PIN kilitleme, hız sınırı, eşleştirme anahtarları).
 - CI: vektörlerin üreteçle uyumunu denetleyen `protocol.yml`.
+- Alıcı MVP (M2): TLS 1.3 sunucu (kendinden imzalı ECDSA P-256 kimlik, ALPN `yansit/1`), oturum durum makinesi (tek gönderici, tahtada devralma onayı, ATTACH, RESUME penceresi), GStreamer video boru hattı (VA donanım çözücü → yazılım yedeği, birikme denetimi, anahtar kare isteği), alıcı raporları ve gecikme ölçümü.
+- Alıcı arayüzü: büyük QR + 6 haneli kod bekleme ekranı, tam ekran yansıtma, dokununca bilgi çubuğu ve "Yansıtmayı durdur", devralma onay diyaloğu; Türkçe/İngilizce.
+- Gönderici istemci kütüphanesi (`android/protocol` → `client`): parmak izi sabitlemeli TLS, HELLO/ATTACH/RESUME el sıkışmaları.
+- `tools/fake-sender` ve `tools/integration`: CI'da uçtan uca test (yanlış token, 600 kare akış, ikinci gönderici onayı, tek kullanımlık token, Xvfb + Mesa ile GL arayüz yolu).
+- `docs/TESTING.md`: tahtada M2 kontrol listesi.

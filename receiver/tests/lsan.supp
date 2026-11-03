@@ -1,0 +1,8 @@
+# Çıkışta serbest bırakılmayan üçüncü taraf iş parçacığı verileri (sızıntı değil, süreç sonu).
+# GLib iş parçacığı başına veri: QML görüntü okuyucu iş parçacığı ve GStreamer, çıkışta birleştirilmez.
+leak:libglib-2.0.so
+leak:libgstreamer-1.0.so
+# Mesa GLX/EGL ve GStreamer GL bağlam bilgisi (sürücü içi, süreç ömrü boyunca tutulur).
+leak:libGLX_mesa.so
+leak:libEGL_mesa.so
+leak:libgstgl-1.0.so

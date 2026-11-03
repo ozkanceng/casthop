@@ -27,7 +27,8 @@ dependencies {
 lint {
     abortOnError = true
     // TrulyRandom yalnız Android ≤ 4.3 içindir; uygulamanın minSdk değeri 29.
-    disable += setOf("GradleDependency", "NewerVersionAvailable", "TrulyRandom")
+    // CustomX509TrustManager: PinnedTls bilinçli olarak CA yerine parmak izi sabitler (PROTOCOL.md §2).
+    disable += setOf("GradleDependency", "NewerVersionAvailable", "TrulyRandom", "CustomX509TrustManager")
 }
 
 tasks.test {

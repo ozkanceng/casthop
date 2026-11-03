@@ -6,6 +6,9 @@ import QtQuick
 QtObject {
     // Renkler (WCAG AA: metin/arka plan kontrastı ≥ 4.5:1)
     readonly property color background: "#0F1720"
+    readonly property color videoBackground: "#000000"
+    // Video üstü katmanlar: arka plan rengi, %80 opak
+    readonly property color scrim: "#CC0F1720"
     readonly property color surface: "#18222E"
     readonly property color surfaceRaised: "#223040"
     readonly property color primary: "#4DA3FF"
@@ -28,8 +31,10 @@ QtObject {
 
     // Tipografi
     readonly property string fontFamily: "Noto Sans"
+    readonly property string fontMono: "Noto Sans Mono"
     readonly property int fontDisplay: 96
     readonly property int fontTitle: 48
     readonly property int fontBody: 30
     readonly property int fontLabel: 24
+    readonly property int fontCaption: 20
 }

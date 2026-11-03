@@ -7,17 +7,44 @@
         <source>Yansıt Receiver</source>
         <translation>Yansıt Receiver</translation>
     </message>
+</context>
+<context>
+    <name>WaitingScreen</name>
+    <message>
+        <source>QR code for connecting</source>
+        <translation>QR code for connecting</translation>
+    </message>
+    <message>
+        <source>No network connection. Connect the board to Wi-Fi, Ethernet or the tablet's hotspot.</source>
+        <translation>No network connection. Connect the board to Wi-Fi, Ethernet or the tablet's hotspot.</translation>
+    </message>
+    <message>
+        <source>Connecting…</source>
+        <translation>Connecting…</translation>
+    </message>
+    <message>
+        <source>Scan the code with the Yansıt app on your tablet</source>
+        <translation>Scan the code with the Yansıt app on your tablet</translation>
+    </message>
+    <message>
+        <source>or enter this code:</source>
+        <translation>or enter this code:</translation>
+    </message>
+    <message>
+        <source>Connection code %1</source>
+        <translation>Connection code %1</translation>
+    </message>
     <message>
         <source>Board: %1</source>
         <translation>Board: %1</translation>
     </message>
     <message>
-        <source>Network addresses of this board</source>
-        <translation>Network addresses of this board</translation>
+        <source>Address: %1</source>
+        <translation>Address: %1</translation>
     </message>
     <message>
-        <source>No network connection. Connect the board to Wi-Fi, Ethernet or the tablet's hotspot.</source>
-        <translation>No network connection. Connect the board to Wi-Fi, Ethernet or the tablet's hotspot.</translation>
+        <source>Yansıt could not start</source>
+        <translation>Yansıt could not start</translation>
     </message>
     <message>
         <source>Exit full screen</source>
@@ -34,6 +61,59 @@
     <message>
         <source>Version %1</source>
         <translation>Version %1</translation>
+    </message>
+</context>
+<context>
+    <name>StreamOverlay</name>
+    <message>
+        <source>%1 ms · %2 fps · %3 Mbps</source>
+        <translation>%1 ms · %2 fps · %3 Mbps</translation>
+    </message>
+    <message>
+        <source>Stop mirroring</source>
+        <translation>Stop mirroring</translation>
+    </message>
+    <message>
+        <source>Mirroring paused</source>
+        <translation>Mirroring paused</translation>
+    </message>
+    <message>
+        <source>Connection lost, reconnecting…</source>
+        <translation>Connection lost, reconnecting…</translation>
+    </message>
+</context>
+<context>
+    <name>ApprovalDialog</name>
+    <message>
+        <source>%1 wants to share its screen</source>
+        <translation>%1 wants to share its screen</translation>
+    </message>
+    <message>
+        <source>The current screen (%1) will be replaced. Closes automatically in %2 s.</source>
+        <translation>The current screen (%1) will be replaced. Closes automatically in %2 s.</translation>
+    </message>
+    <message>
+        <source>Deny</source>
+        <translation>Deny</translation>
+    </message>
+    <message>
+        <source>Allow</source>
+        <translation>Allow</translation>
+    </message>
+</context>
+<context>
+    <name>yansit::ReceiverService</name>
+    <message>
+        <source>Security certificate could not be created: %1</source>
+        <translation>Security certificate could not be created: %1</translation>
+    </message>
+    <message>
+        <source>No H.264 video decoder found. Install the gstreamer1.0-libav package.</source>
+        <translation>No H.264 video decoder found. Install the gstreamer1.0-libav package.</translation>
+    </message>
+    <message>
+        <source>Port %1 is in use. Is another copy of Yansıt already running?</source>
+        <translation>Port %1 is in use. Is another copy of Yansıt already running?</translation>
     </message>
 </context>
 </TS>
