@@ -48,7 +48,7 @@ Tek dinleme portu, üç TLS bağlantısı (CONTROL, VIDEO, AUDIO). İlk bağlant
 
 **Video yakalama/kodlama ayrıntıları**
 - `MediaCodec.createPersistentInputSurface()` → `VirtualDisplay` bu Surface'a çizer. Döndürmede: `virtualDisplay.resize(w,h,dpi)` → `codec.stop()` → `configure(yeniFormat)` → `setInputSurface(kalıcı)` → `start()`. VirtualDisplay asla yeniden oluşturulmaz (Android 14+ token kuralı). Kalıcı Surface'ın sorunlu olduğu cihazlarda yedek: yeni codec + `virtualDisplay.setSurface()`.
-- Format anahtarları (yetenek sorgusuyla desteklenenler): `KEY_BITRATE_MODE` (CBR varsayılan, VBR seçenekli; `isBitrateModeSupported`), `KEY_I_FRAME_INTERVAL` (2 sn; IDR ayrıca isteğe bağlı), `KEY_REPEAT_PREVIOUS_FRAME_AFTER` (statik ekranda 100 ms), `KEY_PRIORITY=0` (realtime), `KEY_LATENCY=1`, `KEY_MAX_B_FRAMES=0`, `KEY_PREPEND_HEADER_TO_SYNC_FRAMES=1` (API 29; SPS/PPS her IDR önünde), `KEY_PROFILE/KEY_LEVEL` (High → yoksa Main → Baseline), `KEY_OPERATING_RATE`, `KEY_MAX_FPS_TO_ENCODER`.
+- Format anahtarları (yetenek sorgusuyla desteklenenler): `KEY_BITRATE_MODE` (CBR varsayılan, VBR seçenekli; `isBitrateModeSupported`), `KEY_I_FRAME_INTERVAL` (10 sn; gereken her durumda IDR ayrıca istenir, periyodik IDR yalnız havada ani yük yaratır), `KEY_REPEAT_PREVIOUS_FRAME_AFTER` (statik ekranda 100 ms), `KEY_PRIORITY=0` (realtime), `KEY_LATENCY=1`, `KEY_MAX_B_FRAMES=0`, `KEY_PREPEND_HEADER_TO_SYNC_FRAMES=1` (API 29; SPS/PPS her IDR önünde), `KEY_PROFILE/KEY_LEVEL` (High → yoksa Main → Baseline), `KEY_OPERATING_RATE`, `KEY_MAX_FPS_TO_ENCODER`.
 - Çalışma anı: `PARAMETER_KEY_REQUEST_SYNC_FRAME` (yeni alıcı, tıkanıklık sonrası, alıcı isteği), `PARAMETER_KEY_VIDEO_BITRATE` (uyarlama).
 - Yetenek sorgusu: `MediaCodecList(REGULAR_CODECS)` → `isEncoder && isHardwareAccelerated` → `VideoCapabilities.areSizeAndRateSupported`, `bitrateRange`, `profileLevels`, `widthAlignment/heightAlignment`. Arayüz yalnız desteklenen kombinasyonları gösterir.
 - Çözünürlük: alıcının bildirdiği ekran boyutuna ve ön ayar tavanına sığacak şekilde en-boy korunarak ölçeklenir, hizalamaya yuvarlanır.
@@ -65,6 +65,7 @@ Tek dinleme portu, üç TLS bağlantısı (CONTROL, VIDEO, AUDIO). İlk bağlant
 - Video kuyruğu en fazla ~2 kare veya 50 ms bekleyen veri tutar. Aşılırsa: kuyruktaki tüm P-kareler atılır, `DROP` sayacı artar, kodlayıcıdan IDR istenir, sonraki IDR'ye kadar P-kareler gönderilmez (H.264 P-kareleri referans olduğundan tek tek atılamaz). Aynı anda `BitrateController`'a tıkanıklık olayı bildirilir.
 - VIDEO soketinin `SO_SNDBUF` değeri güncel bit hızının ≈ 100 ms'si kadar tutulur (32–512 KiB, bit hızı değiştikçe güncellenir) ki çekirdek tamponu kuyruk görevi görmesin; `TCP_NODELAY` açık.
 - **Gecikme bütçesi:** alıcının bildirdiği yakalama→alım gecikmesi 300 ms'yi aşarsa (ağ, kodlayıcının en düşük bit hızında bile yetmiyor; yoldaki AP/vekil tamponları dolu) gönderim bütçeyi aşan süre kadar (en fazla 1 sn) kesilir, bekleyen kareler atılır ve IDR ile devam edilir. Böylece gecikme hiçbir koşulda birikmez.
+- **Wi-Fi güç tasarrufu:** yansıtma boyunca `LowLatencyWifi` kilit tutar; radyo uyursa gecikme sıçramaları kodlayıcıdan bağımsız oluşur.
 - **Canlılık ve RESUME:** 2,5 sn tahtadan hiçbir mesaj gelmezse bağlantı kopmuş sayılır; RESUME (≤ 10 sn pencere) → VIDEO yeniden ATTACH → son CONFIG yeniden gönderilir → hemen IDR. Pencere kaçarsa ve tahta hatırlanıyorsa eşleştirme anahtarıyla yeni oturum açılır (yakalama ve VirtualDisplay korunur).
 
 **BitrateController** (saf mantık, birim testli): girdiler = gönderici kuyruk gecikmesi, alıcı raporu (tahmini tek yön gecikme eğimi, geç kare oranı, alınan bit hızı). AIMD: tıkanıklık → ×0,7 (en sık 500 ms'de bir); 2 sn kararlı → +%8/sn tavana kadar. Ayrıntı: [PROTOCOL.md §7.6](PROTOCOL.md).
@@ -104,6 +105,7 @@ appsrc name=src is-live=true format=time do-timestamp=false
 ```
 
 - `<decoder>`: `DecoderProbe` sırası → `vah264dec` (VA, plugins-bad) → `vaapih264dec` (eski) → `avdec_h264 max-threads=N` (yazılım). H.265 için `vah265dec` → `avdec_h265`; HEVC yalnız VA ile çözülebiliyorsa göndericiye ilan edilir.
+- VA çözücülerde `compliance=flexible`: göndericide B-kare yok, kareler sıra değiştirmez; varsayılanda High profil canlı akış bir sonraki kareyi bekler.
 - Video `sync=false`: kare çözülür çözülmez çizilir (canlılık > akıcılık). Çözücü önünde sıkışma: `Session`, decoder'a verilmemiş sıkıştırılmış veri > 3 kare ise sonraki IDR'ye kadar atar ve `KEYFRAME_REQUEST` gönderir.
 - Ölçekleme (sığdır/doldur): `qml6glsink` QML `GstGLQt6VideoItem` üzerinde `fillMode` / `force-aspect-ratio`.
 - Ekran görüntüsü: `last-sample` → `gst_video_convert_sample(..., image/png)` → `~/Resimler/Yansıt/`.

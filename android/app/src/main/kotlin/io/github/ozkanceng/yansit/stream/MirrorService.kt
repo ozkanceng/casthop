@@ -26,6 +26,7 @@ import io.github.ozkanceng.yansit.R
  */
 class MirrorService : Service() {
     private var projection: MediaProjection? = null
+    private val wifi by lazy { LowLatencyWifi(this) }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -59,6 +60,7 @@ class MirrorService : Service() {
             return
         }
         projection = mp
+        wifi.acquire()
         mp.registerCallback(
             object : MediaProjection.Callback() {
                 override fun onStop() {
@@ -77,11 +79,13 @@ class MirrorService : Service() {
     }
 
     internal fun stopForegroundAndSelf() {
+        wifi.release()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onDestroy() {
+        wifi.release()
         projection = null
         super.onDestroy()
     }

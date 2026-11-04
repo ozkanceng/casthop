@@ -245,8 +245,14 @@ bool VideoPipeline::build() {
                  guint64(0), "block", FALSE, nullptr);
     gst_caps_unref(caps);
 
-    if (hasProperty(dec, "max-threads")) // avdec_h264: kare iş parçacığı başına +1 kare gecikme
+    if (hasProperty(dec, "max-threads")) // avdec_h264: live input uses slice threads, so no added frame delay
         g_object_set(dec, "max-threads", 2, nullptr);
+    // Senders encode without B-frames, so pictures never reorder. By default a live High profile stream still
+    // waits for the next frame before output, and a static screen only sends one every 100 ms.
+    if (hasProperty(dec, "compliance"))
+        gst_util_set_object_arg(G_OBJECT(dec), "compliance", "flexible");
+    if (hasProperty(dec, "low-latency")) // vaapih264dec
+        g_object_set(dec, "low-latency", TRUE, nullptr);
     if (hasProperty(dec, "output-corrupt"))
         g_object_set(dec, "output-corrupt", FALSE, nullptr);
 

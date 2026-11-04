@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+### Değiştirildi / Changed
+- Daha düşük gecikme: yansıtma sırasında Wi-Fi güç tasarrufu kapatılıyor, tahtadaki donanım çözücü kare bekletmiyor, periyodik anahtar kare aralığı 2 sn'den 10 sn'ye çıktı.
+
 ## [0.1.2] - 2026-11-04
 
 ### Düzeltildi / Fixed

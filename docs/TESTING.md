@@ -86,6 +86,15 @@ Yansıtma sürüp görüntü gelmiyorsa `~/.cache/yansit/receiver.log` dosyasın
 | `çözülen kareler siyah` | Tablet siyah görüntü gönderiyor olabilir |
 | `görüntü çiziliyor` ama ekran siyah | Pencere içeriği doğru, sorun masaüstü bileşicisinde olabilir: **Ayarlar → Uyumlu görüntü modu** |
 
+## Gecikme karşılaştırması (gerçek tahta ve tablet)
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Sabit ekranda bir düğmeye dokunup tahtayı 240 fps video ile çekin | Tepki süresi önceki sürümden kısa | ☐ |
+| 2 | Tablette `adb shell dumpsys wifi \| grep -i -A3 'lock'` | Yansıtırken `yansit:mirror` kilitleri görünür | ☐ |
+| 3 | Yansıtırken başka bir uygulamaya geçip aynı komutu çalıştırın | Kilit etkin kalır (Android 14+ için doğrulanacak) | ☐ |
+| 4 | Tahtada `vah264dec` ile 5 dk video oynatın | Kare sırası bozulmaz, görüntü titremez | ☐ |
+
 ## M3 — Tablet uygulaması (yalnız görüntü)
 
 Amaç: Gerçek bir tablette QR ile bağlanıp ekranın tahtada akıcı göründüğünü, durdurmanın hızlı olduğunu ve

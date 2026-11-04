@@ -151,6 +151,7 @@ class MirrorSession(
         sender = Thread(::sendLoop, "mirror-video").apply {
             isDaemon = true
             priority = Thread.MAX_PRIORITY
+            priority = Thread.MAX_PRIORITY
             start()
         }
         statsLastTickUs = MonotonicClock.nowUs()

@@ -205,7 +205,9 @@ class ScreenEncoder(private val caps: AndroidEncoderCaps) : VideoSource {
     }
 
     private companion object {
-        const val I_FRAME_INTERVAL_S = 2
+        // Each periodic IDR is a burst on the air. TCP loses nothing, and every real need for one (start,
+        // reconnect, dropped frames, receiver request) already asks for it.
+        const val I_FRAME_INTERVAL_S = 10
         const val REPEAT_AFTER_US = 100_000L
     }
 }
