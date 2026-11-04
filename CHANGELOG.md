@@ -4,8 +4,17 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+## [0.1.2] - 2026-11-04
+
+### Düzeltildi / Fixed
+- Alıcıda görüntü çizilmezken yansıtma sürüyor görünüyordu. GL eklentisi yoksa kareler artık boşa gitmiyor, işlemciyle çiziliyor.
+- Yansıtma başlayınca görüntü denetleniyor: GL siyah çiziyorsa işlemci çizimine, donanım çözücü siyah veriyorsa yazılım çözücüye kendiliğinden geçiliyor.
+
 ### Eklendi / Added
-- Kurulum sayfası (GitHub Pages), çift tıklanan tahta kurucusu (`site/yansit-kur.desktop`) ve `site/kur`: yönetici şifresi olmadan kurulum, tablet için QR ve doğrudan indirme.
+- Ayarlar → Uyumlu görüntü modu: görüntüyü işlemciyle çizer.
+- Tanı günlüğü: `~/.cache/yansit/receiver.log` (Qt, GStreamer, GL sürücüsü, çözücü, görüntü denetimi).
+- Uçtan uca testler ekran pikselini ölçüyor: kare sayısı tek başına görüntüyü kanıtlamıyordu.
+- Kurulum sayfası (GitHub Pages): tahtada `.deb` ile kurulum, şifresiz kurulum için `site/kur`, tablet için QR ve doğrudan indirme.
 - Sürümlere sürümden bağımsız adlı dosyalar eklendi (`releases/latest/download/`).
 
 ## [0.1.1] - 2026-11-04

@@ -73,6 +73,19 @@ alıcıyı `yansit-receiver --pairing-file ~/yansit-pairing.json` ile başlatıp
 
 ---
 
+## Siyah ekran denetimi (gerçek tahta)
+
+Yansıtma sürüp görüntü gelmiyorsa `~/.cache/yansit/receiver.log` dosyasına bakın:
+
+| Günlük satırı | Anlamı |
+|---|---|
+| `qml6glsink eklentisi: yok` ve `qml6glsink yüklenemedi: …` | GL eklentisi yüklenmiyor, kareler işlemciyle çizilir; nedeni satırda |
+| `GL: …` | Tahtanın GL sürücüsü |
+| `görüntü denetimi: çözülen parlaklık X pencere parlaklığı Y` | X kareyi, Y pencereyi ölçer (siyah: X < 24, Y < 4) |
+| `CPU çizime geçiliyor` | GL siyah çiziyordu, işlemci çizimine geçildi |
+| `çözülen kareler siyah` | Tablet siyah görüntü gönderiyor olabilir |
+| `görüntü çiziliyor` ama ekran siyah | Pencere içeriği doğru, sorun masaüstü bileşicisinde olabilir: **Ayarlar → Uyumlu görüntü modu** |
+
 ## M3 — Tablet uygulaması (yalnız görüntü)
 
 Amaç: Gerçek bir tablette QR ile bağlanıp ekranın tahtada akıcı göründüğünü, durdurmanın hızlı olduğunu ve

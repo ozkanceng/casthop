@@ -73,22 +73,29 @@ footer a { color: var(--primary); }
       <h2><span class="num">1</span>Tahtaya kurun</h2>
       <ol>
         <li>Bu sayfayı tahtada açıp aşağıdaki düğmeye basın.</li>
-        <li><strong>İndirilenler</strong> klasöründe <strong>yansit-kur.desktop</strong> dosyasına çift tıklayın.</li>
-        <li>Çıkan uyarıda soldaki ilk düğmeye (<strong>Yine de Başlat</strong> / Launch Anyway) basın.</li>
+        <li><strong>İndirilenler</strong> klasöründe <strong>yansit-receiver_amd64.deb</strong> dosyasına çift tıklayın.</li>
+        <li>Açılan paket kurucuda <strong>Yükle</strong>'ye basıp yönetici şifresini girin.</li>
+        <li>Kurulum bitince menüden <strong>Yansıt Alıcı</strong>'yı açın.</li>
       </ol>
-      <a class="button" href="yansit-kur.desktop" download="yansit-kur.desktop">Tahta kurucusunu indir</a>
-      <p class="note">Yönetici şifresi gerekmez. Açılan pencerede kurulum birkaç dakika sürer; bitince Yansıt Alıcı kendiliğinden açılır.</p>
+      <a class="button" href="https://github.com/ozkanceng/tablet-mirror/releases/latest/download/yansit-receiver_amd64.deb">Tahta paketini indir</a>
+      <p class="note">Yönetici şifresi ve internet bağlantısı gerekir.</p>
       <details>
-        <summary>Olmazsa: terminalden kurun</summary>
-        <p>Terminal uygulamasını açın, komutu kopyalayın, <kbd>Ctrl + Shift + V</kbd> ile yapıştırıp <kbd>Enter</kbd>'a basın.</p>
-        <p class="command" id="command">wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/tablet-mirror/kur | sh</p>
-        <button class="button secondary" id="copy" type="button">Komutu kopyala</button>
-        <p class="note" role="status" id="copied"></p>
+        <summary>Paket kurucu açılmazsa</summary>
+        <p>Dosya arşiv gibi açılıyorsa <strong>Terminal</strong>'i açın, komutu kopyalayın, <kbd>Ctrl + Shift + V</kbd> ile yapıştırıp <kbd>Enter</kbd>'a basın ve şifrenizi girin.</p>
+        <p class="command" id="command-deb">cd "$(xdg-user-dir DOWNLOAD)" &amp;&amp; sudo apt install ./yansit-receiver_amd64.deb</p>
+        <button class="button secondary" type="button" data-copy="command-deb">Komutu kopyala</button>
+        <p class="note" role="status"></p>
       </details>
       <details>
-        <summary>Yönetici şifreniz varsa: paketle kurun</summary>
-        <p>Paketi indirip dosyaya çift tıklayın ve açılan pencereden kurun. Bağımlılıklar için tahtanın internete bağlı olması gerekir.</p>
-        <a class="button secondary" href="https://github.com/ozkanceng/tablet-mirror/releases/latest/download/yansit-receiver_amd64.deb">Tahta paketini indir (.deb)</a>
+        <summary>Yönetici şifreniz yoksa</summary>
+        <p>Bu komut Yansıt'ı yalnız kendi hesabınıza kurar. Terminal'e yapıştırıp <kbd>Enter</kbd>'a basın.</p>
+        <p class="command" id="command-user">wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/tablet-mirror/kur | sh</p>
+        <button class="button secondary" type="button" data-copy="command-user">Komutu kopyala</button>
+        <p class="note" role="status"></p>
+      </details>
+      <details>
+        <summary>Ekran siyah kalırsa</summary>
+        <p>Yansıt Alıcı'da <strong>Ayarlar → Uyumlu görüntü modu</strong>'nu açın. Yine görüntü gelmezse <strong>.cache/yansit/receiver.log</strong> dosyasını (Ev klasörü, gizli dosyalar) sorun bildiriminize ekleyin.</p>
       </details>
     </section>
 
@@ -128,20 +135,22 @@ if (/Android/i.test(navigator.userAgent)) {
   const cards = document.querySelector(".cards");
   cards.prepend(document.getElementById("tablet"));
 }
-document.getElementById("copy").addEventListener("click", async () => {
-  const text = document.getElementById("command").textContent;
-  const status = document.getElementById("copied");
-  try {
-    await navigator.clipboard.writeText(text);
-    status.textContent = "Kopyalandı. Şimdi terminale yapıştırın.";
-  } catch {
-    const range = document.createRange();
-    range.selectNodeContents(document.getElementById("command"));
-    const selection = getSelection();
-    selection.removeAllRanges();
-    selection.addRange(range);
-    status.textContent = "Komut seçildi; Ctrl + C ile kopyalayın.";
-  }
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const command = document.getElementById(button.dataset.copy);
+    const status = button.nextElementSibling;
+    try {
+      await navigator.clipboard.writeText(command.textContent);
+      status.textContent = "Kopyalandı. Şimdi terminale yapıştırın.";
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(command);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      status.textContent = "Komut seçildi; Ctrl + C ile kopyalayın.";
+    }
+  });
 });
 </script>
 </body>
