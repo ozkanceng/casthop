@@ -1,6 +1,6 @@
 #!/bin/sh
 # Yansıt Alıcı'yı tahtaya yönetici şifresi olmadan kurar ve başlatır; yeniden çalıştırmak son sürüme günceller.
-#   wget -qO- https://ozkanceng.github.io/tablet-mirror/kur | sh
+#   wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/tablet-mirror/kur | sh
 # Betiğin tamamı indirilmeden hiçbir şey çalışmasın diye her şey main içindedir.
 set -eu
 
@@ -15,9 +15,9 @@ fail() {
 
 fetch() {
     if command -v wget >/dev/null 2>&1; then
-        wget -q --show-progress --tries=5 --retry-connrefused --waitretry=3 -O "$2" "$1"
+        wget -q --show-progress --tries=10 --retry-connrefused --waitretry=5 -O "$2" "$1"
     elif command -v curl >/dev/null 2>&1; then
-        curl -fL --retry 5 --retry-connrefused --retry-delay 3 --progress-bar -o "$2" "$1"
+        curl -fL --retry 10 --retry-connrefused --retry-delay 5 --progress-bar -o "$2" "$1"
     else
         fail "wget veya curl bulunamadı."
     fi

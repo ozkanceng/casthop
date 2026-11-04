@@ -26,7 +26,7 @@ yeter.
 **En kolayı:** tahtada ve tablette [ozkanceng.github.io/tablet-mirror](https://ozkanceng.github.io/tablet-mirror/) adresini açıp adımları izleyin. Tahtada indirilen kurucuya çift tıklamak yeter, yönetici şifresi gerekmez. Terminalden kurmak isterseniz:
 
 ```bash
-wget -qO- https://ozkanceng.github.io/tablet-mirror/kur | sh
+wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/tablet-mirror/kur | sh
 ```
 
 Dosyaları elle indirmek isterseniz [Sürümler](https://github.com/ozkanceng/tablet-mirror/releases) sayfasından iki seçenekten birini kullanın:

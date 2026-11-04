@@ -81,7 +81,7 @@ footer a { color: var(--primary); }
       <details>
         <summary>Olmazsa: terminalden kurun</summary>
         <p>Terminal uygulamasını açın, komutu kopyalayın, <kbd>Ctrl + Shift + V</kbd> ile yapıştırıp <kbd>Enter</kbd>'a basın.</p>
-        <p class="command" id="command">wget -qO- https://ozkanceng.github.io/tablet-mirror/kur | sh</p>
+        <p class="command" id="command">wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/tablet-mirror/kur | sh</p>
         <button class="button secondary" id="copy" type="button">Komutu kopyala</button>
         <p class="note" role="status" id="copied"></p>
       </details>

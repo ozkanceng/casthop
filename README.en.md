@@ -26,7 +26,7 @@ network.
 **Easiest:** open [ozkanceng.github.io/tablet-mirror](https://ozkanceng.github.io/tablet-mirror/) on the board and the tablet and follow the steps (the page is in Turkish). On the board, double-click the downloaded installer; no administrator password is needed. From a terminal:
 
 ```bash
-wget -qO- https://ozkanceng.github.io/tablet-mirror/kur | sh
+wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/tablet-mirror/kur | sh
 ```
 
 To download files by hand, use one of these from [Releases](https://github.com/ozkanceng/tablet-mirror/releases):
