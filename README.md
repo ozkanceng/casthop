@@ -23,7 +23,13 @@ yeter.
 
 ### Tahta (Pardus ETAP 23 / Debian 12)
 
-[Sürümler](https://github.com/ozkanceng/tablet-mirror/releases) sayfasından iki seçenekten birini indirin:
+**En kolayı:** tahtada ve tablette [ozkanceng.github.io/tablet-mirror](https://ozkanceng.github.io/tablet-mirror/) adresini açıp adımları izleyin. Tahtada tek komut yeter, yönetici şifresi gerekmez:
+
+```bash
+wget -qO- https://ozkanceng.github.io/tablet-mirror/kur | sh
+```
+
+Dosyaları elle indirmek isterseniz [Sürümler](https://github.com/ozkanceng/tablet-mirror/releases) sayfasından iki seçenekten birini kullanın:
 
 **A. Paket (önerilen, yönetici şifresi gerekir)**
 

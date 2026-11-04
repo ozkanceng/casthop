@@ -117,6 +117,14 @@ jobs:
           merge-multiple: true
           path: dist
 
+      # releases/latest/download/<ad> bağlantıları (site/, site/kur) sürümden bağımsız adlar ister.
+      - name: Stable download names
+        run: |
+          cd dist
+          cp yansit-[0-9]*.apk yansit.apk
+          cp yansit-receiver_*_amd64.deb yansit-receiver_amd64.deb
+          cp yansit-receiver-*-x86_64.tar.gz yansit-receiver-x86_64.tar.gz
+
       - name: Checksums
         run: cd dist && sha256sum * > SHA256SUMS
 

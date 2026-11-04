@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yansıt Kurulum</title>
+<meta name="description" content="Tablet ekranını Pardus ETAP akıllı tahtaya kablosuz yansıtan Yansıt'ı iki adımda kurun.">
+<style>
+:root {
+  color-scheme: light dark;
+  --primary: #0b5cad; --on-primary: #fff; --primary-soft: #d5e3ff; --on-primary-soft: #001b3d;
+  --bg: #f6f8fc; --card: #fff; --text: #181c22; --muted: #434852; --line: #c3c7d1; --code: #eaeef4;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #a7c8ff; --on-primary: #003063; --primary-soft: #00468b; --on-primary-soft: #d5e3ff;
+    --bg: #111318; --card: #191c20; --text: #e1e2e9; --muted: #c3c6d0; --line: #43474f; --code: #272a2f;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text); line-height: 1.5; font-size: 18px;
+  font-family: "Noto Sans", Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 48px; }
+header { text-align: center; margin-bottom: 32px; }
+h1 { margin: 0; color: var(--primary); font-size: 44px; line-height: 1.2; }
+header p { margin: 8px 0 0; font-size: 22px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; min-width: 0; }
+.card h2 { margin: 0 0 16px; font-size: 26px; line-height: 1.25; display: flex; align-items: center; gap: 12px; }
+.num {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--primary-soft); color: var(--on-primary-soft); font-size: 20px;
+}
+ol { margin: 0 0 16px; padding-left: 24px; }
+li { margin-bottom: 8px; }
+kbd { font: inherit; font-weight: 600; white-space: nowrap; }
+.command {
+  background: var(--code); border-radius: 12px; padding: 12px 16px; margin: 0 0 12px; overflow-wrap: anywhere;
+  font: 16px/1.5 "Noto Sans Mono", ui-monospace, Menlo, monospace;
+}
+.button {
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 64px; padding: 12px 24px;
+  border: 0; border-radius: 32px; background: var(--primary); color: var(--on-primary); text-decoration: none;
+  font: inherit; font-size: 20px; font-weight: 600; cursor: pointer;
+}
+.button.secondary { background: transparent; color: var(--primary); border: 1px solid var(--line); min-height: 56px; font-size: 18px; }
+.button:hover { filter: brightness(1.08); }
+:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+details p { margin: 8px 0 12px; color: var(--muted); }
+.qr { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.qr img { flex: none; width: 144px; height: 144px; background: #fff; border-radius: 8px; }
+.qr p { margin: 0; color: var(--muted); }
+.note { margin: 12px 0 0; color: var(--muted); font-size: 16px; }
+.connect { margin-top: 16px; }
+.connect ol { margin-bottom: 0; }
+footer { margin-top: 32px; text-align: center; color: var(--muted); font-size: 16px; }
+footer a { color: var(--primary); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Yansıt</h1>
+    <p>Tablet ekranını sınıftaki akıllı tahtaya kablosuz yansıtın.</p>
+  </header>
+
+  <div class="cards">
+    <section class="card" id="board">
+      <h2><span class="num">1</span>Tahtaya kurun</h2>
+      <ol>
+        <li>Tahtada <strong>Terminal</strong> uygulamasını açın.</li>
+        <li>Aşağıdaki düğmeyle komutu kopyalayın.</li>
+        <li>Terminale <kbd>Ctrl + Shift + V</kbd> ile yapıştırıp <kbd>Enter</kbd>'a basın.</li>
+      </ol>
+      <p class="command" id="command">wget -qO- https://ozkanceng.github.io/tablet-mirror/kur | sh</p>
+      <button class="button" id="copy" type="button">Komutu kopyala</button>
+      <p class="note" role="status" id="copied"></p>
+      <p class="note">Yönetici şifresi gerekmez. Birkaç dakika sürer; bitince Yansıt Alıcı kendiliğinden açılır.</p>
+      <details>
+        <summary>Yönetici şifreniz varsa: paketle kurun</summary>
+        <p>Paketi indirip dosyaya çift tıklayın ve açılan pencereden kurun. Bağımlılıklar için tahtanın internete bağlı olması gerekir.</p>
+        <a class="button secondary" href="https://github.com/ozkanceng/tablet-mirror/releases/latest/download/yansit-receiver_amd64.deb">Tahta paketini indir (.deb)</a>
+      </details>
+    </section>
+
+    <section class="card" id="tablet">
+      <h2><span class="num">2</span>Tablete kurun</h2>
+      <ol>
+        <li>Aşağıdaki QR kodu tabletin kamerasıyla okutun ya da bu sayfayı tablette açın.</li>
+        <li>İnen <strong>yansit.apk</strong> dosyasını açın.</li>
+        <li>Android izin isterse bu kaynağa izin verip <strong>Yükle</strong>'ye dokunun.</li>
+      </ol>
+      <a class="button" href="https://github.com/ozkanceng/tablet-mirror/releases/latest/download/yansit.apk">Tablet uygulamasını indir</a>
+      <div class="qr">
+        <img src="qr-tablet.svg" width="144" height="144" alt="Tablet uygulamasının indirme bağlantısına giden QR kod">
+        <p>Android 10 ve üstü tabletlerde çalışır.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="card connect">
+    <h2><span class="num">3</span>Bağlanın</h2>
+    <ol>
+      <li>Tahtada <strong>Yansıt Alıcı</strong>'yı açın; tablet ile tahta aynı Wi-Fi ağında olsun.</li>
+      <li>Tablette <strong>Yansıt</strong>'ı açıp <strong>Tahtaya Bağlan</strong>'a dokunun ve tahtadaki QR kodu okutun.</li>
+      <li>Android'in ekran paylaşımı sorusuna <strong>Başlat</strong> deyin.</li>
+    </ol>
+  </section>
+
+  <footer>
+    Açık kaynak, ücretsiz. <a href="https://github.com/ozkanceng/tablet-mirror#sorun-giderme">Sorun giderme</a> ·
+    <a href="https://github.com/ozkanceng/tablet-mirror/releases/latest">Tüm dosyalar</a> ·
+    <a href="https://github.com/ozkanceng/tablet-mirror/blob/main/README.en.md">English</a>
+  </footer>
+</main>
+<script>
+// Android'de tablet adımı öne alınır: öğretmen sayfayı tablette açtıysa indirme düğmesi ilk görünen olsun.
+if (/Android/i.test(navigator.userAgent)) {
+  const cards = document.querySelector(".cards");
+  cards.prepend(document.getElementById("tablet"));
+}
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = document.getElementById("command").textContent;
+  const status = document.getElementById("copied");
+  try {
+    await navigator.clipboard.writeText(text);
+    status.textContent = "Kopyalandı. Şimdi terminale yapıştırın.";
+  } catch {
+    const range = document.createRange();
+    range.selectNodeContents(document.getElementById("command"));
+    const selection = getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    status.textContent = "Komut seçildi; Ctrl + C ile kopyalayın.";
+  }
+});
+</script>
+</body>
+</html>

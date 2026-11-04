@@ -54,4 +54,6 @@ keyPassword=...
    ```
 3. `Release` iş akışı önce uçtan uca testleri (`integration.yml`) koşar; geçerse imzalı APK (`yansit-X.Y.Z.apk`), `.deb`, taşınabilir paket (`yansit-receiver-X.Y.Z-x86_64.tar.gz`, temiz Debian 12'de denenir) ve `SHA256SUMS` dosyalarını GitHub Releases'a yükler. Etiket `-` içeriyorsa (ör. `v0.1.0-rc1`) ön sürüm olarak işaretlenir.
 
+Aynı dosyalar sürümden bağımsız adlarla da yüklenir (`yansit.apk`, `yansit-receiver_amd64.deb`, `yansit-receiver-x86_64.tar.gz`). Kurulum sayfası (`site/`, GitHub Pages) ve `site/kur` betiği `releases/latest/download/` üzerinden bunları kullanır; ön sürümler "latest" sayılmaz.
+
 Android `versionCode` = `MAJOR*10000 + MINOR*100 + PATCH`; `.deb` sürümü etiketle aynıdır (`-rc1` → `~rc1`).
