@@ -72,14 +72,19 @@ footer a { color: var(--primary); }
     <section class="card" id="board">
       <h2><span class="num">1</span>Tahtaya kurun</h2>
       <ol>
-        <li>Tahtada <strong>Terminal</strong> uygulamasını açın.</li>
-        <li>Aşağıdaki düğmeyle komutu kopyalayın.</li>
-        <li>Terminale <kbd>Ctrl + Shift + V</kbd> ile yapıştırıp <kbd>Enter</kbd>'a basın.</li>
+        <li>Bu sayfayı tahtada açıp aşağıdaki düğmeye basın.</li>
+        <li><strong>İndirilenler</strong> klasöründe <strong>yansit-kur.desktop</strong> dosyasına çift tıklayın.</li>
+        <li>Çıkan uyarıda soldaki ilk düğmeye (<strong>Yine de Başlat</strong> / Launch Anyway) basın.</li>
       </ol>
-      <p class="command" id="command">wget -qO- https://ozkanceng.github.io/tablet-mirror/kur | sh</p>
-      <button class="button" id="copy" type="button">Komutu kopyala</button>
-      <p class="note" role="status" id="copied"></p>
-      <p class="note">Yönetici şifresi gerekmez. Birkaç dakika sürer; bitince Yansıt Alıcı kendiliğinden açılır.</p>
+      <a class="button" href="yansit-kur.desktop" download="yansit-kur.desktop">Tahta kurucusunu indir</a>
+      <p class="note">Yönetici şifresi gerekmez. Açılan pencerede kurulum birkaç dakika sürer; bitince Yansıt Alıcı kendiliğinden açılır.</p>
+      <details>
+        <summary>Olmazsa: terminalden kurun</summary>
+        <p>Terminal uygulamasını açın, komutu kopyalayın, <kbd>Ctrl + Shift + V</kbd> ile yapıştırıp <kbd>Enter</kbd>'a basın.</p>
+        <p class="command" id="command">wget -qO- https://ozkanceng.github.io/tablet-mirror/kur | sh</p>
+        <button class="button secondary" id="copy" type="button">Komutu kopyala</button>
+        <p class="note" role="status" id="copied"></p>
+      </details>
       <details>
         <summary>Yönetici şifreniz varsa: paketle kurun</summary>
         <p>Paketi indirip dosyaya çift tıklayın ve açılan pencereden kurun. Bağımlılıklar için tahtanın internete bağlı olması gerekir.</p>

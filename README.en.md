@@ -23,7 +23,7 @@ network.
 
 ### Board (Pardus ETAP 23 / Debian 12)
 
-**Easiest:** open [ozkanceng.github.io/tablet-mirror](https://ozkanceng.github.io/tablet-mirror/) on the board and the tablet and follow the steps (the page is in Turkish). On the board one command is enough and no administrator password is needed:
+**Easiest:** open [ozkanceng.github.io/tablet-mirror](https://ozkanceng.github.io/tablet-mirror/) on the board and the tablet and follow the steps (the page is in Turkish). On the board, double-click the downloaded installer; no administrator password is needed. From a terminal:
 
 ```bash
 wget -qO- https://ozkanceng.github.io/tablet-mirror/kur | sh

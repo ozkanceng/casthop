@@ -23,7 +23,7 @@ yeter.
 
 ### Tahta (Pardus ETAP 23 / Debian 12)
 
-**En kolayı:** tahtada ve tablette [ozkanceng.github.io/tablet-mirror](https://ozkanceng.github.io/tablet-mirror/) adresini açıp adımları izleyin. Tahtada tek komut yeter, yönetici şifresi gerekmez:
+**En kolayı:** tahtada ve tablette [ozkanceng.github.io/tablet-mirror](https://ozkanceng.github.io/tablet-mirror/) adresini açıp adımları izleyin. Tahtada indirilen kurucuya çift tıklamak yeter, yönetici şifresi gerekmez. Terminalden kurmak isterseniz:
 
 ```bash
 wget -qO- https://ozkanceng.github.io/tablet-mirror/kur | sh

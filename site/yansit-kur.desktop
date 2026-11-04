@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Yansıt'ı Kur
+Comment=Yansıt Alıcı'yı bu tahtaya kurar veya günceller
+Icon=system-software-install
+Terminal=true
+Exec=sh -c "wget -qO- https://ozkanceng.github.io/tablet-mirror/kur | sh; echo; echo 'Kapatmak için Enter tuşuna basın.'; read x"

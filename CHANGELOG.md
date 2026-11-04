@@ -5,7 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 ## [Yayımlanmamış / Unreleased]
 
 ### Eklendi / Added
-- Kurulum sayfası (GitHub Pages) ve `site/kur`: tahtaya yönetici şifresi olmadan tek komutla kurulum, tablet için QR ve doğrudan indirme.
+- Kurulum sayfası (GitHub Pages), çift tıklanan tahta kurucusu (`site/yansit-kur.desktop`) ve `site/kur`: yönetici şifresi olmadan kurulum, tablet için QR ve doğrudan indirme.
 - Sürümlere sürümden bağımsız adlı dosyalar eklendi (`releases/latest/download/`).
 
 ## [0.1.1] - 2026-11-04
