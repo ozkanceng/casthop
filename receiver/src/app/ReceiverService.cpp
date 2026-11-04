@@ -63,10 +63,8 @@ bool writeJsonFile(const QString& path, const QByteArray& data, bool privateFile
 
 ReceiverService::ReceiverService(Options options, QObject* parent) : QObject(parent), m_options(std::move(options)) {
     m_video = new media::VideoPipeline(m_options.sinkMode, this);
-    m_audio = new media::AudioPipeline(m_options.sinkMode == media::VideoPipeline::SinkMode::Gl
-                                           ? media::AudioPipeline::SinkMode::Device
-                                           : media::AudioPipeline::SinkMode::Fake,
-                                       this);
+    m_audio = new media::AudioPipeline(audioSinkMode(), this);
+    connect(m_video, &media::VideoPipeline::glRenderFailed, this, &ReceiverService::switchToCpuRenderer);
     connect(m_video, &media::VideoPipeline::keyframeNeeded, this, [this](std::uint8_t reason) {
         KeyframeRequest r;
         r.reason = reason;
@@ -117,8 +115,7 @@ session::ReceiverInfo ReceiverService::receiverInfo() const {
     const auto h265 = media::availableDecoders(Codec::H265);
     if (!h265.empty() && (h265.front().hardware || qEnvironmentVariableIntValue("YANSIT_ALLOW_SW_HEVC") == 1))
         info.videoDecoders.push_back({Codec::H265, std::uint8_t(h265.front().hardware ? CodecSupport::Hardware : 0)});
-    const auto audioMode = m_options.sinkMode == media::VideoPipeline::SinkMode::Gl ? media::AudioPipeline::SinkMode::Device
-                                                                                   : media::AudioPipeline::SinkMode::Fake;
+    const auto audioMode = audioSinkMode();
     if (media::AudioPipeline::opusAvailable(audioMode))
         info.audioDecoders.push_back({Codec::Opus, CodecSupport::Preferred});
     if (media::AudioPipeline::aacAvailable(audioMode))
@@ -242,6 +239,31 @@ QString ReceiverService::pendingSenderName() const {
 }
 
 void ReceiverService::setVideoItem(QObject* item) { m_video->setVideoItem(item); }
+
+media::AudioPipeline::SinkMode ReceiverService::audioSinkMode() const {
+    return m_options.sinkMode == media::VideoPipeline::SinkMode::Fake ? media::AudioPipeline::SinkMode::Fake
+                                                                      : media::AudioPipeline::SinkMode::Device;
+}
+
+QString ReceiverService::renderer() const {
+    switch (m_video->sinkMode()) {
+    case media::VideoPipeline::SinkMode::Gl:
+        return QStringLiteral("gl");
+    case media::VideoPipeline::SinkMode::Cpu:
+        return QStringLiteral("cpu");
+    case media::VideoPipeline::SinkMode::Fake:
+        break;
+    }
+    return {};
+}
+
+void ReceiverService::switchToCpuRenderer(const QString& reason) {
+    if (m_video->sinkMode() != media::VideoPipeline::SinkMode::Gl)
+        return;
+    qCWarning(lcRecv) << "CPU çizime geçiliyor:" << reason;
+    m_video->useCpuSink();
+    emit rendererChanged();
+}
 
 void ReceiverService::accept(QSslSocket* socket) {
     const ConnId id = ++m_nextId;

@@ -17,4 +17,5 @@ XDG_RUNTIME_DIR="$WORK/rt" HOME="$WORK" yansit-receiver --headless --exit-after 
     --data-dir "$WORK/d2" --qr-host 127.0.0.1 >"$WORK/headless.log" 2>&1 || { cat "$WORK/headless.log"; exit 1; }
 grep -q "dinleniyor" "$WORK/headless.log"
 test -f /usr/share/applications/io.github.ozkanceng.yansit.receiver.desktop
+grep -q "qml6glsink eklentisi: var" "$WORK/gui.log" || { cat "$WORK/gui.log"; exit 1; }
 echo "kurulu paket çalışıyor"

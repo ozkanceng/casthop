@@ -18,6 +18,7 @@ class ReceiverSettings : public QObject {
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY changed)
     Q_PROPERTY(bool autostart READ autostart WRITE setAutostart NOTIFY changed)
     Q_PROPERTY(int port READ port WRITE setPort NOTIFY changed)
+    Q_PROPERTY(bool compatibleVideo READ compatibleVideo WRITE setCompatibleVideo NOTIFY changed)
 
 public:
     explicit ReceiverSettings(QObject* parent = nullptr);
@@ -39,6 +40,10 @@ public:
     /// Değişiklik yeniden başlatınca geçerli olur.
     int port() const;
     void setPort(int port);
+
+    /// Draws video on the CPU, for boards where GL rendering is broken.
+    bool compatibleVideo() const;
+    void setCompatibleVideo(bool on);
 
     /// XDG autostart dosyasının yolu.
     static QString autostartFile();

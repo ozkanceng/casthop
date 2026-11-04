@@ -56,11 +56,17 @@ target_include_directories(yansit_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(yansit_core PUBLIC yansit_protocol Qt6::Core Qt6::Network PkgConfig::GST PkgConfig::AVAHI)
 
 qt_add_executable(yansit-receiver
+    app/DiagnosticLog.cpp
+    app/DiagnosticLog.h
+    app/RenderCheck.cpp
+    app/RenderCheck.h
     app/main.cpp
     app/QrImageProvider.cpp
     app/QrImageProvider.h
     app/ScreenshotTool.cpp
     app/ScreenshotTool.h
+    media/CpuVideoItem.cpp
+    media/CpuVideoItem.h
 )
 
 target_compile_definitions(yansit-receiver PRIVATE
@@ -68,6 +74,7 @@ target_compile_definitions(yansit-receiver PRIVATE
 
 set(YANSIT_QML_FILES
     qml/ApprovalDialog.qml
+    qml/CpuVideoView.qml
     qml/Main.qml
     qml/SettingsPanel.qml
     qml/StreamOverlay.qml
@@ -78,7 +85,7 @@ set(YANSIT_QML_FILES
 )
 set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 # GstGLQt6VideoItem türü derleme anında bilinmez (çalışma anında qml6glsink eklentisi kaydeder).
-set_source_files_properties(qml/VideoView.qml PROPERTIES QT_QML_SKIP_CACHEGEN TRUE)
+set_source_files_properties(qml/VideoView.qml qml/CpuVideoView.qml PROPERTIES QT_QML_SKIP_CACHEGEN TRUE)
 
 qt_add_qml_module(yansit-receiver
     URI Yansit

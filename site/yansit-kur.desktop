@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Version=1.0
-Name=Yansıt'ı Kur
-Comment=Yansıt Alıcı'yı bu tahtaya kurar veya günceller
-Icon=system-software-install
-Terminal=true
-Exec=sh -c "wget -q --tries=10 --retry-connrefused --waitretry=5 -O ~/.yansit-kur https://ozkanceng.github.io/tablet-mirror/kur && sh ~/.yansit-kur || echo 'Kurulum tamamlanamadı. İnternet bağlantısını denetleyip dosyaya yeniden çift tıklayın.'; rm -f ~/.yansit-kur; echo; echo 'Kapatmak için Enter tuşuna basın.'; read x"

@@ -63,6 +63,9 @@ void ReceiverSettings::setPort(int port) {
         write(QStringLiteral("port"), port);
 }
 
+bool ReceiverSettings::compatibleVideo() const { return m_settings.value(QStringLiteral("compatibleVideo"), false).toBool(); }
+void ReceiverSettings::setCompatibleVideo(bool on) { write(QStringLiteral("compatibleVideo"), on); }
+
 QString ReceiverSettings::autostartFile() {
     return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) +
            QStringLiteral("/autostart/io.github.ozkanceng.yansit.receiver.desktop");

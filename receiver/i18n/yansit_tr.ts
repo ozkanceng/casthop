@@ -38,6 +38,10 @@
 <context>
     <name>SettingsPanel</name>
     <message>
+        <source>Compatible picture mode (if the screen stays black; turning it off needs a restart)</source>
+        <translation>Uyumlu görüntü modu (ekran siyah kalırsa açın; kapatmak için yeniden başlatın)</translation>
+    </message>
+    <message>
         <source>Settings</source>
         <translation>Ayarlar</translation>
     </message>

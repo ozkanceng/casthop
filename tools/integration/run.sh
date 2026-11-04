@@ -19,7 +19,8 @@
 #   4l. Gecikme deseni: alıcı karedeki damgayı okuyup uçtan uca gecikmeyi ölçer (tools/latency)
 #   5. SIGTERM → alıcı düzgün kapanır
 #   5b. Alıcı yeniden başlatılınca eşleştirme geçerli (trusted.json kalıcı)
-#   6. (YANSIT_IT_GUI=1) Arayüz modu Xvfb + Mesa OpenGL'de: qml6glsink yolu 300 kareyi çizer
+#   6. (YANSIT_IT_GUI=1) Arayüz modu Xvfb + Mesa OpenGL'de: qml6glsink yolu ekranda görüntü var (piksel ölçümü)
+#   6b. Aynısı CPU çiziciyle; 6c. GL siyah çizince CPU çiziciye kendiliğinden geçiş
 set -eu
 
 RECEIVER=$(realpath "$1")
@@ -243,28 +244,35 @@ kill -TERM "$RPID"
 wait "$RPID" || fail "senaryo 5b: alıcı çıkışı"
 RPID=""
 
-if [ "${YANSIT_IT_GUI:-0}" = 1 ]; then
-    log "6. Arayüz modu (Xvfb, OpenGL)"
-    PAIR6="$WORK/pairing-gui.json"
-    rm -f "$PAIR6" "$WORK/stats-gui.jsonl"
-    XDG_RUNTIME_DIR="$RUNTIME" xvfb-run -a -s "-screen 0 1920x1080x24" "$RECEIVER" --windowed --verbose \
-        --port "$PORT" --data-dir "$WORK/data" --pairing-file "$PAIR6" --stats-file "$WORK/stats-gui.jsonl" \
+# Screen brightness has to come from the display itself: frame counters stay green over a black window.
+gui_scenario() {
+    name=$1 pair=$2 stats=$3 result=$4
+    shift 4
+    rm -f "$pair" "$stats"
+    env "$@" XDG_RUNTIME_DIR="$RUNTIME" HOME="$WORK/home-$name" xvfb-run -n 77 -f "$WORK/xauth" \
+        -s "-screen 0 1280x720x24" "$RECEIVER" --windowed --verbose \
+        --port "$PORT" --data-dir "$WORK/data" --pairing-file "$pair" --stats-file "$stats" \
         --qr-host 127.0.0.1 --board-name "CI Tahta" >"$WORK/receiver.log" 2>&1 &
     RPID=$!
     i=0
-    until [ -s "$PAIR6" ]; do
+    until [ -s "$pair" ]; do
         i=$((i + 1))
-        [ $i -gt 150 ] && fail "arayüz modu 15 sn içinde hazır olmadı"
-        kill -0 "$RPID" 2>/dev/null || fail "arayüz modu başlarken kapandı"
+        [ $i -gt 150 ] && fail "$name: arayüz 15 sn içinde hazır olmadı"
+        kill -0 "$RPID" 2>/dev/null || fail "$name: arayüz başlarken kapandı"
         sleep 0.1
     done
-    grep -q "video boru hattı" "$WORK/receiver.log" && fail "boru hattı oturumdan önce kuruldu"
-    "$SENDER" --pairing-file "$PAIR6" --auth qr --input "$WORK/test.h264" --fps 60 --frames 300 \
-        --device-name "Tablet GUI" --result "$WORK/s6.json" || fail "senaryo 6: gönderici"
+    grep -q "video boru hattı" "$WORK/receiver.log" && fail "$name: boru hattı oturumdan önce kuruldu"
+    "$SENDER" --pairing-file "$pair" --auth qr --input "$WORK/test-gop30.h264" --fps 30 --frames 300 \
+        --device-name "Tablet GUI" --result "$result" &
+    SPID=$!
+    sleep 8
+    XAUTHORITY="$WORK/xauth" DISPLAY=:77 import -window root "$WORK/$name.png" || fail "$name: ekran görüntüsü alınamadı"
+    BRIGHTNESS=$(convert "$WORK/$name.png" -colorspace Gray -format '%[fx:int(mean*255)]' info:)
+    wait "$SPID" || fail "$name: gönderici"
     i=0
-    until [ -s "$WORK/stats-gui.jsonl" ]; do
+    until [ -s "$stats" ]; do
         i=$((i + 1))
-        [ $i -gt 50 ] && fail "arayüz modu oturum istatistiği yazılmadı"
+        [ $i -gt 50 ] && fail "$name: oturum istatistiği yazılmadı"
         sleep 0.1
     done
     # xvfb-run sarmalayıcısı değil, alıcının kendisi sonlandırılır; xvfb-run onun çıkış kodunu döndürür.
@@ -272,7 +280,25 @@ if [ "${YANSIT_IT_GUI:-0}" = 1 ]; then
     RC=0
     wait "$RPID" || RC=$?
     RPID=""
-    [ "$RC" -eq 0 ] || fail "arayüz modu çıkış kodu $RC"
+    [ "$RC" -eq 0 ] || fail "$name: çıkış kodu $RC"
+    printf '%s: ekran parlaklığı %s\n' "$name" "$BRIGHTNESS"
+    [ "$BRIGHTNESS" -ge 60 ] || fail "$name: ekran siyah (parlaklık $BRIGHTNESS)"
+}
+
+if [ "${YANSIT_IT_GUI:-0}" = 1 ]; then
+    log "6. Arayüz modu (Xvfb, OpenGL)"
+    gui_scenario gl "$WORK/pairing-gui.json" "$WORK/stats-gui.jsonl" "$WORK/s6.json" YANSIT_IT=1
+    grep -q "çizim: GL" "$WORK/receiver.log" || fail "6: GL çizim kullanılmadı"
+    grep -q "görüntü çiziliyor" "$WORK/receiver.log" || fail "6: görüntü denetimi geçmedi"
+
+    log "6b. CPU çizici"
+    gui_scenario cpu "$WORK/pairing-cpu.json" "$WORK/stats-cpu.jsonl" "$WORK/s6b.json" YANSIT_RENDERER=cpu
+    grep -q "çizim: CPU" "$WORK/receiver.log" || fail "6b: CPU çizim kullanılmadı"
+
+    log "6c. GL siyah çizince CPU çiziciye kendiliğinden geçiş"
+    gui_scenario fallback "$WORK/pairing-fb.json" "$WORK/stats-fb.jsonl" "$WORK/s6c.json" YANSIT_TEST_BLACK_GL=1
+    grep -q "CPU çizime geçiliyor" "$WORK/receiver.log" || fail "6c: CPU çiziciye geçilmedi"
+    grep -q "görüntü çiziliyor" "$WORK/receiver.log" || fail "6c: geçişten sonra görüntü yok"
 fi
 
 log "Sonuçlar denetleniyor"

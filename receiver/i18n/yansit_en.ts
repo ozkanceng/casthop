@@ -38,6 +38,10 @@
 <context>
     <name>SettingsPanel</name>
     <message>
+        <source>Compatible picture mode (if the screen stays black; turning it off needs a restart)</source>
+        <translation>Compatible picture mode (if the screen stays black; turning it off needs a restart)</translation>
+    </message>
+    <message>
         <source>Settings</source>
         <translation>Settings</translation>
     </message>

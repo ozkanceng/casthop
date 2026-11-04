@@ -103,6 +103,11 @@ Item {
                 }
 
                 SectionLabel { text: qsTr("Picture") }
+                SettingSwitch {
+                    label: qsTr("Compatible picture mode (if the screen stays black; turning it off needs a restart)")
+                    checked: root.settings.compatibleVideo
+                    onToggled: root.settings.compatibleVideo = checked
+                }
                 RowLayout {
                     spacing: Theme.space2
 

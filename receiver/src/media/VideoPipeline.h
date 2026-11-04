@@ -10,6 +10,7 @@
 #include <atomic>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -17,6 +18,7 @@
 
 typedef struct _GstElement GstElement;
 typedef struct _GstPadProbeInfo GstPadProbeInfo;
+typedef struct _GstSample GstSample;
 typedef struct _GstVideoInfo GstVideoInfo;
 
 namespace yansit::media {
@@ -31,7 +33,8 @@ struct DecoderChoice {
 std::vector<DecoderChoice> availableDecoders(std::uint8_t codec);
 
 /**
- * appsrc → h264parse|h265parse → çözücü → (GL: glupload → glcolorconvert → qml6glsink | başsız: fakesink).
+ * appsrc → h264parse|h265parse → çözücü → (GL: glupload → glcolorconvert → qml6glsink |
+ * CPU: videoconvert → appsink | başsız: fakesink).
  * sync=false: kare geldiği anda çizilir. Gecikme birikirse anahtar kareye kadar kare atılır ve
  * göndericiden IDR istenir. Donanım çözücü hata verirse yazılım çözücüye düşülür.
  */
@@ -39,7 +42,15 @@ class VideoPipeline : public QObject {
     Q_OBJECT
 
 public:
-    enum class SinkMode { Gl, Fake };
+    /// Gl: drawn by the GPU. Cpu: RGBA frames go to a `FrameConsumer` (no GL context sharing).
+    /// Fake: headless mode only; nothing is drawn.
+    enum class SinkMode { Gl, Cpu, Fake };
+
+    /// Called on the streaming thread; the sample stays owned by the caller (use gst_sample_ref to keep it).
+    using FrameConsumer = std::function<void(GstSample*)>;
+
+    /// Mean luma below this counts as black (limited-range Y: black is 16).
+    static constexpr int kBlackLuma = 24;
 
     /// Çözücü önünde (gönderilmiş ama henüz çizilmemiş) olağan en fazla kare; bu sınır
     /// kBacklogGraceUs boyunca aşılırsa anahtar kareye kadar kare atılır.
@@ -74,6 +85,17 @@ public:
     /// GL modunda qml6glsink'in çizeceği GstGLQt6VideoItem.
     void setVideoItem(QObject* item) { m_videoItem = item; }
 
+    /// Renderer that receives frames in CPU mode; empty detaches. Rebuilds the pipeline if a session is running.
+    void setFrameConsumer(FrameConsumer consumer);
+
+    SinkMode sinkMode() const { return m_mode; }
+    /// Drops the GL pipeline and enters CPU mode; streaming resumes once `setFrameConsumer` attaches a renderer.
+    void useCpuSink();
+    /// Moves from a hardware decoder to the next one; false if there is none.
+    bool retryWithNextDecoder(const QString& reason);
+    /// Mean luma (0-255) of the centre of the last sampled decoded frame; -1 if it could not be read.
+    int decodedLuma() const { return m_decodedLuma.load(); }
+
     /// Yeni oturum: durum sıfırlanır; boru hattı ilk CONFIG ile kurulur.
     void reset();
     /// Boru hattını durdurur ve serbest bırakır.
@@ -92,6 +114,8 @@ public:
     std::uint32_t totalDropped() const { return m_totalDropped; }
     std::uint32_t totalReceived() const { return m_totalReceived; }
 
+    /// Internal: hands an appsink sample to the renderer (streaming thread).
+    void deliverSample(GstSample* sample);
     /// İç kullanım: sink pad sondası (akış iş parçacığında çağrılır).
     void handleSinkProbe(GstPadProbeInfo* info);
     /// İç kullanım: çözücü çıkışı sondası; gecikme desenini okur.
@@ -108,6 +132,8 @@ signals:
     void firstFrameRendered();
     void videoSizeChanged(int width, int height);
     void decoderChanged();
+    /// The GL drawing chain failed; switch to CPU mode.
+    void glRenderFailed(const QString& message);
 
 private:
     bool build();
@@ -116,9 +142,12 @@ private:
     void dropFrame();
     void requestKeyframe(std::uint8_t reason);
     void onDecoderFailure(const QString& message);
+    void restartFromConfig();
 
     SinkMode m_mode;
     QPointer<QObject> m_videoItem;
+    std::mutex m_consumerMutex;
+    FrameConsumer m_consumer;
     GstElement* m_pipeline = nullptr;
     GstElement* m_appsrc = nullptr;
     QTimer m_busTimer;
@@ -149,6 +178,8 @@ private:
     std::uint32_t m_totalReceived = 0;
     int m_width = 0;
     int m_height = 0;
+    std::atomic<int> m_decodedLuma{-1};
+    std::uint32_t m_lumaCountdown = 0;
 
     // Gecikme deseni (akış iş parçacıkları; m_mutex ile).
     GstVideoInfo* m_decodedInfo = nullptr;

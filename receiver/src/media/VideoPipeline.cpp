@@ -4,6 +4,7 @@
 #include "media/LatencyPattern.h"
 #include "protocol/Control.h"
 
+#include <gst/app/gstappsink.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/gst.h>
 #include <gst/video/video.h>
@@ -45,6 +46,32 @@ GstPadProbeReturn decodedProbe(GstPad*, GstPadProbeInfo* info, gpointer self) {
     static_cast<VideoPipeline*>(self)->handleDecodedProbe(info);
     return GST_PAD_PROBE_OK;
 }
+
+GstFlowReturn cpuSampleReady(GstAppSink* sink, gpointer self) {
+    GstSample* sample = gst_app_sink_pull_sample(sink);
+    if (!sample)
+        return GST_FLOW_EOS;
+    static_cast<VideoPipeline*>(self)->deliverSample(sample);
+    gst_sample_unref(sample);
+    return GST_FLOW_OK;
+}
+
+/// Sparse mean over the central half of a Y plane.
+int centreLuma(const std::uint8_t* plane, int width, int height, int stride) {
+    constexpr int kSteps = 32;
+    std::uint64_t sum = 0;
+    int count = 0;
+    for (int j = 0; j < kSteps; ++j) {
+        const int y = height / 4 + j * (height / 2) / kSteps;
+        for (int i = 0; i < kSteps; ++i) {
+            sum += plane[std::size_t(y) * std::size_t(stride) + std::size_t(width / 4 + i * (width / 2) / kSteps)];
+            ++count;
+        }
+    }
+    return count ? int(sum / std::uint64_t(count)) : -1;
+}
+
+constexpr std::uint32_t kLumaSampleInterval = 15; // frames
 
 constexpr std::size_t kMaxE2eSamples = 3600; // ≈ 1 dk @ 60 fps
 
@@ -102,6 +129,7 @@ void VideoPipeline::reset() {
     m_lastKeyframeRequestUs = 0;
     m_backlogSinceUs = 0;
     m_firstRendered = false;
+    m_decodedLuma = -1;
     m_totalRendered = 0;
     m_totalDropped = 0;
     m_totalReceived = 0;
@@ -151,6 +179,13 @@ bool VideoPipeline::build() {
         qCCritical(lcVideo) << "GL modu için video öğesi ayarlanmamış";
         return false;
     }
+    if (m_mode == SinkMode::Cpu) {
+        std::lock_guard lock(m_consumerMutex);
+        if (!m_consumer) {
+            qCInfo(lcVideo) << "CPU çizici henüz bağlanmadı, boru hattı bekliyor";
+            return false;
+        }
+    }
 
     GstElement* pipeline = gst_pipeline_new("yansit-video");
     std::vector<GstElement*> chain;
@@ -167,20 +202,25 @@ bool VideoPipeline::build() {
     make(hevc ? "h265parse" : "h264parse");
     GstElement* dec = make(m_decoder.factory.c_str(), "decoder");
     GstElement* sink = nullptr;
-    if (m_mode == SinkMode::Gl) {
-        if (m_decoder.hardware && !std::getenv("YANSIT_VA_DMABUF")) {
-            // GStreamer 1.22'de VA → GL DMABuf içe aktarımı sürücüye göre kararsız (RISKS R6):
-            // varsayılan olarak sistem belleğine indirilip glupload ile yüklenir.
-            GstElement* cf = make("capsfilter");
-            if (cf) {
-                GstCaps* raw = gst_caps_new_empty_simple("video/x-raw");
-                g_object_set(cf, "caps", raw, nullptr);
-                gst_caps_unref(raw);
-            }
+    if (m_mode != SinkMode::Fake && m_decoder.hardware && !std::getenv("YANSIT_VA_DMABUF")) {
+        // VA to GL DMABuf import is driver-dependent on GStreamer 1.22 (RISKS R6), so frames are downloaded
+        // to system memory by default. CPU mode needs system memory anyway.
+        GstElement* cf = make("capsfilter");
+        if (cf) {
+            GstCaps* raw = gst_caps_new_empty_simple("video/x-raw");
+            g_object_set(cf, "caps", raw, nullptr);
+            gst_caps_unref(raw);
         }
+    }
+    if (m_mode == SinkMode::Gl) {
         make("glupload");
         make("glcolorconvert");
         sink = make("qml6glsink", "sink");
+    } else if (m_mode == SinkMode::Cpu) {
+        GstElement* convert = make("videoconvert");
+        if (convert && hasProperty(convert, "n-threads"))
+            g_object_set(convert, "n-threads", 2, nullptr);
+        sink = make("appsink", "sink");
     } else {
         sink = make("fakesink", "sink");
     }
@@ -213,6 +253,16 @@ bool VideoPipeline::build() {
     g_object_set(sink, "sync", FALSE, nullptr);
     if (m_mode == SinkMode::Gl)
         g_object_set(sink, "widget", gpointer(m_videoItem.data()), nullptr);
+    if (m_mode == SinkMode::Cpu) {
+        GstCaps* rgba = gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "RGBA", nullptr);
+        gst_app_sink_set_caps(GST_APP_SINK(sink), rgba);
+        gst_caps_unref(rgba);
+        gst_app_sink_set_max_buffers(GST_APP_SINK(sink), 1);
+        gst_app_sink_set_drop(GST_APP_SINK(sink), TRUE);
+        GstAppSinkCallbacks callbacks{};
+        callbacks.new_sample = cpuSampleReady;
+        gst_app_sink_set_callbacks(GST_APP_SINK(sink), &callbacks, this, nullptr);
+    }
 
     for (GstElement* e : chain)
         gst_bin_add(GST_BIN(pipeline), e);
@@ -248,7 +298,51 @@ bool VideoPipeline::build() {
     }
     m_busTimer.start();
     qCInfo(lcVideo) << "video boru hattı:" << m_decoder.factory.c_str()
-                    << (m_decoder.hardware ? "(donanım)" : "(yazılım)");
+                    << (m_decoder.hardware ? "(donanım)" : "(yazılım)") << "çizim:"
+                    << (m_mode == SinkMode::Gl ? "GL" : m_mode == SinkMode::Cpu ? "CPU" : "yok");
+    return true;
+}
+
+void VideoPipeline::deliverSample(GstSample* sample) {
+    std::lock_guard lock(m_consumerMutex);
+    if (m_consumer)
+        m_consumer(sample);
+}
+
+void VideoPipeline::setFrameConsumer(FrameConsumer consumer) {
+    bool attached = false;
+    {
+        std::lock_guard lock(m_consumerMutex);
+        attached = bool(consumer);
+        m_consumer = std::move(consumer);
+    }
+    if (attached && m_mode == SinkMode::Cpu && !m_pipeline && !m_config.empty())
+        restartFromConfig();
+}
+
+void VideoPipeline::useCpuSink() {
+    if (m_mode != SinkMode::Gl)
+        return;
+    teardown();
+    m_mode = SinkMode::Cpu;
+    m_videoItem = nullptr;
+    m_configPending = true;
+    m_waitKeyframe = true;
+}
+
+void VideoPipeline::restartFromConfig() {
+    m_configPending = true;
+    m_waitKeyframe = true;
+    if (build()) {
+        m_lastKeyframeRequestUs = 0;
+        requestKeyframe(KeyframeReason::DecodeError);
+    }
+}
+
+bool VideoPipeline::retryWithNextDecoder(const QString& reason) {
+    if (!m_decoder.hardware || m_decoderIndex + 1 >= m_decoders.size())
+        return false;
+    onDecoderFailure(reason);
     return true;
 }
 
@@ -286,6 +380,11 @@ void VideoPipeline::onDecoderFailure(const QString& message) {
         ++m_decoderIndex;
         qCWarning(lcVideo) << "donanım çözücü başarısız, yazılıma geçiliyor:" << message;
         emit decoderChanged();
+    } else if (m_mode == SinkMode::Gl && (message.startsWith(QLatin1String("sink:")) || message.startsWith(QLatin1String("gl")))) {
+        // The GL chain fails with a software decoder too; rebuilding would only repeat the error.
+        qCWarning(lcVideo) << "GL çizim hatası:" << message;
+        emit glRenderFailed(message);
+        return;
     }
     m_configPending = true;
     m_waitKeyframe = true;
@@ -293,10 +392,7 @@ void VideoPipeline::onDecoderFailure(const QString& message) {
     const auto rebuild = [this] {
         if (m_pipeline || m_config.empty())
             return;
-        if (build()) {
-            m_lastKeyframeRequestUs = 0;
-            requestKeyframe(KeyframeReason::DecodeError);
-        }
+        restartFromConfig();
     };
     // Sürekli hata veren bir ortamda döngüye girmemek için yeniden kurulumu sınırla.
     const std::uint64_t now = monotonicUs();
@@ -532,8 +628,14 @@ void VideoPipeline::handleDecodedProbe(GstPadProbeInfo* info) {
     GstVideoFrame frame;
     if (!gst_video_frame_map(&frame, &vinfo, buf, GST_MAP_READ))
         return;
-    const auto ts = LatencyPattern::decodeLuma(static_cast<const std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&frame, 0)),
-                                               GST_VIDEO_FRAME_WIDTH(&frame), GST_VIDEO_FRAME_HEIGHT(&frame),
+    const auto* luma = static_cast<const std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&frame, 0));
+    if (m_lumaCountdown == 0) {
+        m_lumaCountdown = kLumaSampleInterval;
+        m_decodedLuma = centreLuma(luma, GST_VIDEO_FRAME_WIDTH(&frame), GST_VIDEO_FRAME_HEIGHT(&frame),
+                                   GST_VIDEO_FRAME_PLANE_STRIDE(&frame, 0));
+    }
+    --m_lumaCountdown;
+    const auto ts = LatencyPattern::decodeLuma(luma, GST_VIDEO_FRAME_WIDTH(&frame), GST_VIDEO_FRAME_HEIGHT(&frame),
                                                GST_VIDEO_FRAME_PLANE_STRIDE(&frame, 0));
     gst_video_frame_unmap(&frame);
     if (!ts)

@@ -51,7 +51,7 @@ class ReceiverService : public QObject {
     Q_PROPERTY(QString senderName READ senderName NOTIFY stateChanged)
     Q_PROPERTY(QString pendingSenderName READ pendingSenderName NOTIFY pendingChanged)
     Q_PROPERTY(int pendingTimeoutMs READ pendingTimeoutMs NOTIFY pendingChanged)
-    Q_PROPERTY(bool videoAvailable READ videoAvailable CONSTANT)
+    Q_PROPERTY(QString renderer READ renderer NOTIFY rendererChanged)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorChanged)
     Q_PROPERTY(QVariantMap stats READ stats NOTIFY statsChanged)
 
@@ -98,7 +98,8 @@ public:
     QString senderName() const;
     QString pendingSenderName() const;
     int pendingTimeoutMs() const { return int(m_options.approvalTimeout.count()); }
-    bool videoAvailable() const { return m_options.sinkMode == media::VideoPipeline::SinkMode::Gl; }
+    /// "gl", "cpu" or "" when headless.
+    QString renderer() const;
     QString errorMessage() const { return m_error; }
     QVariantMap stats() const { return m_statsMap; }
     const protocol::Key32& fingerprint() const { return m_identity.fingerprint; }
@@ -106,6 +107,8 @@ public:
     media::VideoPipeline* video() const { return m_video; }
 
     Q_INVOKABLE void setVideoItem(QObject* item);
+    /// Leaves GL rendering; the UI swaps its video item and streaming continues.
+    void switchToCpuRenderer(const QString& reason);
     Q_INVOKABLE void approvePending();
     Q_INVOKABLE void denyPending();
     Q_INVOKABLE void stopSession();
@@ -123,6 +126,7 @@ public:
 
 signals:
     void stateChanged();
+    void rendererChanged();
     void credentialsChanged();
     void pendingChanged();
     void errorChanged();
@@ -132,6 +136,7 @@ signals:
     void trustedChanged();
 
 private:
+    media::AudioPipeline::SinkMode audioSinkMode() const;
     void accept(QSslSocket* socket);
     void onControl(net::Connection& c, protocol::ControlMessage msg, std::uint64_t recvUs);
     void onFirstMessage(net::Connection& c, protocol::ControlMessage&& msg);

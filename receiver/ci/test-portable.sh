@@ -38,4 +38,6 @@ grep -q "dinleniyor" "$WORK/log"
 QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FATAL_WARNINGS=1 XDG_RUNTIME_DIR="$WORK/rt" \
     "$DIR/yansit-receiver" --windowed --exit-after 3000 --port 47801 --data-dir "$WORK/data" --qr-host 127.0.0.1 \
     >"$WORK/gui.log" 2>&1 || { cat "$WORK/gui.log"; exit 1; }
+# The GL sink must load from the bundle; a plugin that fails to load quietly costs GPU rendering.
+grep -q "qml6glsink eklentisi: var" "$WORK/gui.log" || { cat "$WORK/gui.log"; exit 1; }
 echo "taşınabilir paket temiz sistemde çalışıyor"

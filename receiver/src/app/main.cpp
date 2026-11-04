@@ -1,7 +1,12 @@
+#include "app/DiagnosticLog.h"
 #include "app/QrImageProvider.h"
+#include "app/RenderCheck.h"
 #include "app/ReceiverService.h"
 #include "app/ReceiverSettings.h"
 #include "app/ScreenshotTool.h"
+#include "media/CpuVideoItem.h"
+#include "media/VideoPipeline.h"
+#include "protocol/Control.h"
 
 #include <gst/gst.h>
 
@@ -12,8 +17,12 @@
 #include <QHostInfo>
 #include <QLocale>
 #include <QLoggingCategory>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
+#include <QQmlEngine>
 #include <QQmlApplicationEngine>
 #include <QQuickWindow>
+#include <QSGRendererInterface>
 #include <QScreen>
 #include <QSocketNotifier>
 #include <QStandardPaths>
@@ -27,6 +36,8 @@
 #include <memory>
 #include <optional>
 #include <unistd.h>
+
+Q_LOGGING_CATEGORY(lcMain, "yansit.main")
 
 using yansit::ReceiverService;
 using SinkMode = yansit::media::VideoPipeline::SinkMode;
@@ -67,15 +78,15 @@ bool hasArg(int argc, char* argv[], const char* name) {
     return false;
 }
 
-bool glVideoPossible() {
-    if (qEnvironmentVariable("QT_QUICK_BACKEND") == QLatin1String("software"))
-        return false;
+bool glSinkInstalled() {
     GstElementFactory* f = gst_element_factory_find("qml6glsink");
     if (!f)
         return false;
     gst_object_unref(f);
     return true;
 }
+
+bool glVideoPossible() { return qEnvironmentVariable("QT_QUICK_BACKEND") != QLatin1String("software") && glSinkInstalled(); }
 
 struct CommonOptions {
     QCommandLineOption port{QStringLiteral("port"), QStringLiteral("TCP port (default 47800)"), QStringLiteral("port"),
@@ -181,13 +192,49 @@ int runHeadless(int argc, char* argv[]) {
     return QCoreApplication::exec();
 }
 
+void logEnvironment() {
+    qCInfo(lcMain).noquote() << "Yansıt" << QCoreApplication::applicationVersion() << "platform"
+                             << QGuiApplication::platformName() << "oturum" << qEnvironmentVariable("XDG_SESSION_TYPE")
+                             << "masaüstü" << qEnvironmentVariable("XDG_CURRENT_DESKTOP");
+    guint major = 0, minor = 0, micro = 0, nano = 0;
+    gst_version(&major, &minor, &micro, &nano);
+    qCInfo(lcMain).noquote() << "Qt" << qVersion() << "GStreamer" << QStringLiteral("%1.%2.%3").arg(major).arg(minor).arg(micro);
+    const bool installed = glSinkInstalled();
+    qCInfo(lcMain) << "qml6glsink eklentisi:" << (installed ? "var" : "yok");
+    if (!installed)
+        qCInfo(lcMain).noquote() << "qml6glsink yüklenemedi:" << yansit::pluginLoadError("libgstqml6.so");
+    for (const std::uint8_t codec : {yansit::protocol::Codec::H264, yansit::protocol::Codec::H265})
+        for (const auto& d : yansit::media::availableDecoders(codec))
+            qCInfo(lcMain).noquote() << "çözücü:" << QString::fromStdString(d.factory) << (d.hardware ? "(donanım)" : "(yazılım)");
+}
+
+/// Logs the GL driver, which black screen reports need. Runs on the render thread.
+void logGraphics(QQuickWindow& window) {
+    QObject::connect(
+        &window, &QQuickWindow::sceneGraphInitialized, &window,
+        [&window] {
+            const QOpenGLContext* context = QOpenGLContext::currentContext();
+            if (!context) {
+                qCInfo(lcMain) << "sahne grafiği: GL yok, API" << int(window.rendererInterface()->graphicsApi());
+                return;
+            }
+            QOpenGLFunctions* f = context->functions();
+            qCInfo(lcMain) << "GL:" << reinterpret_cast<const char*>(f->glGetString(GL_VENDOR)) << "/"
+                           << reinterpret_cast<const char*>(f->glGetString(GL_RENDERER)) << "/"
+                           << reinterpret_cast<const char*>(f->glGetString(GL_VERSION));
+        },
+        Qt::DirectConnection);
+}
+
 int runGui(int argc, char* argv[]) {
-    const bool gl = glVideoPossible();
-    if (gl)
+    const bool glPlugin = glVideoPossible();
+    if (glPlugin)
         QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL); // qml6glsink OpenGL ister
 
     QGuiApplication app(argc, argv);
     setAppInfo();
+    yansit::installDiagnosticLog();
+    logEnvironment();
     QGuiApplication::setApplicationDisplayName(QStringLiteral("Yansıt"));
     QGuiApplication::setDesktopFileName(QStringLiteral("io.github.ozkanceng.yansit.receiver"));
 
@@ -202,9 +249,11 @@ int runGui(int argc, char* argv[]) {
     auto opt = serviceOptions(parser, o);
     if (!opt)
         return 2;
-    opt->sinkMode = gl ? SinkMode::Gl : SinkMode::Fake;
     // Kalıcı ayarlar; komut satırı seçenekleri bu çalışma için önceliklidir.
     yansit::ReceiverSettings settings;
+    // The UI never uses a sink that draws nothing: without GL, frames are drawn on the CPU.
+    const bool gl = glPlugin && !settings.compatibleVideo() && qEnvironmentVariable("YANSIT_RENDERER") != QLatin1String("cpu");
+    opt->sinkMode = gl ? SinkMode::Gl : SinkMode::Cpu;
     if (!parser.isSet(o.name))
         opt->name = settings.boardName();
     if (!parser.isSet(o.port))
@@ -242,8 +291,12 @@ int runGui(int argc, char* argv[]) {
             service.setReceiverName(settings.boardName());
         if (!parser.isSet(o.noAudio))
             service.setAudioEnabled(settings.audioEnabled());
+        if (settings.compatibleVideo())
+            service.switchToCpuRenderer(QStringLiteral("uyumlu görüntü modu açıldı"));
     });
     yansit::ScreenshotTool screenshots;
+
+    qmlRegisterType<yansit::media::CpuVideoItem>("Yansit.Video", 1, 0, "CpuVideoItem");
 
     auto engine = std::make_unique<QQmlApplicationEngine>();
     // Qt 6.4: qt_add_qml_module modülü qrc:/Yansit/ altına koyar ama "qrc:/" varsayılan içe aktarma yollarında yok.
@@ -262,10 +315,17 @@ int runGui(int argc, char* argv[]) {
     engine->load(QUrl(QStringLiteral("qrc:/Yansit/qml/Main.qml")));
     if (engine->rootObjects().isEmpty())
         return 1;
+    auto* window = qobject_cast<QQuickWindow*>(engine->rootObjects().constFirst());
+    std::unique_ptr<yansit::RenderCheck> renderCheck;
+    if (window) {
+        logGraphics(*window);
+        renderCheck = std::make_unique<yansit::RenderCheck>(service, *window);
+    }
     // Arayüz yüklendikten sonra dinlemeye başla: el sıkışmaları yükleme sırasında bekletilmesin.
     // Hata olsa da arayüz açık kalır ve sorunu anlaşılır biçimde gösterir.
     service.start();
     const int rc = QGuiApplication::exec();
+    renderCheck.reset();
 
     // Pencere ve sahne grafiği kaynakları (QR dokusu, görüntü önbelleği) deleteLater ile bırakılır;
     // olay döngüsü bittikten sonra bekleyen silmeleri işleyerek düzgün kapan.

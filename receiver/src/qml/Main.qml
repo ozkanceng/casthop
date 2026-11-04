@@ -37,9 +37,16 @@ ApplicationWindow {
     Loader {
         id: videoLoader
         anchors.fill: parent
-        Component.onCompleted: {
-            if (window.receiver.videoAvailable)
-                setSource("VideoView.qml", { receiver: window.receiver, scaling: window.settings.scaling })
+        function load() {
+            const view = window.receiver.renderer === "gl" ? "VideoView.qml"
+                       : window.receiver.renderer === "cpu" ? "CpuVideoView.qml" : ""
+            if (view !== "")
+                setSource(view, { receiver: window.receiver, scaling: window.settings.scaling })
+        }
+        Component.onCompleted: load()
+        Connections {
+            target: window.receiver
+            function onRendererChanged() { videoLoader.load() }
         }
         Binding {
             target: videoLoader.item
