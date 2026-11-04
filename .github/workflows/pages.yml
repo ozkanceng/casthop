@@ -30,7 +30,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq qrencode
           qrencode -t SVG -m 2 -o site/qr-tablet.svg \
-            "https://github.com/${{ github.repository }}/releases/latest/download/yansit.apk"
+            "https://github.com/${{ github.repository }}/releases/latest/download/casthop.apk"
 
       - uses: actions/configure-pages@v6
 

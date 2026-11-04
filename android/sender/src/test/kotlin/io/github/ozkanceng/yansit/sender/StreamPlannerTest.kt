@@ -149,3 +149,14 @@ class StreamPlannerTest {
             StreamPlanner.supportedLongSides(listOf(enc720), 2560, 1600).all { it <= 1280 })
     }
 }
+
+class PresetLadderTest {
+    @org.junit.jupiter.api.Test
+    fun `presets step one at a time and stop at the ends`() {
+        org.junit.jupiter.api.Assertions.assertEquals(Preset.BALANCED, Preset.BEST.lower)
+        org.junit.jupiter.api.Assertions.assertEquals(Preset.WEAK_NETWORK, Preset.BALANCED.lower)
+        org.junit.jupiter.api.Assertions.assertNull(Preset.WEAK_NETWORK.lower)
+        org.junit.jupiter.api.Assertions.assertEquals(Preset.BALANCED, Preset.WEAK_NETWORK.higher)
+        org.junit.jupiter.api.Assertions.assertNull(Preset.BEST.higher)
+    }
+}

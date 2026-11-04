@@ -1,4 +1,4 @@
-# Yansıt — Mimari
+# CastHop — Mimari
 
 ## 1. Genel bakış
 
@@ -63,12 +63,15 @@ Tek dinleme portu, üç TLS bağlantısı (CONTROL, VIDEO, AUDIO). İlk bağlant
 
 **Gönderim kuyruğu ve canlılık**
 - Video kuyruğu en fazla ~2 kare veya 50 ms bekleyen veri tutar. Aşılırsa: kuyruktaki tüm P-kareler atılır, `DROP` sayacı artar, kodlayıcıdan IDR istenir, sonraki IDR'ye kadar P-kareler gönderilmez (H.264 P-kareleri referans olduğundan tek tek atılamaz). Aynı anda `BitrateController`'a tıkanıklık olayı bildirilir.
+- **Anahtar kare koruması (`KeyframeGate`):** tıkalı ağda büyük bir IDR yazılırken arkasındaki P-kareler atılır ve bu yeni bir IDR isteği doğurur. Önceki IDR yazılırken gelen istekler bekletilir, yazım bitince tek IDR istenir; 1 sn zaman aşımı görüntünün donup kalmasını önler. Yeniden bağlanma ve duraklatma sonrası zorunlu IDR'ler bu kapıdan geçmez.
 - VIDEO soketinin `SO_SNDBUF` değeri güncel bit hızının ≈ 100 ms'si kadar tutulur (32–512 KiB, bit hızı değiştikçe güncellenir) ki çekirdek tamponu kuyruk görevi görmesin; `TCP_NODELAY` açık.
 - **Gecikme bütçesi:** alıcının bildirdiği yakalama→alım gecikmesi 300 ms'yi aşarsa (ağ, kodlayıcının en düşük bit hızında bile yetmiyor; yoldaki AP/vekil tamponları dolu) gönderim bütçeyi aşan süre kadar (en fazla 1 sn) kesilir, bekleyen kareler atılır ve IDR ile devam edilir. Böylece gecikme hiçbir koşulda birikmez.
 - **Wi-Fi güç tasarrufu:** yansıtma boyunca `LowLatencyWifi` kilit tutar; radyo uyursa gecikme sıçramaları kodlayıcıdan bağımsız oluşur.
 - **Canlılık ve RESUME:** 2,5 sn tahtadan hiçbir mesaj gelmezse bağlantı kopmuş sayılır; RESUME (≤ 10 sn pencere) → VIDEO yeniden ATTACH → son CONFIG yeniden gönderilir → hemen IDR. Pencere kaçarsa ve tahta hatırlanıyorsa eşleştirme anahtarıyla yeni oturum açılır (yakalama ve VirtualDisplay korunur).
 
-**BitrateController** (saf mantık, birim testli): girdiler = gönderici kuyruk gecikmesi, alıcı raporu (tahmini tek yön gecikme eğimi, geç kare oranı, alınan bit hızı). AIMD: tıkanıklık → ×0,7 (en sık 500 ms'de bir); 2 sn kararlı → +%8/sn tavana kadar. Ayrıntı: [PROTOCOL.md §7.6](PROTOCOL.md).
+**BitrateController** (saf mantık, birim testli): girdiler = gönderici kuyruk gecikmesi, alıcı raporu (tahmini tek yön gecikme eğimi, geç kare oranı, alınan bit hızı). AIMD: tıkanıklık → ×0,7 (en sık 500 ms'de bir); 2 sn kararlı → tıkanıklık öncesi hızın %85'ine dek +%31/sn, sonra +%8/sn tavana kadar. Ayrıntı: [PROTOCOL.md §7.6](PROTOCOL.md).
+
+**QualityGovernor** (saf mantık, birim testli): bit hızı tabana indiği hâlde tıkanıklık sürerse çözünürlük ve kare hızı da düşmelidir. Bit hızı tabandayken 8 sn geçerse bir alt ön ayara inilir, 60 sn kararlı ve tavanın %90'ındaysa bir üst ön ayara çıkılır. Yükseldikten sonraki 30 sn içinde yine inerse bekleme iki katına çıkar (en çok 480 sn); iki geçiş arasında en az 15 sn olur. Öğretmenin seçtiği ön ayar tavandır, `StreamOverrides` verilmişse governor kapalıdır. Geçiş `MirrorController.stepQuality` ile yapılır: `VirtualDisplay` yalnız `resize` edilir, kodlayıcı `reconfigure` ile yeniden kurulur. Etkin ön ayar `Capture` içinde tutulur; döndürme otomatik düşüşü geri almaz. Eşikler tasarım tahminidir.
 
 **Ses:** `AudioPlaybackCaptureConfiguration` (USAGE_MEDIA, USAGE_GAME, USAGE_UNKNOWN) + `AudioRecord` 48 kHz stereo PCM16 → `MediaCodec` Opus (API 29 yazılım kodlayıcısı; çalışma anında doğrulanır) 20 ms paket, 128 kbps; yoksa AAC-LC. Zaman damgası `AudioRecord.getTimestamp(TIMEBASE_MONOTONIC)` → videoyla aynı `CLOCK_MONOTONIC` tabanı. CONFIG yükü (OpusHead / AudioSpecificConfig) kodlayıcının özel CSD biçimine bağlı kalmamak için parametrelerden üretilir.
 
@@ -108,7 +111,7 @@ appsrc name=src is-live=true format=time do-timestamp=false
 - VA çözücülerde `compliance=flexible`: göndericide B-kare yok, kareler sıra değiştirmez; varsayılanda High profil canlı akış bir sonraki kareyi bekler.
 - Video `sync=false`: kare çözülür çözülmez çizilir (canlılık > akıcılık). Çözücü önünde sıkışma: `Session`, decoder'a verilmemiş sıkıştırılmış veri > 3 kare ise sonraki IDR'ye kadar atar ve `KEYFRAME_REQUEST` gönderir.
 - Ölçekleme (sığdır/doldur): `qml6glsink` QML `GstGLQt6VideoItem` üzerinde `fillMode` / `force-aspect-ratio`.
-- Ekran görüntüsü: `last-sample` → `gst_video_convert_sample(..., image/png)` → `~/Resimler/Yansıt/`.
+- Ekran görüntüsü: `last-sample` → `gst_video_convert_sample(..., image/png)` → `~/Resimler/CastHop/`.
 
 **Ses pipeline**
 
@@ -183,7 +186,7 @@ sequenceDiagram
 ## 5. Ağ teşhisi ve hotspot
 
 Bağlanma algoritması (gönderici): QR'daki tüm IP'lere paralel TCP bağlantısı (ilk başarılı kazanır, 3 sn zaman aşımı).
-- `ECONNREFUSED` → "Tahtada Yansıt açık değil".
+- `ECONNREFUSED` → "Tahtada CastHop açık değil".
 - Tümü zaman aşımı + tablet IP'si QR'daki bir adresle aynı alt ağda → **"Okul ağı cihazların birbirini görmesini engelliyor olabilir (istemci izolasyonu). Tabletin hotspot'unu açıp tahtayı ona bağlayın."** + adım adım görsel rehber.
 - Farklı alt ağ → "Tablet ve tahta farklı ağlarda".
 - Android 17'de izin reddi → izin ekranına yönlendir.
@@ -206,7 +209,7 @@ Hotspot senaryosu: tablet "Kişisel hotspot"u açar; tahta bu ağa Wi-Fi ile ba�
 
 ## 7. Hata yönetimi
 
-- `MediaCodec.Callback.onError` / `CodecException.isRecoverable/isTransient` → yeniden yapılandırma; 3 başarısız denemede bir alt ön ayara düş; yine olmazsa kullanıcıya mesaj.
+- `MediaCodec.Callback.onError` / `CodecException.isRecoverable/isTransient` → yeniden yapılandırma; 3 başarısız denemede bir alt ön ayara düş (ağ kaynaklı geçişler için §2.1 QualityGovernor); yine olmazsa kullanıcıya mesaj.
 - Alıcıda GStreamer `ERROR` mesajı → pipeline yeniden kurulur, VA hatası iki kez tekrarlarsa yazılım çözücüye geçilir, göndericiden IDR istenir.
 - Tüm protokol ayrıştırma hataları tanımlı `ErrorCode` döndürür; bağlantı kapatılır, uygulama çökmez.
 

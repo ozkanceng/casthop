@@ -18,7 +18,7 @@ ApplicationWindow {
     height: 720
     visible: true
     visibility: startFullScreen ? Window.FullScreen : Window.Windowed
-    title: qsTr("Yansıt Receiver")
+    title: qsTr("CastHop")
     color: Theme.videoBackground
 
     Binding {

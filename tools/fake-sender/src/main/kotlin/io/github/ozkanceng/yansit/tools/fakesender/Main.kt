@@ -19,6 +19,8 @@ import io.github.ozkanceng.yansit.protocol.client.SenderClient
 import io.github.ozkanceng.yansit.protocol.client.Session
 import io.github.ozkanceng.yansit.sender.LinkState
 import io.github.ozkanceng.yansit.sender.MirrorSession
+import io.github.ozkanceng.yansit.sender.QualityGovernor
+import io.github.ozkanceng.yansit.sender.QualityStep
 import io.github.ozkanceng.yansit.sender.MirrorStats
 import io.github.ozkanceng.yansit.sender.SessionEnd
 import io.github.ozkanceng.yansit.sender.StreamPlan
@@ -39,7 +41,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.LockSupport
 import kotlin.system.exitProcess
 
-private const val USAGE = """fake-sender — Yansıt test göndericisi
+private const val USAGE = """fake-sender — CastHop test göndericisi
 
   --pairing-file F    alıcının --pairing-file çıktısı (uri + pin)
   --uri U             QR içeriği (yansit://...)
@@ -65,6 +67,10 @@ private const val USAGE = """fake-sender — Yansıt test göndericisi
   --rotate-input F    (mirror) --rotate-after kareden sonra bu dosyaya geç ve kodlayıcıyı yeniden yapılandır
   --rotate-after N    (mirror) döndürme benzetiminin karesi
   --rotate-size WxH   (mirror) döndürülmüş akışın boyutu (varsayılan 720x1280)
+  --quality-input F   (mirror) low quality stream for automatic quality steps (640x360 by default)
+  --quality-size WxH  (mirror) size of that stream
+  --quality-down-ms N (mirror) time at the bitrate floor before stepping down
+  --quality-up-ms N   (mirror) time near the bitrate ceiling before stepping up
   --engine E          raw | mirror  (varsayılan raw). mirror: Android uygulamasının gönderici çekirdeği
                       (MirrorSession: kuyruk, bit hızı uyarlaması, IDR istekleri) dosya kaynağıyla
 
@@ -95,6 +101,10 @@ private data class Options(
     val rotateInput: File?,
     val rotateAfter: Int,
     val rotateSize: Pair<Int, Int>,
+    val qualityInput: File?,
+    val qualitySize: Pair<Int, Int>,
+    val qualityDownMs: Long,
+    val qualityUpMs: Long,
 )
 
 private fun parseVideo(o: Options, f: File): H264Stream =
@@ -169,6 +179,14 @@ private fun parseArgs(args: Array<String>): Options {
             val h = parts.getOrNull(1)?.toIntOrNull()
             if (w == null || h == null) usage("--rotate-size WxH") else w to h
         },
+        qualityInput = m["--quality-input"]?.let(::File),
+        qualitySize = (m["--quality-size"] ?: "640x360").split('x').let { parts ->
+            val w = parts.getOrNull(0)?.toIntOrNull()
+            val h = parts.getOrNull(1)?.toIntOrNull()
+            if (w == null || h == null) usage("--quality-size WxH") else w to h
+        },
+        qualityDownMs = m["--quality-down-ms"]?.toLongOrNull() ?: 8_000,
+        qualityUpMs = m["--quality-up-ms"]?.toLongOrNull() ?: 60_000,
     )
 }
 
@@ -319,10 +337,23 @@ private fun streamWithMirrorSession(
     val linkEvents = java.util.Collections.synchronizedList(ArrayList<Pair<LinkState, Long>>())
     val planA = StreamPlan("file", o.codec, false, 1280, 720, o.fps, 8_000_000, 2_000_000, 12_000_000)
     val planB = planA.copy(width = o.rotateSize.first, height = o.rotateSize.second)
+    val lowStream = o.qualityInput?.let { parseVideo(o, it) }
+    val planLow = planA.copy(
+        width = o.qualitySize.first, height = o.qualitySize.second,
+        startBps = 1_500_000, minBps = 1_000_000, maxBps = 3_000_000,
+    )
+    val activePlan = AtomicReference(planA)
+    val qualitySteps = java.util.Collections.synchronizedList(ArrayList<String>())
     lateinit var mirror: MirrorSession
     val reconfigured = AtomicBoolean(false)
     val source = FileVideoSource(
-        select = { plan -> if (plan == planB && rotated != null) rotated else main },
+        select = { plan ->
+            when {
+                plan == planB && rotated != null -> rotated
+                plan == planLow && lowStream != null -> lowStream
+                else -> main
+            }
+        },
         fps = o.fps,
         frames = total,
         onFrame = { index ->
@@ -354,6 +385,21 @@ private fun streamWithMirrorSession(
             linkEvents.add(state to MonotonicClock.nowUs())
             println("bağlantı: $state")
         },
+        config = MirrorSession.Config(
+            quality = QualityGovernor.Config(downAfterMs = o.qualityDownMs, upAfterMs = o.qualityUpMs, minGapMs = 2_000),
+        ),
+        qualityStep = { step ->
+            val target = if (step == QualityStep.DOWN) planLow else planA
+            if (lowStream == null || activePlan.get() == target) {
+                false
+            } else {
+                activePlan.set(target)
+                qualitySteps.add(step.name)
+                println("kalite: $step ${target.width}x${target.height}")
+                mirror.reconfigure(target)
+                true
+            }
+        },
     )
     mirror.start()
     val audioSource = o.audioInput?.let { FileAudioSource(AudioFiles.parse(it.readBytes())) }
@@ -376,6 +422,9 @@ private fun streamWithMirrorSession(
     summary["restarts"] = JsonPrimitive(source.starts.get() - 1)
     summary["resume_count"] = JsonPrimitive(mirror.resumeCount.get())
     summary["drain_count"] = JsonPrimitive(mirror.drainCount.get())
+    summary["quality_steps"] = kotlinx.serialization.json.JsonArray(synchronized(qualitySteps) {
+        qualitySteps.map { JsonPrimitive(it) }
+    })
     audioSource?.let {
         summary["audio_packets_sent"] = JsonPrimitive(it.packetsProduced.get())
         summary["audio_dropped"] = JsonPrimitive(mirror.audioDropped)

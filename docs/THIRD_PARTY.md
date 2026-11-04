@@ -1,6 +1,6 @@
 # Üçüncü taraf bileşenler / Third-party components
 
-Yansıt'ın kendi kodu [Apache-2.0](../LICENSE) lisanslıdır. Depoya üçüncü taraf kaynak kodu kopyalanmamıştır; aşağıdaki
+CastHop'un kendi kodu [Apache-2.0](../LICENSE) lisanslıdır. Depoya üçüncü taraf kaynak kodu kopyalanmamıştır; aşağıdaki
 bileşenler derleme veya çalışma zamanında paket yöneticisinden (Debian/Pardus deposu, Maven Central, Google Maven)
 alınır. Bu liste RISKS R19 gereği tutulur ve bağımlılık eklendikçe güncellenir.
 
@@ -18,16 +18,16 @@ alınır. Bu liste RISKS R19 gereği tutulur ve bağımlılık eklendikçe günc
 | GoogleTest | yalnız birim testleri | BSD-3-Clause | derleme zamanı |
 | nlohmann/json | yalnız birim testleri | MIT | derleme zamanı |
 
-### Taşınabilir paket (`yansit-receiver-*.tar.gz`)
+### Taşınabilir paket (`casthop-*.tar.gz`)
 
 Taşınabilir paket Debian 12 paketlerinden alınmış Qt, GStreamer ve FFmpeg kütüphanelerini **değiştirilmeden**,
 paylaşımlı kütüphane olarak içerir (`lib/`, `plugins/`, `qml/`, `gstreamer-1.0/`); kullanıcı bunları değiştirebilir
 (LGPL). Debian'ın FFmpeg derlemesi GPL bileşenleri (ör. x264, x265) içerdiğinden **taşınabilir paket bütün olarak
-GPL-3.0 koşullarıyla dağıtılır**; Yansıt'ın kendi kodu Apache-2.0'dır ve GPL-3.0 ile uyumludur. `.deb` paketi bu
+GPL-3.0 koşullarıyla dağıtılır**; CastHop'un kendi kodu Apache-2.0'dır ve GPL-3.0 ile uyumludur. `.deb` paketi bu
 kütüphaneleri içermez (sistemin depodan kurduğu paketleri kullanır).
 
 Karşılık gelen kaynak kodu: paketteki `share/bundled-packages.txt` her gömülü Debian paketinin adını ve tam sürümünü
-listeler; kaynakları `apt-get source <paket>=<sürüm>` veya <https://snapshot.debian.org/> üzerinden alınabilir. Yansıt
+listeler; kaynakları `apt-get source <paket>=<sürüm>` veya <https://snapshot.debian.org/> üzerinden alınabilir. CastHop
 projesi istek üzerine bu kaynakları da sağlar (GitHub Issues).
 
 ## Tablet uygulaması (`android/`)

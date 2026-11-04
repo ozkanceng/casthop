@@ -59,7 +59,7 @@ jobs:
       - name: Soak
         run: |
           chmod +x fake-sender/bin/fake-sender
-          tools/soak/run.sh receiver/build/src/yansit-receiver fake-sender/bin/fake-sender \
+          tools/soak/run.sh receiver/build/src/casthop fake-sender/bin/fake-sender \
             "${{ github.event.inputs.minutes || '30' }}" soak-work
       - uses: actions/upload-artifact@v7
         if: always()

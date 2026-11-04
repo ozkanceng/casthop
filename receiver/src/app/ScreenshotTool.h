@@ -5,7 +5,7 @@
 
 namespace yansit {
 
-/// Tahtadaki görüntünün ekran görüntüsünü `~/Resimler/Yansıt/` altına PNG olarak kaydeder.
+/// Tahtadaki görüntünün ekran görüntüsünü `~/Resimler/CastHop/` altına PNG olarak kaydeder.
 class ScreenshotTool : public QObject {
     Q_OBJECT
 

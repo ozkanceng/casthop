@@ -140,7 +140,7 @@ Item {
                 }
 
                 SettingSwitch {
-                    label: qsTr("Start Yansıt when the board starts")
+                    label: qsTr("Start CastHop when the board starts")
                     checked: root.settings.autostart
                     onToggled: root.settings.autostart = checked
                 }

@@ -23,8 +23,8 @@
 <context>
     <name>Main</name>
     <message>
-        <source>Yansıt Receiver</source>
-        <translation>Yansıt Receiver</translation>
+        <source>CastHop</source>
+        <translation>CastHop</translation>
     </message>
     <message>
         <source>Screenshot saved: %1</source>
@@ -86,8 +86,8 @@
         <translation>Light</translation>
     </message>
     <message>
-        <source>Start Yansıt when the board starts</source>
-        <translation>Start Yansıt when the board starts</translation>
+        <source>Start CastHop when the board starts</source>
+        <translation>Start CastHop when the board starts</translation>
     </message>
     <message>
         <source>Paired tablets</source>
@@ -152,8 +152,8 @@
         <translation>Connecting…</translation>
     </message>
     <message>
-        <source>Scan the code with the Yansıt app on your tablet</source>
-        <translation>Scan the code with the Yansıt app on your tablet</translation>
+        <source>Scan the code with the CastHop app on your tablet</source>
+        <translation>Scan the code with the CastHop app on your tablet</translation>
     </message>
     <message>
         <source>or enter this code:</source>
@@ -172,8 +172,8 @@
         <translation>Address: %1</translation>
     </message>
     <message>
-        <source>Yansıt could not start</source>
-        <translation>Yansıt could not start</translation>
+        <source>CastHop could not start</source>
+        <translation>CastHop could not start</translation>
     </message>
     <message>
         <source>Exit full screen</source>
@@ -207,8 +207,8 @@
         <translation>No H.264 video decoder found. Install the gstreamer1.0-libav package.</translation>
     </message>
     <message>
-        <source>Port %1 is in use. Is another copy of Yansıt already running?</source>
-        <translation>Port %1 is in use. Is another copy of Yansıt already running?</translation>
+        <source>Port %1 is in use. Is another copy of CastHop already running?</source>
+        <translation>Port %1 is in use. Is another copy of CastHop already running?</translation>
     </message>
 </context>
 </TS>

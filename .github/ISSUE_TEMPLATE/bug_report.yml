@@ -24,7 +24,7 @@ body:
   - type: input
     id: versions
     attributes:
-      label: Yansıt sürümleri (uygulama ve alıcı) / Yansıt versions
+      label: CastHop sürümleri (uygulama ve alıcı) / CastHop versions
       placeholder: "app 0.1.0, receiver 0.1.0"
     validations:
       required: true
@@ -41,5 +41,5 @@ body:
     id: logs
     attributes:
       label: Günlükler / Logs
-      description: "Alıcı: `yansit-receiver --verbose` çıktısı; Android: Ayarlar → Tanılama → Günlüğü paylaş."
+      description: "Alıcı: `casthop --verbose` çıktısı; Android: Ayarlar → Tanılama → Günlüğü paylaş."
       render: text

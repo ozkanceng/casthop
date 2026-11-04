@@ -19,7 +19,7 @@ TEST(Mdns, TxtRecordCarriesVersionNameAndFingerprintPrefix) {
 }
 
 TEST(Mdns, InstanceNameIsTruncatedOnCharacterBoundary) {
-    EXPECT_EQ(mdnsInstanceName(""), "Yansit");
+    EXPECT_EQ(mdnsInstanceName(""), "CastHop");
     EXPECT_EQ(mdnsInstanceName("Tahta"), "Tahta");
     std::string longName(62, 'a');
     longName += "ğ"; // 2 bayt: 62 + 2 = 64 > 63 → "ğ" bölünmeden atılır

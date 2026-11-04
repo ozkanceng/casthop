@@ -49,11 +49,11 @@ keyPassword=...
 1. `CHANGELOG.md`'de `[Yayımlanmamış]` bölümünü `[X.Y.Z] - YYYY-AA-GG` yapın, commit edin.
 2. Etiketleyin ve gönderin:
    ```bash
-   git tag -a vX.Y.Z -m "Yansıt X.Y.Z"
+   git tag -a vX.Y.Z -m "CastHop X.Y.Z"
    git push origin vX.Y.Z
    ```
-3. `Release` iş akışı önce uçtan uca testleri (`integration.yml`) koşar; geçerse imzalı APK (`yansit-X.Y.Z.apk`), `.deb`, taşınabilir paket (`yansit-receiver-X.Y.Z-x86_64.tar.gz`, temiz Debian 12'de denenir) ve `SHA256SUMS` dosyalarını GitHub Releases'a yükler. Etiket `-` içeriyorsa (ör. `v0.1.0-rc1`) ön sürüm olarak işaretlenir.
+3. `Release` iş akışı önce uçtan uca testleri (`integration.yml`) koşar; geçerse imzalı APK (`yansit-X.Y.Z.apk`), `.deb`, taşınabilir paket (`casthop-X.Y.Z-x86_64.tar.gz`, temiz Debian 12'de denenir) ve `SHA256SUMS` dosyalarını GitHub Releases'a yükler. Etiket `-` içeriyorsa (ör. `v0.1.0-rc1`) ön sürüm olarak işaretlenir.
 
-Aynı dosyalar sürümden bağımsız adlarla da yüklenir (`yansit.apk`, `yansit-receiver_amd64.deb`, `yansit-receiver-x86_64.tar.gz`). Kurulum sayfası (`site/`, GitHub Pages) ve `site/kur` betiği `releases/latest/download/` üzerinden bunları kullanır; ön sürümler "latest" sayılmaz.
+Aynı dosyalar sürümden bağımsız adlarla da yüklenir (`casthop.apk`, `casthop_amd64.deb`, `casthop-x86_64.tar.gz`). Kurulum sayfası (`site/`, GitHub Pages) ve `site/kur` betiği `releases/latest/download/` üzerinden bunları kullanır; ön sürümler "latest" sayılmaz.
 
 Android `versionCode` = `MAJOR*10000 + MINOR*100 + PATCH`; `.deb` sürümü etiketle aynıdır (`-rc1` → `~rc1`).

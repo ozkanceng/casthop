@@ -1,9 +1,9 @@
 # protocol/
 
-Yansıt protokolünün ([docs/PROTOCOL.md](../docs/PROTOCOL.md)) makine-okur test vektörleri.
+CastHop protokolünün ([docs/PROTOCOL.md](../docs/PROTOCOL.md)) makine-okur test vektörleri.
 Kotlin (`android/protocol`) ve C++ (`receiver/src/protocol`) uygulamaları aynı vektörleri test eder.
 
-Machine-readable test vectors for the Yansıt protocol. Both implementations test against them.
+Machine-readable test vectors for the CastHop protocol. Both implementations test against them.
 
 - `gen/schema.py`: mesaj/tag şeması, hata adları, HMAC etiketleri (PROTOCOL.md'nin makine-okur karşılığı)
 - `gen/gen_vectors.py`: bağımsız Python referans üreteci; deterministik çıktı

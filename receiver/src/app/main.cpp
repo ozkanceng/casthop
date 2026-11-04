@@ -171,7 +171,7 @@ int runHeadless(int argc, char* argv[]) {
     QCoreApplication app(argc, argv);
     setAppInfo();
     QCommandLineParser parser;
-    parser.setApplicationDescription(QStringLiteral("Yansıt — akıllı tahta alıcısı / whiteboard receiver"));
+    parser.setApplicationDescription(QStringLiteral("CastHop — akıllı tahta alıcısı / whiteboard receiver"));
     parser.addHelpOption();
     parser.addVersionOption();
     const CommonOptions o;
@@ -193,7 +193,7 @@ int runHeadless(int argc, char* argv[]) {
 }
 
 void logEnvironment() {
-    qCInfo(lcMain).noquote() << "Yansıt" << QCoreApplication::applicationVersion() << "platform"
+    qCInfo(lcMain).noquote() << "CastHop" << QCoreApplication::applicationVersion() << "platform"
                              << QGuiApplication::platformName() << "oturum" << qEnvironmentVariable("XDG_SESSION_TYPE")
                              << "masaüstü" << qEnvironmentVariable("XDG_CURRENT_DESKTOP");
     guint major = 0, minor = 0, micro = 0, nano = 0;
@@ -235,11 +235,11 @@ int runGui(int argc, char* argv[]) {
     setAppInfo();
     yansit::installDiagnosticLog();
     logEnvironment();
-    QGuiApplication::setApplicationDisplayName(QStringLiteral("Yansıt"));
+    QGuiApplication::setApplicationDisplayName(QStringLiteral("CastHop"));
     QGuiApplication::setDesktopFileName(QStringLiteral("io.github.ozkanceng.yansit.receiver"));
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(QStringLiteral("Yansıt — akıllı tahta alıcısı / whiteboard receiver"));
+    parser.setApplicationDescription(QStringLiteral("CastHop — akıllı tahta alıcısı / whiteboard receiver"));
     parser.addHelpOption();
     parser.addVersionOption();
     const CommonOptions o;

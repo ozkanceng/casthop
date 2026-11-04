@@ -1,7 +1,7 @@
 #!/bin/sh
 # Uçtan uca test: sahte gönderici (Kotlin) ↔ başsız alıcı (C++), aynı makinede.
 #
-#   tools/integration/run.sh <yansit-receiver> <fake-sender/bin/fake-sender> [çalışma-dizini]
+#   tools/integration/run.sh <casthop> <fake-sender/bin/fake-sender> [çalışma-dizini]
 #
 # Senaryolar (PLAN.md M2 kabul ölçütleri):
 #   1. Yanlış QR token'ı → REJECT(AUTH_FAILED)
@@ -17,6 +17,7 @@
 #   4j. H.265 akışı (CI'da yazılım çözücü YANSIT_ALLOW_SW_HEVC=1 ile sunulur)
 #   4k. PIN ile bağlanma (mDNS ile bulunan tahtanın akışı; QR yok)
 #   4l. Gecikme deseni: alıcı karedeki damgayı okuyup uçtan uca gecikmeyi ölçer (tools/latency)
+#   4m. Otomatik kalite: dar bantta çözünürlük düşer, ağ taşıyınca geri çıkar, oturum kopmaz
 #   5. SIGTERM → alıcı düzgün kapanır
 #   5b. Alıcı yeniden başlatılınca eşleştirme geçerli (trusted.json kalıcı)
 #   6. (YANSIT_IT_GUI=1) Arayüz modu Xvfb + Mesa OpenGL'de: qml6glsink yolu ekranda görüntü var (piksel ölçümü)
@@ -218,6 +219,24 @@ log "4l. Gecikme deseni"
     --pattern-base 1000000 --device-name "Tablet L" --result "$WORK/s4l.json" || fail "senaryo 4l"
 wait_sessions 12
 
+log "4m. Otomatik kalite (2,5 Mbps)"
+gst-launch-1.0 -q videotestsrc num-buffers=300 pattern=ball \
+    ! video/x-raw,width=640,height=360,framerate=60/1 \
+    ! x264enc tune=zerolatency speed-preset=ultrafast key-int-max=30 bframes=0 bitrate=500 \
+    ! video/x-h264,stream-format=byte-stream,profile=high \
+    ! filesink location="$WORK/test-low.h264"
+python3 -I "$HERE/netsim.py" --listen $((PORT + 12)) --target 127.0.0.1:$PORT --rate-kbps 2500 --delay-ms 20 \
+    >"$WORK/netsim-m.log" 2>&1 &
+NPID=$!
+sleep 0.5
+"$SENDER" --pairing-file "$WORK/pairing.json" --auth qr --engine mirror --port $((PORT + 12)) \
+    --input "$WORK/test-gop30.h264" --quality-input "$WORK/test-low.h264" --quality-down-ms 2000 --quality-up-ms 5000 \
+    --fps 60 --frames 1800 --device-name "Tablet M" --result "$WORK/s4m.json" || fail "senaryo 4m: gönderici"
+sleep 1
+kill "$NPID" 2>/dev/null || true
+grep -q 'video boyutu: "640x360"' "$WORK/receiver.log" || fail "senaryo 4m: alıcı düşük boyuta geçmedi"
+wait_sessions 13
+
 log "5. Düzgün kapanış"
 kill -TERM "$RPID"
 RC=0
@@ -276,7 +295,7 @@ gui_scenario() {
         sleep 0.1
     done
     # xvfb-run sarmalayıcısı değil, alıcının kendisi sonlandırılır; xvfb-run onun çıkış kodunu döndürür.
-    pkill -TERM -x yansit-receiver
+    pkill -TERM -x casthop
     RC=0
     wait "$RPID" || RC=$?
     RPID=""

@@ -55,7 +55,7 @@ add_library(yansit_core STATIC
 target_include_directories(yansit_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(yansit_core PUBLIC yansit_protocol Qt6::Core Qt6::Network PkgConfig::GST PkgConfig::AVAHI)
 
-qt_add_executable(yansit-receiver
+qt_add_executable(casthop
     app/DiagnosticLog.cpp
     app/DiagnosticLog.h
     app/RenderCheck.cpp
@@ -69,7 +69,7 @@ qt_add_executable(yansit-receiver
     media/CpuVideoItem.h
 )
 
-target_compile_definitions(yansit-receiver PRIVATE
+target_compile_definitions(casthop PRIVATE
     YANSIT_VERSION="${PROJECT_VERSION}")
 
 set(YANSIT_QML_FILES
@@ -87,19 +87,19 @@ set_source_files_properties(qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 # GstGLQt6VideoItem türü derleme anında bilinmez (çalışma anında qml6glsink eklentisi kaydeder).
 set_source_files_properties(qml/VideoView.qml qml/CpuVideoView.qml PROPERTIES QT_QML_SKIP_CACHEGEN TRUE)
 
-qt_add_qml_module(yansit-receiver
+qt_add_qml_module(casthop
     URI Yansit
     VERSION 1.0
     QML_FILES ${YANSIT_QML_FILES}
 )
 
-qt_add_translations(yansit-receiver
+qt_add_translations(casthop
     TS_FILES
         ${PROJECT_SOURCE_DIR}/i18n/yansit_tr.ts
         ${PROJECT_SOURCE_DIR}/i18n/yansit_en.ts
     RESOURCE_PREFIX /i18n)
 
-target_link_libraries(yansit-receiver PRIVATE
+target_link_libraries(casthop PRIVATE
     yansit_core
     PkgConfig::QRENCODE
     Qt6::Gui
@@ -107,7 +107,7 @@ target_link_libraries(yansit-receiver PRIVATE
     Qt6::Quick)
 
 include(GNUInstallDirs)
-install(TARGETS yansit-receiver RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS casthop RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/data/io.github.ozkanceng.yansit.receiver.desktop
     DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
 install(FILES ${PROJECT_SOURCE_DIR}/data/icons/io.github.ozkanceng.yansit.receiver.svg

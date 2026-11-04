@@ -32,6 +32,12 @@ enum class Preset(
     WEAK_NETWORK(1280, 30, 3_000_000, 5_000_000, 800_000),
     ;
 
+    /** The next preset towards a weaker network; `null` at the end. */
+    val lower: Preset? get() = entries.getOrNull(ordinal + 1)
+
+    /** The next preset towards better quality; `null` at the end. */
+    val higher: Preset? get() = entries.getOrNull(ordinal - 1)
+
     companion object {
         /** En iyi kalitede alıcı 4K ise ve kodlayıcı izin verirse uzun kenar tavanı. */
         const val BEST_4K_LONG_SIDE: Int = 2560

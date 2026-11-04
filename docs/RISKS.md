@@ -1,4 +1,4 @@
-# Yansıt — Teknik Riskler
+# CastHop — Teknik Riskler
 
 Olasılık (O) ve Etki (E): Y = yüksek, O = orta, D = düşük.
 

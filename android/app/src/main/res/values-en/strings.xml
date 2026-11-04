@@ -18,8 +18,8 @@
     <string name="ended_by_user">Mirroring stopped.</string>
     <string name="err_unreachable">Cannot reach the board</string>
     <string name="err_unreachable_body">The tablet and the board must be on the same Wi-Fi network. The school network may block devices from seeing each other: try turning on the tablet\'s hotspot and connecting the board to it.</string>
-    <string name="err_refused">Yansıt is not running on the board</string>
-    <string name="err_refused_body">Open the Yansıt Receiver app on the board and scan the new QR code.</string>
+    <string name="err_refused">CastHop is not running on the board</string>
+    <string name="err_refused_body">Open the CastHop app on the board and scan the new QR code.</string>
     <string name="err_wrong_board">Security check failed</string>
     <string name="err_wrong_board_body">This QR code belongs to another board or a device on the network is intercepting the connection. Scan the current QR code on the board.</string>
     <string name="err_auth">The QR code is no longer valid</string>
@@ -33,7 +33,7 @@
     <string name="err_locked_out">Temporarily locked</string>
     <string name="err_locked_out_body">Too many wrong codes. Wait 30 seconds and use the new code on the board.</string>
     <string name="err_incompatible">Incompatible versions</string>
-    <string name="err_incompatible_body">Update the tablet app and Yansıt on the board.</string>
+    <string name="err_incompatible_body">Update the tablet app and CastHop on the board.</string>
     <string name="err_no_encoder">This tablet is not supported</string>
     <string name="err_no_encoder_body">No suitable video encoder was found on this tablet.</string>
     <string name="err_consent">Screen sharing was not allowed</string>
@@ -43,14 +43,14 @@
     <string name="err_encoder">Video encoding failed</string>
     <string name="err_encoder_body">Choose \"Balanced\" or \"Weak network\" in Settings and try again.</string>
     <string name="err_stopped_by_board">Mirroring was stopped on the board.</string>
-    <string name="err_board_closed">Yansıt was closed on the board.</string>
+    <string name="err_board_closed">CastHop was closed on the board.</string>
     <string name="err_taken_over">Another tablet took over</string>
     <string name="err_taken_over_body">The board allowed another tablet to mirror.</string>
     <string name="err_projection_ended">Mirroring ended</string>
     <string name="err_projection_ended_body">Mirroring ends when the screen locks or it is stopped by the system. You can connect again.</string>
     <string name="err_internal">Something went wrong. Please try again.</string>
     <string name="scan_hint">Point the camera at the QR code on the board</string>
-    <string name="scan_not_yansit">This is not a Yansıt code. Scan the QR code on the board.</string>
+    <string name="scan_not_yansit">This is not a CastHop code. Scan the QR code on the board.</string>
     <string name="scan_camera_error">The camera could not be opened.</string>
     <string name="perm_title">A few permissions are needed first</string>
     <string name="perm_camera">Camera</string>
@@ -109,7 +109,7 @@
     <string name="action_code">Connect with code (no QR)</string>
     <string name="discover_title">Boards on this network</string>
     <string name="discover_searching">Searching for boards on the same network…</string>
-    <string name="discover_hint">Board not listed? Is Yansıt open on the board and the tablet on the same network? School networks may block discovery; the QR code always works.</string>
+    <string name="discover_hint">Board not listed? Is CastHop open on the board and the tablet on the same network? School networks may block discovery; the QR code always works.</string>
     <string name="pin_title">%1$s</string>
     <string name="pin_hint">Enter the 6-digit code shown on the board.</string>
     <string name="pin_label">Code</string>
@@ -119,7 +119,8 @@
     <string name="settings_hevc_desc">If the board can decode it in hardware, the same quality needs less data. Otherwise H.264 is used.</string>
     <string name="quality_good">Connection: good</string>
     <string name="quality_fair">Connection: fair</string>
-    <string name="quality_poor">Connection: poor — try \"Weak network\" in Settings</string>
+    <string name="quality_poor">Connection: poor</string>
+    <string name="quality_auto_lowered">Weak network: quality lowered automatically</string>
     <string name="settings_latency">Latency measurement</string>
     <string name="settings_latency_desc">Open this screen while mirroring: the board shows the time between the tablet drawing a frame and the board displaying it.</string>
     <string name="settings_latency_open">Open measurement screen</string>
@@ -128,7 +129,7 @@
     <string name="guide_link_desc">Step-by-step guide and common problems</string>
     <string name="guide_quick_title">Connect in 3 steps</string>
     <string name="guide_prepare_title">Before you start</string>
-    <string name="guide_prepare_1">Open Yansıt Receiver on the board. A QR code and a 6-digit code appear.</string>
+    <string name="guide_prepare_1">Open CastHop on the board. A QR code and a 6-digit code appear.</string>
     <string name="guide_prepare_2">Keep the tablet and the board on the same Wi-Fi network.</string>
     <string name="guide_prepare_3">On the first connection the app shows which permissions it needs and why.</string>
     <string name="guide_qr_title">Connect with the QR code (recommended)</string>
@@ -143,7 +144,7 @@
     <string name="guide_code_4">Answer \"Start\" to Android\'s screen sharing prompt.</string>
     <string name="guide_remembered_title">In later lessons</string>
     <string name="guide_remembered_1">A board you have connected to appears under \"Remembered boards\" on the home screen.</string>
-    <string name="guide_remembered_2">Tap its name and answer \"Start\". Yansıt Receiver must be open on the board.</string>
+    <string name="guide_remembered_2">Tap its name and answer \"Start\". CastHop must be open on the board.</string>
     <string name="guide_during_title">While mirroring</string>
     <string name="guide_during_1">\"Pause\" keeps the last picture on the board while you do something else on the tablet.</string>
     <string name="guide_during_2">To stop, tap \"Stop mirroring\" or \"Stop\" in the notification.</string>

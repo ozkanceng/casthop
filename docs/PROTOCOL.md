@@ -1,4 +1,4 @@
-# Yansıt Protokolü — Sürüm 1
+# CastHop Protokolü — Sürüm 1
 
 Durum: **v1** — M1'de `protocol/vectors/vectors.json` test vektörleriyle donduruldu; Kotlin ve C++ uygulamaları bu vektörlere bayt bayt uyar. Anahtar sözcükler (MUST/SHOULD/MAY) RFC 2119 anlamındadır.
 
@@ -242,7 +242,7 @@ Yeni yapılandırmanın duyurusu; yetkili kaynak medya bağlantısındaki CONFIG
 | 0x09 | rotation_deg | u16 | O |
 
 #### `0x11` KEYFRAME_REQUEST (R→S)
-`0x01 reason u8` (Z): 1 DECODER_RESET, 2 BACKLOG_DROPPED, 3 DECODE_ERROR, 4 USER. S en geç bir kare süresi içinde IDR üretmeli; 200 ms'den sık istekler birleştirilir.
+`0x01 reason u8` (Z): 1 DECODER_RESET, 2 BACKLOG_DROPPED, 3 DECODE_ERROR, 4 USER. S en geç bir kare süresi içinde IDR üretmeli; 200 ms'den sık istekler birleştirilir. Önceki IDR hâlâ yazılıyorsa S isteği bekletebilir ve yazım bitince tek IDR üretir; bekletme 1 sn'yi geçmez. Böylece tıkalı ağda IDR'ler üst üste binmez.
 
 #### `0x40` PAUSE / `0x41` UNPAUSE (S→R)
 PAUSE: S kodlayıcıya yeni kare beslemeyi durdurur (`VirtualDisplay.setSurface(null)`), R "Ders duraklatıldı" ekranını gösterir. UNPAUSE sonrası ilk video çerçevesi KEYFRAME **MUST**. Tag yok.
@@ -301,10 +301,23 @@ her 250 ms:
            || (rapor var && c2r_avg eğimi > +15 ms/sn son 1 sn)
            || frames_dropped_R > %5
   eğer congested ve son düşüşten ≥ 500 ms geçti:
+      düşüş dizisinin ilk adımıysa: toparlanma = bitrate × 0.85
       bitrate = max(floor, bitrate × 0.7);  son_düşüş = şimdi
   değilse eğer son 2 sn congested değil:
-      bitrate = min(ceiling, bitrate × 1.02)      # ≈ +%8/sn
+      eğer bitrate < toparlanma:
+          bitrate = min(toparlanma, bitrate × 1.07)   # ≈ +%31/sn
+      değilse:
+          bitrate = min(ceiling, bitrate × 1.02)      # ≈ +%8/sn
   değişim ≥ %5 ise PARAMETER_KEY_VIDEO_BITRATE uygula
+```
+
+Bit hızı tek başına yetmezse S ön ayarı da değiştirebilir. Bu geçiş yeni bir STREAM_CONFIG ve CONFIG ile bildirilir; tel formatı değişmez:
+
+```
+bitrate ≤ floor × 1.05 iken 8 sn tıkanıklık sürerse:  bir alt ön ayar
+bitrate ≥ ceiling × 0.9 iken N sn kararlı kalırsa:    bir üst ön ayar (seçilen ön ayarı aşmaz)
+N = 60 sn; yükseldikten sonra 30 sn içinde inerse N iki katına çıkar (en çok 480 sn)
+iki geçiş arasında en az 15 sn; elle verilen akış değerleri varsa geçiş yapılmaz
 ```
 
 ## 8. Keşif ve QR
@@ -380,3 +393,4 @@ Bu hatalardan herhangi biri CONTROL'de `BYE(MALFORMED)`, medya bağlantısında 
 ## Değişiklikler
 - v1-taslak (2026-11-03): ilk tanım.
 - v1 (2026-11-03, M1): test vektörleriyle donduruldu. `offset_us` i64, `request_pairing`/`audio_enabled` bool, STREAM_CONFIG ve SENDER_STATS Z/O ayrımı, kanonik tag sırası ve hata kodu listesi eklendi.
+- v1 (2026-11-05): tel formatı değişmedi. IDR isteklerinin bekletilmesi (§7.2) ve otomatik ön ayar geçişi (§7.6) eklendi; ürün adı CastHop oldu, tel üzerindeki `yansit` adları korundu.

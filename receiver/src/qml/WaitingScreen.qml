@@ -29,7 +29,7 @@ Rectangle {
         spacing: Theme.space4
 
         Text {
-            text: "Yansıt"
+            text: "CastHop"
             color: Theme.primary
             font.family: Theme.fontFamily
             font.pixelSize: Theme.fontTitle
@@ -86,7 +86,7 @@ Rectangle {
                 Layout.maximumWidth: root.width * 0.42
 
                 Text {
-                    text: root.connecting ? qsTr("Connecting…") : qsTr("Scan the code with the Yansıt app on your tablet")
+                    text: root.connecting ? qsTr("Connecting…") : qsTr("Scan the code with the CastHop app on your tablet")
                     color: Theme.text
                     wrapMode: Text.WordWrap
                     font.family: Theme.fontFamily
@@ -174,7 +174,7 @@ Rectangle {
                 spacing: Theme.space2
 
                 Text {
-                    text: qsTr("Yansıt could not start")
+                    text: qsTr("CastHop could not start")
                     color: Theme.danger
                     font.family: Theme.fontFamily
                     font.pixelSize: Theme.fontTitle

@@ -1,4 +1,4 @@
-# android/ — Yansıt gönderici / sender
+# android/ — CastHop gönderici / sender
 
 Kotlin + Jetpack Compose, minSdk 29 (Android 10), targetSdk 37 (Android 17).
 

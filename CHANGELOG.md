@@ -4,8 +4,17 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+### Eklendi / Added
+- Ağ uzun süre yetersizse tablet çözünürlüğü ve kare hızını kendiliğinden düşürüyor, ağ düzelince geri yükseltiyor; öğretmen Ayarlar'a girmek zorunda değil.
+
+### Düzeltildi / Fixed
+- `kur` komutuyla kurulan tahtada "Tahta açılınca başlat" uygulamayı açamıyordu; eski kayıt da güncelleniyor.
+
 ### Değiştirildi / Changed
+- Ürünün yeni adı **CastHop**. Paket, indirme dosyaları ve menü adı değişti; `.deb` eski `yansit-receiver` paketinin yerini alıyor. Eşleşmeler, ayarlar ve tablet uygulaması güncellemesi korunuyor; eski tablet ve yeni tahta birlikte çalışıyor.
+- Tıkalı ağda anahtar kareler üst üste binmiyor; önceki kare yazılırken gelen istekler tek isteğe indiriliyor.
 - Daha düşük gecikme: yansıtma sırasında Wi-Fi güç tasarrufu kapatılıyor, tahtadaki donanım çözücü kare bekletmiyor, periyodik anahtar kare aralığı 2 sn'den 10 sn'ye çıktı.
+- Kısa bir Wi-Fi takılmasından sonra bit hızı önceki değerinin %85'ine yaklaşık 17 sn yerine 7 sn içinde dönüyor; görüntü daha çabuk netleşiyor.
 
 ## [0.1.2] - 2026-11-04
 

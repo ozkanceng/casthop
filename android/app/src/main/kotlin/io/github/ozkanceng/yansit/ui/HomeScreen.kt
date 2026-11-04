@@ -461,6 +461,7 @@ private fun EndedCard(error: MirrorError?, onGuide: () -> Unit, modifier: Modifi
 private fun QualityLabel(stats: MirrorStats) {
     val latency = stats.latencyMs ?: return
     val (label, color) = when {
+        stats.autoLowered -> R.string.quality_auto_lowered to MaterialTheme.colorScheme.secondary
         latency <= 120 -> R.string.quality_good to MaterialTheme.colorScheme.tertiary
         latency <= 250 -> R.string.quality_fair to MaterialTheme.colorScheme.secondary
         else -> R.string.quality_poor to MaterialTheme.colorScheme.error

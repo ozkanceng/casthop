@@ -24,7 +24,7 @@ QString ScreenshotTool::save(QObject* window) {
     QString base = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
     if (base.isEmpty())
         base = QDir::homePath();
-    const QString dir = base + QStringLiteral("/Yansıt");
+    const QString dir = base + QStringLiteral("/CastHop");
     QDir().mkpath(dir);
     const QString path =
         dir + QStringLiteral("/yansit-%1.png").arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss")));

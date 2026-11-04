@@ -36,8 +36,10 @@ import io.github.ozkanceng.yansit.sender.LinkState
 import io.github.ozkanceng.yansit.sender.MirrorSession
 import io.github.ozkanceng.yansit.sender.MirrorStats
 import io.github.ozkanceng.yansit.sender.Preset
+import io.github.ozkanceng.yansit.sender.QualityStep
 import io.github.ozkanceng.yansit.sender.ReceiverDisplay
 import io.github.ozkanceng.yansit.sender.SessionEnd
+import io.github.ozkanceng.yansit.sender.StreamOverrides
 import io.github.ozkanceng.yansit.sender.StreamPlan
 import io.github.ozkanceng.yansit.sender.StreamPlanner
 import kotlinx.coroutines.CoroutineScope
@@ -133,6 +135,8 @@ object MirrorController {
         var display: VirtualDisplay? = null
         var encoder: ScreenEncoder? = null
         var plan: StreamPlan? = null
+        /** Preset in use when the network or encoder moved away from the chosen one. */
+        var preset: Preset? = null
         var displayListener: DisplayManager.DisplayListener? = null
 
         fun release() {
@@ -294,6 +298,7 @@ object MirrorController {
         onLink = ::onLink,
         fallbackPlan = ::lowerPlan,
         onAudioIssue = ::onAudioIssue,
+        qualityStep = ::stepQuality,
     )
 
     /** Sistem ekran paylaşımı onay ekranının sonucu. */
@@ -351,7 +356,7 @@ object MirrorController {
         val encoder = ScreenEncoder(caps)
         try {
             val display = projection.createVirtualDisplay(
-                "Yansıt", plan.width, plan.height, service.resources.displayMetrics.densityDpi,
+                "CastHop", plan.width, plan.height, service.resources.displayMetrics.densityDpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, encoder.inputSurface, null, main,
             )
             synchronized(lock) {
@@ -430,7 +435,7 @@ object MirrorController {
         val (c, s) = synchronized(lock) { capture to session }
         if (c == null || s == null) return
         val service = c.service
-        val newPlan = currentPlan(service, s) ?: return
+        val newPlan = currentPlan(service, s, c.preset) ?: return
         val old = c.plan ?: return
         if (newPlan.width == old.width && newPlan.height == old.height) return
         Log.i(TAG, "kaynak boyutu değişti: ${old.width}x${old.height} → ${newPlan.width}x${newPlan.height}")
@@ -447,16 +452,36 @@ object MirrorController {
     private fun lowerPlan(current: StreamPlan): StreamPlan? {
         val (c, s) = synchronized(lock) { capture to session }
         if (c == null || s == null) return null
-        val next = when (AppSettings(c.service).preset) {
-            Preset.BEST -> Preset.BALANCED
-            Preset.BALANCED, Preset.WEAK_NETWORK -> Preset.WEAK_NETWORK
-        }
+        val active = c.preset ?: AppSettings(c.service).preset
+        val next = active.lower ?: active
         val plan = currentPlan(c.service, s, next)?.takeIf { it != current } ?: return null
         synchronized(lock) {
             c.display?.resize(plan.width, plan.height, c.service.resources.displayMetrics.densityDpi)
             c.plan = plan
+            c.preset = next
         }
         return plan
+    }
+
+    /** Moves one preset down or back up; never above the one the teacher chose. Advanced settings turn this off. */
+    @Synchronized
+    private fun stepQuality(step: QualityStep): Boolean {
+        val (c, s) = synchronized(lock) { capture to session }
+        if (c == null || s == null) return false
+        val settings = AppSettings(c.service)
+        if (settings.overrides != StreamOverrides()) return false
+        val active = c.preset ?: settings.preset
+        val next = (if (step == QualityStep.DOWN) active.lower else active.higher) ?: return false
+        if (next < settings.preset) return false
+        val plan = currentPlan(c.service, s, next)?.takeIf { it != c.plan } ?: return false
+        Log.i(TAG, "kalite: $active → $next (${plan.width}x${plan.height}@${plan.fps})")
+        synchronized(lock) {
+            c.display?.resize(plan.width, plan.height, c.service.resources.displayMetrics.densityDpi)
+            c.plan = plan
+            c.preset = next
+        }
+        s.reconfigure(plan)
+        return true
     }
 
     // --- Kullanıcı eylemleri ---

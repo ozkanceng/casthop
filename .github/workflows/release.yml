@@ -53,7 +53,7 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           ./gradlew --stacktrace lint test assembleRelease -PyansitVersionName="$VERSION"
           mkdir -p "$GITHUB_WORKSPACE/dist"
-          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/yansit-$VERSION.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/casthop-$VERSION.apk"
 
       - name: Remove keystore
         if: always()
@@ -82,7 +82,7 @@ jobs:
         run: receiver/ci/build-deb.sh dist
 
       - name: Test the installed package
-        run: receiver/ci/test-installed.sh dist/yansit-receiver_*.deb
+        run: receiver/ci/test-installed.sh dist/casthop_*.deb
 
       - name: Build portable package
         run: receiver/ci/build-portable.sh dist "${GITHUB_REF_NAME#v}"
@@ -105,7 +105,7 @@ jobs:
           name: dist-receiver
           path: dist
       - name: Test on a clean system
-        run: receiver/ci/test-portable.sh dist/yansit-receiver-*.tar.gz
+        run: receiver/ci/test-portable.sh dist/casthop-*.tar.gz
 
   publish:
     runs-on: ubuntu-latest
@@ -121,9 +121,9 @@ jobs:
       - name: Stable download names
         run: |
           cd dist
-          cp yansit-[0-9]*.apk yansit.apk
-          cp yansit-receiver_*_amd64.deb yansit-receiver_amd64.deb
-          cp yansit-receiver-*-x86_64.tar.gz yansit-receiver-x86_64.tar.gz
+          cp casthop-[0-9]*.apk casthop.apk
+          cp casthop_*_amd64.deb casthop_amd64.deb
+          cp casthop-*-x86_64.tar.gz casthop-x86_64.tar.gz
 
       - name: Checksums
         run: cd dist && sha256sum * > SHA256SUMS

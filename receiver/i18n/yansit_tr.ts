@@ -23,8 +23,8 @@
 <context>
     <name>Main</name>
     <message>
-        <source>Yansıt Receiver</source>
-        <translation>Yansıt Alıcı</translation>
+        <source>CastHop</source>
+        <translation>CastHop</translation>
     </message>
     <message>
         <source>Screenshot saved: %1</source>
@@ -86,8 +86,8 @@
         <translation>Açık</translation>
     </message>
     <message>
-        <source>Start Yansıt when the board starts</source>
-        <translation>Tahta açılınca Yansıt&apos;ı başlat</translation>
+        <source>Start CastHop when the board starts</source>
+        <translation>Tahta açılınca CastHop&apos;u başlat</translation>
     </message>
     <message>
         <source>Paired tablets</source>
@@ -152,8 +152,8 @@
         <translation>Bağlanıyor…</translation>
     </message>
     <message>
-        <source>Scan the code with the Yansıt app on your tablet</source>
-        <translation>Tabletinizdeki Yansıt uygulamasıyla kodu okutun</translation>
+        <source>Scan the code with the CastHop app on your tablet</source>
+        <translation>Tabletinizdeki CastHop uygulamasıyla kodu okutun</translation>
     </message>
     <message>
         <source>or enter this code:</source>
@@ -172,8 +172,8 @@
         <translation>Adres: %1</translation>
     </message>
     <message>
-        <source>Yansıt could not start</source>
-        <translation>Yansıt başlatılamadı</translation>
+        <source>CastHop could not start</source>
+        <translation>CastHop başlatılamadı</translation>
     </message>
     <message>
         <source>Exit full screen</source>
@@ -207,8 +207,8 @@
         <translation>H.264 video çözücü bulunamadı. gstreamer1.0-libav paketini kurun.</translation>
     </message>
     <message>
-        <source>Port %1 is in use. Is another copy of Yansıt already running?</source>
-        <translation>%1 numaralı port kullanımda. Yansıt zaten açık olabilir mi?</translation>
+        <source>Port %1 is in use. Is another copy of CastHop already running?</source>
+        <translation>%1 numaralı port kullanımda. CastHop zaten açık olabilir mi?</translation>
     </message>
 </context>
 </TS>

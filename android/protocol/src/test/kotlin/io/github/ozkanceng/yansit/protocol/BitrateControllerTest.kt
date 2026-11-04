@@ -86,6 +86,64 @@ class BitrateControllerTest {
         assertEquals(after, c.appliedBps)
     }
 
+    /** Drives congestion until the floor, then returns the time of the last tick. */
+    private fun fallToFloor(c: BitrateController): Long {
+        var t = 0L
+        while (c.appliedBps > config.minBps) {
+            c.onSenderDrop()
+            c.tick(t)
+            t += 500
+        }
+        return t
+    }
+
+    @Test
+    fun `short congestion regains most of the earlier rate within seconds`() {
+        val c = BitrateController(config)
+        var t = fallToFloor(c)
+        val end = t + 7_000 // 2 s of stability, then 5 s of recovery
+        while (t <= end) { c.tick(t); t += 250 }
+        assertTrue(c.appliedBps >= 13_000_000, "recovered only to ${c.appliedBps}")
+    }
+
+    @Test
+    fun `growth is slow again above the recovery target`() {
+        val c = BitrateController(config)
+        var t = fallToFloor(c)
+        val recovered = t + 7_000
+        while (t <= recovered) { c.tick(t); t += 250 }
+        val before = c.targetBps
+        assertTrue(before >= 13_600_000, "target $before")
+        val end = t + 4_000
+        while (t < end) { c.tick(t); t += 250 }
+        assertTrue(c.targetBps <= before * 1.4, "${c.targetBps} grew too fast from $before")
+    }
+
+    @Test
+    fun `congestion during recovery lowers the recovery target`() {
+        val c = BitrateController(config)
+        var t = fallToFloor(c)
+        val end = t + 3_500
+        while (t <= end) { c.tick(t); t += 250 }
+        val atSecondCongestion = c.targetBps
+        assertTrue(atSecondCongestion < 13_600_000)
+        c.onSenderDrop()
+        c.tick(t)
+        val stop = t + 3_500 // would pass the earlier rate if the old recovery target still applied
+        while (t <= stop) { t += 250; c.tick(t) }
+        assertTrue(c.targetBps <= atSecondCongestion, "target ${c.targetBps} above $atSecondCongestion")
+    }
+
+    @Test
+    fun `reset forgets the recovery target`() {
+        val c = BitrateController(config)
+        var t = fallToFloor(c)
+        c.reset(4_000_000)
+        val end = t + 7_000
+        while (t <= end) { c.tick(t); t += 250 }
+        assertTrue(c.appliedBps < 8_000_000, "applied ${c.appliedBps}")
+    }
+
     @Test
     fun `reset restores the initial state`() {
         val c = BitrateController(config)

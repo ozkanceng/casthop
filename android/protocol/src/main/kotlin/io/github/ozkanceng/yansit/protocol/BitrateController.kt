@@ -18,6 +18,10 @@ public class BitrateController(private val config: Config) {
         val decreaseFactor: Double = 0.7,
         /** Her [tickMs]'de çarpan; 250 ms'de 1.02 ≈ saniyede %8. */
         val increaseFactor: Double = 1.02,
+        /** Growth per tick while returning to the rate that worked before a congestion episode (≈ 31% per second). */
+        val recoveryIncreaseFactor: Double = 1.07,
+        /** Share of the pre-congestion rate that is regained quickly; the rest grows at [increaseFactor]. */
+        val recoveryTargetRatio: Double = 0.85,
         val tickMs: Long = 250,
         val decreaseHoldMs: Long = 500,
         val stableMsBeforeIncrease: Long = 2000,
@@ -31,6 +35,7 @@ public class BitrateController(private val config: Config) {
         init {
             require(minBps in 1..maxBps && initialBps in minBps..maxBps)
             require(decreaseFactor in 0.1..0.99 && increaseFactor in 1.0..1.5)
+            require(recoveryIncreaseFactor in increaseFactor..1.5 && recoveryTargetRatio in 0.1..1.0)
         }
     }
 
@@ -44,6 +49,8 @@ public class BitrateController(private val config: Config) {
     private var startMs: Long? = null
     private var queueDelayUs: Long = 0
     private var pendingCongestion = false
+    private var recoveryTarget: Double = 0.0
+    private var falling = false
     private val delayHistory = ArrayDeque<DelayPoint>()
 
     /** Kodlayıcıya son uygulanan (ya da uygulanacak) bit hızı. */
@@ -91,11 +98,20 @@ public class BitrateController(private val config: Config) {
         if (congested) {
             lastCongestionMs = nowMs
             if (nowMs - lastDecreaseMs >= config.decreaseHoldMs) {
+                // A short Wi-Fi stall can take the rate to the floor. Remember what worked so the picture does not
+                // stay soft for many seconds; congestion during recovery lowers this, so a slower link still settles.
+                if (!falling) recoveryTarget = target * config.recoveryTargetRatio
+                falling = true
                 target = max(config.minBps.toDouble(), target * config.decreaseFactor)
                 lastDecreaseMs = nowMs
             }
         } else if (nowMs - max(lastCongestionMs, start) >= config.stableMsBeforeIncrease) {
-            target = min(config.maxBps.toDouble(), target * config.increaseFactor.pow(elapsedTicks))
+            falling = false
+            target = if (target < recoveryTarget) {
+                min(recoveryTarget, target * config.recoveryIncreaseFactor.pow(elapsedTicks))
+            } else {
+                min(config.maxBps.toDouble(), target * config.increaseFactor.pow(elapsedTicks))
+            }
         }
 
         val next = kotlin.math.round(target).toLong()
@@ -120,6 +136,8 @@ public class BitrateController(private val config: Config) {
         startMs = null
         queueDelayUs = 0
         pendingCongestion = false
+        recoveryTarget = 0.0
+        falling = false
         delayHistory.clear()
     }
 }

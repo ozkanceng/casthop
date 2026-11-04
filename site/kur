@@ -1,11 +1,11 @@
 #!/bin/sh
-# Yansıt Alıcı'yı tahtaya yönetici şifresi olmadan kurar ve başlatır; yeniden çalıştırmak son sürüme günceller.
+# CastHop'u tahtaya yönetici şifresi olmadan kurar ve başlatır; yeniden çalıştırmak son sürüme günceller.
 #   wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/tablet-mirror/kur | sh
 # Betiğin tamamı indirilmeden hiçbir şey çalışmasın diye her şey main içindedir.
 set -eu
 
 BASE="${YANSIT_RELEASE_URL:-https://github.com/ozkanceng/tablet-mirror/releases/latest/download}"
-ARCHIVE="yansit-receiver-x86_64.tar.gz"
+ARCHIVE="casthop-x86_64.tar.gz"
 DEST="$HOME/.local/opt/yansit"
 
 fail() {
@@ -24,12 +24,12 @@ fetch() {
 }
 
 main() {
-    [ "$(uname -m)" = "x86_64" ] || fail "Yansıt Alıcı yalnız 64 bit (x86_64) tahtalarda çalışır."
+    [ "$(uname -m)" = "x86_64" ] || fail "CastHop yalnız 64 bit (x86_64) tahtalarda çalışır."
 
     work="$(mktemp -d)"
     trap 'rm -rf "$work"' EXIT
 
-    echo "Yansıt Alıcı indiriliyor (yaklaşık 115 MB)..."
+    echo "CastHop indiriliyor (yaklaşık 115 MB)..."
     fetch "$BASE/$ARCHIVE" "$work/$ARCHIVE" || fail "İndirilemedi. Tahtanın internet bağlantısını kontrol edin."
     fetch "$BASE/SHA256SUMS" "$work/SHA256SUMS" || fail "Sağlama dosyası indirilemedi."
 
@@ -38,6 +38,7 @@ main() {
         || fail "İndirilen dosya bozuk. Komutu yeniden çalıştırın."
 
     # Güncellemede eski sürüm açıksa dosyaları değişmeden önce kapanmalı.
+    pkill -f "$DEST/bin/casthop" 2>/dev/null || true
     pkill -f "$DEST/bin/yansit-receiver" 2>/dev/null || true
 
     mkdir "$work/package"
@@ -45,10 +46,10 @@ main() {
     sh "$work/package/install-user.sh" >/dev/null
 
     echo
-    echo "Kurulum tamamlandı. Menüde 'Yansıt Alıcı' görünür."
+    echo "Kurulum tamamlandı. Menüde 'CastHop' görünür."
     if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
-        nohup "$DEST/yansit-receiver" >/dev/null 2>&1 &
-        echo "Yansıt Alıcı açılıyor; tabletle ekrandaki QR kodu okutun."
+        nohup "$DEST/casthop" >/dev/null 2>&1 &
+        echo "CastHop açılıyor; tabletle ekrandaki QR kodu okutun."
     fi
 }
 

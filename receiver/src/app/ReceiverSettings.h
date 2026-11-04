@@ -34,7 +34,7 @@ public:
     /// "dark" (varsayılan) | "light".
     QString theme() const;
     void setTheme(const QString& theme);
-    /// Oturum açılınca Yansıt'ı başlat.
+    /// Oturum açılınca CastHop'u başlat.
     bool autostart() const;
     void setAutostart(bool on);
     /// Değişiklik yeniden başlatınca geçerli olur.

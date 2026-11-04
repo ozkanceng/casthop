@@ -91,7 +91,7 @@ jobs:
           YANSIT_IT_GUI: "1"
         run: |
           chmod +x fake-sender/bin/fake-sender
-          tools/integration/run.sh receiver/build/src/yansit-receiver fake-sender/bin/fake-sender it-work
+          tools/integration/run.sh receiver/build/src/casthop fake-sender/bin/fake-sender it-work
 
       - uses: actions/upload-artifact@v7
         if: failure()

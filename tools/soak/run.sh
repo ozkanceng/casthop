@@ -1,7 +1,7 @@
 #!/bin/sh
 # Uzun süre testi (PLAN M7): alıcı + uygulamanın gönderici çekirdeği (fake-sender --engine mirror), N dakika.
 #
-#   tools/soak/run.sh <yansit-receiver> <fake-sender/bin/fake-sender> [dakika=30] [çalışma-dizini]
+#   tools/soak/run.sh <casthop> <fake-sender/bin/fake-sender> [dakika=30] [çalışma-dizini]
 #
 # Çıktı: latency.csv (saniyelik gecikme/fps/bit hızı), rss.csv (10 sn'de bir alıcı belleği), summary.json,
 # soak.svg. Kabul: gecikme eğimi ≈ 0 (|eğim| ≤ 0,5 ms/dk), RSS artışı < %5, kare kaybı yok.

@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Yansıt Kurulum</title>
-<meta name="description" content="Tablet ekranını Pardus ETAP akıllı tahtaya kablosuz yansıtan Yansıt'ı iki adımda kurun.">
+<title>CastHop Kurulum</title>
+<link rel="icon" href="data:,">
+<meta name="description" content="Tablet ekranını Pardus ETAP akıllı tahtaya kablosuz yansıtan CastHop'u iki adımda kurun.">
 <style>
 :root {
   color-scheme: light dark;
@@ -64,7 +65,7 @@ footer a { color: var(--primary); }
 <body>
 <main>
   <header>
-    <h1>Yansıt</h1>
+    <h1>CastHop</h1>
     <p>Tablet ekranını sınıftaki akıllı tahtaya kablosuz yansıtın.</p>
   </header>
 
@@ -73,29 +74,29 @@ footer a { color: var(--primary); }
       <h2><span class="num">1</span>Tahtaya kurun</h2>
       <ol>
         <li>Bu sayfayı tahtada açıp aşağıdaki düğmeye basın.</li>
-        <li><strong>İndirilenler</strong> klasöründe <strong>yansit-receiver_amd64.deb</strong> dosyasına çift tıklayın.</li>
+        <li><strong>İndirilenler</strong> klasöründe <strong>casthop_amd64.deb</strong> dosyasına çift tıklayın.</li>
         <li>Açılan paket kurucuda <strong>Yükle</strong>'ye basıp yönetici şifresini girin.</li>
-        <li>Kurulum bitince menüden <strong>Yansıt Alıcı</strong>'yı açın.</li>
+        <li>Kurulum bitince menüden <strong>CastHop</strong>'u açın.</li>
       </ol>
-      <a class="button" href="https://github.com/ozkanceng/tablet-mirror/releases/latest/download/yansit-receiver_amd64.deb">Tahta paketini indir</a>
+      <a class="button" href="https://github.com/ozkanceng/tablet-mirror/releases/latest/download/casthop_amd64.deb">Tahta paketini indir</a>
       <p class="note">Yönetici şifresi ve internet bağlantısı gerekir.</p>
       <details>
         <summary>Paket kurucu açılmazsa</summary>
         <p>Dosya arşiv gibi açılıyorsa <strong>Terminal</strong>'i açın, komutu kopyalayın, <kbd>Ctrl + Shift + V</kbd> ile yapıştırıp <kbd>Enter</kbd>'a basın ve şifrenizi girin.</p>
-        <p class="command" id="command-deb">cd "$(xdg-user-dir DOWNLOAD)" &amp;&amp; sudo apt install ./yansit-receiver_amd64.deb</p>
+        <p class="command" id="command-deb">cd "$(xdg-user-dir DOWNLOAD)" &amp;&amp; sudo apt install ./casthop_amd64.deb</p>
         <button class="button secondary" type="button" data-copy="command-deb">Komutu kopyala</button>
         <p class="note" role="status"></p>
       </details>
       <details>
         <summary>Yönetici şifreniz yoksa</summary>
-        <p>Bu komut Yansıt'ı yalnız kendi hesabınıza kurar. Terminal'e yapıştırıp <kbd>Enter</kbd>'a basın.</p>
+        <p>Bu komut CastHop'u yalnız kendi hesabınıza kurar. Terminal'e yapıştırıp <kbd>Enter</kbd>'a basın.</p>
         <p class="command" id="command-user">wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/tablet-mirror/kur | sh</p>
         <button class="button secondary" type="button" data-copy="command-user">Komutu kopyala</button>
         <p class="note" role="status"></p>
       </details>
       <details>
         <summary>Ekran siyah kalırsa</summary>
-        <p>Yansıt Alıcı'da <strong>Ayarlar → Uyumlu görüntü modu</strong>'nu açın. Yine görüntü gelmezse <strong>.cache/yansit/receiver.log</strong> dosyasını (Ev klasörü, gizli dosyalar) sorun bildiriminize ekleyin.</p>
+        <p>CastHop'ta <strong>Ayarlar → Uyumlu görüntü modu</strong>'nu açın. Yine görüntü gelmezse <strong>.cache/yansit/receiver.log</strong> dosyasını (Ev klasörü, gizli dosyalar) sorun bildiriminize ekleyin.</p>
       </details>
     </section>
 
@@ -103,10 +104,10 @@ footer a { color: var(--primary); }
       <h2><span class="num">2</span>Tablete kurun</h2>
       <ol>
         <li>Aşağıdaki QR kodu tabletin kamerasıyla okutun ya da bu sayfayı tablette açın.</li>
-        <li>İnen <strong>yansit.apk</strong> dosyasını açın.</li>
+        <li>İnen <strong>casthop.apk</strong> dosyasını açın.</li>
         <li>Android izin isterse bu kaynağa izin verip <strong>Yükle</strong>'ye dokunun.</li>
       </ol>
-      <a class="button" href="https://github.com/ozkanceng/tablet-mirror/releases/latest/download/yansit.apk">Tablet uygulamasını indir</a>
+      <a class="button" href="https://github.com/ozkanceng/tablet-mirror/releases/latest/download/casthop.apk">Tablet uygulamasını indir</a>
       <div class="qr">
         <img src="qr-tablet.svg" width="144" height="144" alt="Tablet uygulamasının indirme bağlantısına giden QR kod">
         <p>Android 10 ve üstü tabletlerde çalışır.</p>
@@ -117,8 +118,8 @@ footer a { color: var(--primary); }
   <section class="card connect">
     <h2><span class="num">3</span>Bağlanın</h2>
     <ol>
-      <li>Tahtada <strong>Yansıt Alıcı</strong>'yı açın; tablet ile tahta aynı Wi-Fi ağında olsun.</li>
-      <li>Tablette <strong>Yansıt</strong>'ı açıp <strong>Tahtaya Bağlan</strong>'a dokunun ve tahtadaki QR kodu okutun.</li>
+      <li>Tahtada <strong>CastHop</strong>'u açın; tablet ile tahta aynı Wi-Fi ağında olsun.</li>
+      <li>Tablette <strong>CastHop</strong>'u açıp <strong>Tahtaya Bağlan</strong>'a dokunun ve tahtadaki QR kodu okutun.</li>
       <li>Android'in ekran paylaşımı sorusuna <strong>Başlat</strong> deyin.</li>
     </ol>
   </section>

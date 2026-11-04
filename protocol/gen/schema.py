@@ -1,4 +1,4 @@
-"""Yansıt protokol v1 şeması — docs/PROTOCOL.md'nin makine-okur karşılığı.
+"""CastHop protokol v1 şeması — docs/PROTOCOL.md'nin makine-okur karşılığı.
 
 Bu dosya ve gen_vectors.py bağımsız (üçüncü) bir referans uygulamadır: Kotlin ve C++
 kodlayıcıları bu çıktıyla bayt bayt aynı sonucu üretmek zorundadır.

@@ -1,4 +1,4 @@
-# Yansıt
+# CastHop
 
 **Mirror an Android tablet's screen and sound wirelessly to Pardus ETAP interactive whiteboards.**
 Easy to set up, open source, low latency, encrypted.
@@ -36,32 +36,32 @@ To download files by hand, use one of these from [Releases](https://github.com/o
 **A. Package (recommended, needs the administrator password)**
 
 ```bash
-sudo apt install ./yansit-receiver_*_amd64.deb
+sudo apt install ./casthop_*_amd64.deb
 ```
 
-**Yansıt Receiver** appears in the menu. Dependencies (Qt, GStreamer) come from the Pardus repository.
+**CastHop** appears in the menu. Dependencies (Qt, GStreamer) come from the Pardus repository.
 
 **B. Portable (no administrator password)**
 
 ```bash
-tar xf yansit-receiver-*-x86_64.tar.gz
-cd yansit-receiver-*-x86_64
+tar xf casthop-*-x86_64.tar.gz
+cd casthop-*-x86_64
 ./install-user.sh
 ```
 
 It installs into `~/.local/opt/yansit` and adds a menu entry.
 
-> Optionally enable **Settings → "Start Yansıt when the board starts"** on the board.
+> Optionally enable **Settings → "Start CastHop when the board starts"** on the board.
 
 ### Tablet (Android 10 or later)
 
-Download `yansit-*.apk` from [Releases](https://github.com/ozkanceng/tablet-mirror/releases) on the tablet and open it.
+Download `casthop-*.apk` from [Releases](https://github.com/ozkanceng/tablet-mirror/releases) on the tablet and open it.
 Android may ask to allow installing from unknown sources the first time.
 
 ## Use
 
-1. Open **Yansıt Receiver** on the board. A large QR code and a 6-digit code appear.
-2. On the tablet open **Yansıt**, tap **Connect to board** and scan the QR code.
+1. Open **CastHop** on the board. A large QR code and a 6-digit code appear.
+2. On the tablet open **CastHop**, tap **Connect to board** and scan the QR code.
 3. Answer **Start** to Android's "Share your screen?" prompt. Done.
 
 Stop from the tablet (**Stop mirroring** or **Stop** in the notification) or by tapping the board and pressing
@@ -75,14 +75,14 @@ use **Connect with code** to pick the board on the network and enter its 6-digit
 | Symptom | Fix |
 |---|---|
 | "Cannot reach the board" | Are the tablet and board on the same Wi-Fi? Many school networks block devices from seeing each other (*client isolation*). Easiest fix: turn on the tablet's **mobile hotspot**, connect the board to it and scan the new QR. |
-| "Yansıt is not running on the board" | Open Yansıt Receiver on the board. If it is open, allow TCP port 47800 in the board's firewall. |
+| "CastHop is not running on the board" | Open CastHop on the board. If it is open, allow TCP port 47800 in the board's firewall. |
 | "The QR code is no longer valid" | Each QR code works once; scan the current one. |
 | "Different networks" | Connect the tablet to the board's Wi-Fi or use the hotspot method. |
 | Stutter / blur | Tablet **Settings → Picture quality → Balanced** or **Weak network**. Prefer 5 GHz Wi-Fi. |
 | No sound | Was the sound permission granted, and is **Settings → Play sound on the board** on? Some apps do not allow their audio to be shared. |
 | Mirroring stops when the screen locks | A security rule on Android 15+; increase the screen timeout. |
 
-Help and bug reports: [Issues](https://github.com/ozkanceng/tablet-mirror/issues) — include `yansit-receiver --verbose`
+Help and bug reports: [Issues](https://github.com/ozkanceng/tablet-mirror/issues) — include `casthop --verbose`
 output and the tablet model.
 
 ## Measured performance

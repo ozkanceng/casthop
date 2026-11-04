@@ -1,7 +1,7 @@
-Source: yansit-receiver
+Source: casthop
 Section: video
 Priority: optional
-Maintainer: Yansıt Authors <yansit@users.noreply.github.com>
+Maintainer: CastHop Authors <casthop@users.noreply.github.com>
 Build-Depends: debhelper-compat (= 13),
                cmake (>= 3.25),
                ninja-build,
@@ -25,8 +25,11 @@ Vcs-Browser: https://github.com/ozkanceng/tablet-mirror
 Vcs-Git: https://github.com/ozkanceng/tablet-mirror.git
 Rules-Requires-Root: no
 
-Package: yansit-receiver
+Package: casthop
 Architecture: any
+Provides: yansit-receiver (= ${binary:Version})
+Replaces: yansit-receiver (<< 0.2.0~)
+Conflicts: yansit-receiver (<< 0.2.0~)
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          qml6-module-qtqml,
@@ -47,8 +50,8 @@ Depends: ${shlibs:Depends},
          fonts-noto-mono
 Recommends: va-driver-all, avahi-daemon
 Description: Wireless screen mirroring receiver for interactive whiteboards
- Yansıt receives the screen and audio of an Android tablet over the local
+ CastHop receives the screen and audio of an Android tablet over the local
  network and shows it full screen on a Pardus ETAP interactive whiteboard.
  .
- Yansıt, bir Android tabletin ekranını ve sesini yerel ağ üzerinden alıp
+ CastHop, bir Android tabletin ekranını ve sesini yerel ağ üzerinden alıp
  Pardus ETAP akıllı tahtada tam ekran gösterir.

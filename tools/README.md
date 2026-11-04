@@ -4,7 +4,7 @@
 |---|---|---|
 | `fake-sender` | ✅ M2 | H.264 Annex-B dosyasını protokol üzerinden gerçek zaman hızında yollar. `--engine mirror`: Android uygulamasının gönderici çekirdeğiyle (`android/sender`) |
 | `integration` | ✅ M2 | Sahte gönderici ↔ alıcı uçtan uca senaryoları (CI: `integration.yml`) |
-| `fake-receiver` | ✅ M3 | Ayrı araç gerekmedi: `yansit-receiver --headless` (Linux veya `receiver/ci/Dockerfile`) bir dizüstünde tahtasız alıcıdır; bkz. TESTING.md M3 |
+| `fake-receiver` | ✅ M3 | Ayrı araç gerekmedi: `casthop --headless` (Linux veya `receiver/ci/Dockerfile`) bir dizüstünde tahtasız alıcıdır; bkz. TESTING.md M3 |
 | `latency` | ✅ M7 | Zaman damgalı test deseni (tablette Ayarlar → Gecikme ölçümü) + alıcıda otomatik ölçüm; bkz. [latency/README.md](latency/README.md) |
 | `soak` | ✅ M7 | Uzun süre testi: gecikme eğimi, RSS, kayıp → CSV + SVG (CI: `soak.yml`, her gece 30 dk) |
 
@@ -27,7 +27,7 @@ Debian 12'de (veya `receiver/ci/Dockerfile` imajında) alıcı derlendikten sonr
 
 ```bash
 tools/integration/install-deps.sh
-YANSIT_IT_GUI=1 tools/integration/run.sh receiver/build/src/yansit-receiver \
+YANSIT_IT_GUI=1 tools/integration/run.sh receiver/build/src/casthop \
     tools/fake-sender/build/install/fake-sender/bin/fake-sender it-work
 ```
 
@@ -39,7 +39,7 @@ Debian 12'de (veya `yansit-deb12` imajında), **ASan'sız** alıcıyla:
 
 ```bash
 tools/integration/install-deps.sh
-tools/soak/run.sh receiver/build/src/yansit-receiver tools/fake-sender/build/install/fake-sender/bin/fake-sender 30 soak-work
+tools/soak/run.sh receiver/build/src/casthop tools/fake-sender/build/install/fake-sender/bin/fake-sender 30 soak-work
 ```
 
 `soak-work/summary.json` kabul ölçütleri: dakikalık ortanca gecikmenin eğimi ≤ 0,5 ms/dk, alıcı belleği (RSS) artışı

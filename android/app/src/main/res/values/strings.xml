@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">Yansıt</string>
+    <string name="app_name" translatable="false">CastHop</string>
     <string name="home_tagline">Tablet ekranını sınıftaki akıllı tahtaya kablosuz yansıtın.</string>
     <string name="home_version">Sürüm %1$s</string>
     <string name="action_connect">Tahtaya Bağlan</string>
@@ -19,8 +19,8 @@
     <string name="ended_by_user">Yansıtma durduruldu.</string>
     <string name="err_unreachable">Tahtaya ulaşılamadı</string>
     <string name="err_unreachable_body">Tablet ve tahta aynı Wi-Fi ağında olmalı. Okul ağı cihazların birbirini görmesini engelliyor olabilir: tabletin hotspot\'unu açıp tahtayı ona bağlamayı deneyin.</string>
-    <string name="err_refused">Tahtada Yansıt açık değil</string>
-    <string name="err_refused_body">Tahtada Yansıt Alıcı uygulamasını açın ve yeni QR kodunu okutun.</string>
+    <string name="err_refused">Tahtada CastHop açık değil</string>
+    <string name="err_refused_body">Tahtada CastHop uygulamasını açın ve yeni QR kodunu okutun.</string>
     <string name="err_wrong_board">Güvenlik denetimi başarısız</string>
     <string name="err_wrong_board_body">Bu QR kodu başka bir tahtaya ait ya da ağda araya giren bir cihaz var. Tahtadaki güncel QR kodunu okutun.</string>
     <string name="err_auth">QR kodu artık geçerli değil</string>
@@ -34,7 +34,7 @@
     <string name="err_locked_out">Geçici olarak kilitlendi</string>
     <string name="err_locked_out_body">Çok sayıda hatalı kod denendi. 30 saniye bekleyip tahtadaki yeni kodu kullanın.</string>
     <string name="err_incompatible">Sürümler uyumsuz</string>
-    <string name="err_incompatible_body">Tablet uygulamasını ve tahtadaki Yansıt\'ı güncelleyin.</string>
+    <string name="err_incompatible_body">Tablet uygulamasını ve tahtadaki CastHop\'u güncelleyin.</string>
     <string name="err_no_encoder">Bu tablet desteklenmiyor</string>
     <string name="err_no_encoder_body">Tablette uygun bir video kodlayıcı bulunamadı.</string>
     <string name="err_consent">Ekran paylaşımına izin verilmedi</string>
@@ -44,14 +44,14 @@
     <string name="err_encoder">Görüntü kodlanamadı</string>
     <string name="err_encoder_body">Ayarlardan \"Dengeli\" veya \"Zayıf ağ\" kalitesini seçip tekrar deneyin.</string>
     <string name="err_stopped_by_board">Yansıtma tahtadan durduruldu.</string>
-    <string name="err_board_closed">Tahtada Yansıt kapatıldı.</string>
+    <string name="err_board_closed">Tahtada CastHop kapatıldı.</string>
     <string name="err_taken_over">Başka bir tablet devraldı</string>
     <string name="err_taken_over_body">Tahta, başka bir tabletin yansıtmasına izin verdi.</string>
     <string name="err_projection_ended">Yansıtma durdu</string>
     <string name="err_projection_ended_body">Ekran kilitlendiğinde veya sistemden durdurulduğunda yansıtma biter. Yeniden bağlanabilirsiniz.</string>
     <string name="err_internal">Beklenmeyen bir hata oluştu. Tekrar deneyin.</string>
     <string name="scan_hint">Tahtadaki QR kodunu çerçeveye alın</string>
-    <string name="scan_not_yansit">Bu bir Yansıt kodu değil. Tahtadaki QR kodunu okutun.</string>
+    <string name="scan_not_yansit">Bu bir CastHop kodu değil. Tahtadaki QR kodunu okutun.</string>
     <string name="scan_camera_error">Kamera açılamadı.</string>
     <string name="perm_title">Başlamadan önce birkaç izin gerekiyor</string>
     <string name="perm_camera">Kamera</string>
@@ -110,7 +110,7 @@
     <string name="action_code">Kodla bağlan (QR olmadan)</string>
     <string name="discover_title">Ağdaki tahtalar</string>
     <string name="discover_searching">Aynı ağdaki tahtalar aranıyor…</string>
-    <string name="discover_hint">Tahta listede yoksa: tahtada Yansıt açık ve tablet aynı ağda mı? Okul ağları aramayı engelleyebilir; QR kodu her zaman çalışır.</string>
+    <string name="discover_hint">Tahta listede yoksa: tahtada CastHop açık ve tablet aynı ağda mı? Okul ağları aramayı engelleyebilir; QR kodu her zaman çalışır.</string>
     <string name="pin_title">%1$s</string>
     <string name="pin_hint">Tahtanın ekranındaki 6 haneli kodu girin.</string>
     <string name="pin_label">Kod</string>
@@ -120,7 +120,8 @@
     <string name="settings_hevc_desc">Tahta donanımla çözebiliyorsa aynı kalitede daha az veri gönderilir. Tahta desteklemiyorsa H.264 kullanılır.</string>
     <string name="quality_good">Bağlantı: iyi</string>
     <string name="quality_fair">Bağlantı: orta</string>
-    <string name="quality_poor">Bağlantı: zayıf — Ayarlar\'dan \"Zayıf ağ\"ı deneyin</string>
+    <string name="quality_poor">Bağlantı: zayıf</string>
+    <string name="quality_auto_lowered">Ağ zayıf: kalite otomatik düşürüldü</string>
     <string name="settings_latency">Gecikme ölçümü</string>
     <string name="settings_latency_desc">Yansıtırken bu ekranı açın: tahta, tabletin çizdiği an ile kendi ekranına geldiği an arasındaki süreyi gösterir.</string>
     <string name="settings_latency_open">Ölçüm ekranını aç</string>
@@ -129,7 +130,7 @@
     <string name="guide_link_desc">Adım adım rehber ve sık sorunlar</string>
     <string name="guide_quick_title">3 adımda bağlanın</string>
     <string name="guide_prepare_title">Başlamadan önce</string>
-    <string name="guide_prepare_1">Tahtada Yansıt Alıcı\'yı açın. Ekranda QR kod ve 6 haneli kod görünür.</string>
+    <string name="guide_prepare_1">Tahtada CastHop\'u açın. Ekranda QR kod ve 6 haneli kod görünür.</string>
     <string name="guide_prepare_2">Tablet ile tahta aynı Wi-Fi ağında olsun.</string>
     <string name="guide_prepare_3">İlk bağlantıda uygulama gereken izinleri ve nedenlerini gösterir.</string>
     <string name="guide_qr_title">QR koduyla bağlanın (önerilen)</string>
@@ -144,7 +145,7 @@
     <string name="guide_code_4">Android\'in ekran paylaşımı sorusuna \"Başlat\" deyin.</string>
     <string name="guide_remembered_title">Sonraki derslerde</string>
     <string name="guide_remembered_1">Bağlandığınız tahta ana ekranda \"Hatırlanan tahtalar\" altında listelenir.</string>
-    <string name="guide_remembered_2">Tahtanın adına dokunup \"Başlat\" demeniz yeter; tahtada Yansıt Alıcı açık olmalıdır.</string>
+    <string name="guide_remembered_2">Tahtanın adına dokunup \"Başlat\" demeniz yeter; tahtada CastHop açık olmalıdır.</string>
     <string name="guide_during_title">Yansıtma sırasında</string>
     <string name="guide_during_1">\"Duraklat\": tahtada son görüntü kalır, tabletinizde başka bir şey yapabilirsiniz.</string>
     <string name="guide_during_2">Durdurmak için \"Yansıtmayı Durdur\"a ya da bildirimdeki \"Durdur\"a dokunun.</string>

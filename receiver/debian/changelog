@@ -1,3 +1,9 @@
+casthop (0.2.0~dev) unstable; urgency=medium
+
+  * Rename the package to casthop; it replaces yansit-receiver.
+
+ -- CastHop Authors <casthop@users.noreply.github.com>  Thu, 05 Nov 2026 02:00:00 +0300
+
 yansit-receiver (0.1.0~dev) unstable; urgency=medium
 
   * Initial development snapshot.

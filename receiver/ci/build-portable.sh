@@ -1,5 +1,5 @@
 #!/bin/sh
-# Taşınabilir alıcı paketi: yansit-receiver-<sürüm>-<mimari>.tar.gz
+# Taşınabilir alıcı paketi: casthop-<sürüm>-<mimari>.tar.gz
 # Qt, GStreamer (eklentileriyle), OpenSSL, libqrencode, Avahi istemcisi pakete gömülür; grafik sürücüsü katmanı
 # (libGL/EGL/VA/DRM), X11/Wayland istemci kütüphaneleri, ses sunucusu istemcisi ve glibc sistemden gelir.
 # Yönetici yetkisi gerekmez: `./install-user.sh` kullanıcı dizinine kurar (RISKS R13).
@@ -8,9 +8,9 @@
 set -eu
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$(mkdir -p "$1" && cd "$1" && pwd)"
-VERSION="${2:-$(sed -n 's/^project(yansit-receiver VERSION \([0-9.]*\).*/\1/p' "$SRC/CMakeLists.txt")}"
+VERSION="${2:-$(sed -n 's/^ *VERSION \([0-9.]*\)$/\1/p' "$SRC/CMakeLists.txt" | head -1)}"
 ARCH="$(uname -m)"
-NAME="yansit-receiver-$VERSION-$ARCH"
+NAME="casthop-$VERSION-$ARCH"
 WORK="$(mktemp -d)"
 STAGE="$WORK/$NAME"
 MULTIARCH="$(gcc -print-multiarch)"
@@ -22,7 +22,7 @@ cmake --build "$WORK/build"
 DESTDIR="$WORK/root" cmake --install "$WORK/build" >/dev/null
 
 mkdir -p "$STAGE/bin" "$STAGE/lib" "$STAGE/plugins" "$STAGE/qml" "$STAGE/gstreamer-1.0" "$STAGE/share"
-cp "$WORK/root/usr/bin/yansit-receiver" "$STAGE/bin/"
+cp "$WORK/root/usr/bin/casthop" "$STAGE/bin/"
 cp -r "$WORK/root/usr/share/applications" "$WORK/root/usr/share/icons" "$STAGE/share/"
 
 # Qt eklentileri ve QML modülleri (yalnız kullanılanlar).
@@ -54,7 +54,7 @@ collect() {
         fi
     done
 }
-for f in "$STAGE/bin/yansit-receiver" "$STAGE/libexec/gst-plugin-scanner" \
+for f in "$STAGE/bin/casthop" "$STAGE/libexec/gst-plugin-scanner" \
          $(find "$STAGE/plugins" "$STAGE/qml" "$STAGE/gstreamer-1.0" -name '*.so'); do
     collect "$f"
 done
@@ -63,10 +63,11 @@ for f in "$STAGE"/lib/*.so* "$STAGE"/gstreamer-1.0/*.so; do dpkg -S "/$(basename
     | cut -d: -f1 | sort -u | while read -r pkg; do dpkg-query -W -f '${Package} ${Version}\n' "$pkg"; done \
     > "$STAGE/share/bundled-packages.txt"
 
-cat >"$STAGE/yansit-receiver" <<'LAUNCH'
+cat >"$STAGE/casthop" <<'LAUNCH'
 #!/bin/sh
-# Taşınabilir Yansıt alıcısını başlatır (gömülü Qt/GStreamer ile).
+# Taşınabilir CastHop alıcısını başlatır (gömülü Qt/GStreamer ile).
 HERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+export YANSIT_LAUNCHER="$HERE/casthop"
 export LD_LIBRARY_PATH="$HERE/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 export QT_PLUGIN_PATH="$HERE/plugins"
 export QML_IMPORT_PATH="$HERE/qml"
@@ -78,9 +79,11 @@ export GST_REGISTRY_1_0="${XDG_CACHE_HOME:-$HOME/.cache}/yansit/gst-registry-$(u
 # VA sürücüleri sistemden (donanıma bağlı); bulunamazsa yazılım çözücüye düşülür.
 [ -d /usr/lib/$(uname -m)-linux-gnu/dri ] && export LIBVA_DRIVERS_PATH="${LIBVA_DRIVERS_PATH:-/usr/lib/$(uname -m)-linux-gnu/dri}"
 mkdir -p "$(dirname "$GST_REGISTRY_1_0")"
-exec "$HERE/bin/yansit-receiver" "$@"
+exec "$HERE/bin/casthop" "$@"
 LAUNCH
-chmod +x "$STAGE/yansit-receiver"
+chmod +x "$STAGE/casthop"
+# Autostart entries written by earlier versions start this path.
+ln -s casthop "$STAGE/yansit-receiver"
 
 cat >"$STAGE/install-user.sh" <<'INSTALL'
 #!/bin/sh
@@ -93,9 +96,15 @@ mkdir -p "$DEST" "$HOME/.local/share/applications" "$HOME/.local/share/icons/hic
 cp -r "$HERE"/. "$DEST"/
 cp "$HERE/share/icons/hicolor/scalable/apps/io.github.ozkanceng.yansit.receiver.svg" \
     "$HOME/.local/share/icons/hicolor/scalable/apps/"
-sed "s|^Exec=.*|Exec=$DEST/yansit-receiver|" "$HERE/share/applications/io.github.ozkanceng.yansit.receiver.desktop" \
+sed "s|^Exec=.*|Exec=$DEST/casthop|" "$HERE/share/applications/io.github.ozkanceng.yansit.receiver.desktop" \
     > "$HOME/.local/share/applications/io.github.ozkanceng.yansit.receiver.desktop"
-echo "Kuruldu: $DEST — menüde 'Yansıt Alıcı'."
+# Earlier versions pointed this entry at the bare binary, which is gone and needs the launcher anyway.
+AUTOSTART="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/io.github.ozkanceng.yansit.receiver.desktop"
+if grep -q "^Exec=\"\?$DEST/" "$AUTOSTART" 2>/dev/null; then
+    sed -i -e "s|^Exec=.*|Exec=\"$DEST/casthop\"|" -e "s|^Name=.*|Name=CastHop|" \
+        -e "s|^Name\[en\]=.*|Name[en]=CastHop|" "$AUTOSTART"
+fi
+echo "Kuruldu: $DEST — menüde 'CastHop'."
 INSTALL
 chmod +x "$STAGE/install-user.sh"
 

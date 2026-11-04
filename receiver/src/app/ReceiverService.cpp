@@ -159,7 +159,7 @@ bool ReceiverService::start() {
     }
     m_server->onEncrypted = [this](QSslSocket* s) { accept(s); };
     if (!m_server->listen(QHostAddress::AnyIPv4, m_options.port)) {
-        setError(tr("Port %1 is in use. Is another copy of Yansıt already running?").arg(m_options.port));
+        setError(tr("Port %1 is in use. Is another copy of CastHop already running?").arg(m_options.port));
         return false;
     }
 

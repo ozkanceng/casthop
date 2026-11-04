@@ -35,7 +35,7 @@ tools/**/.gradle/
 receiver/build*/
 receiver/cmake-build-*/
 receiver/debian/.debhelper/
-receiver/debian/yansit-receiver/
+receiver/debian/casthop/
 receiver/debian/files
 receiver/debian/*.substvars
 receiver/debian/*.debhelper.log

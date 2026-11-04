@@ -1,4 +1,4 @@
-# Yansıt — Gerçek Cihaz Test Kontrol Listeleri
+# CastHop — Gerçek Cihaz Test Kontrol Listeleri
 
 CI her değişiklikte birim testlerini ve sahte gönderici ↔ alıcı uçtan uca testini (`tools/integration/run.sh`)
 çalıştırır. Bu belge CI'ın yapamadıklarını, yani **gerçek tahta ve tabletle** yapılacak denetimleri listeler.
@@ -19,7 +19,7 @@ yollar.
    artefaktını indirin. **Integration** çalışmasından `fake-sender` artefaktını indirin.
 2. Tahtada kurun:
    ```bash
-   sudo apt install ./yansit-receiver_*.deb
+   sudo apt install ./casthop_*.deb
    ```
 3. Tahta bilgilerini toplayın (sonuç bildirimine eklenecek):
    ```bash
@@ -46,13 +46,13 @@ gst-launch-1.0 videotestsrc num-buffers=1800 pattern=ball \
 ```
 
 QR içeriği: tahtadaki QR'ı telefonun kamerasıyla okutup metni (`yansit://c?...`) kopyalayın. Alternatif olarak
-alıcıyı `yansit-receiver --pairing-file ~/yansit-pairing.json` ile başlatıp dosyadaki `uri` değerini alın.
+alıcıyı `casthop --pairing-file ~/yansit-pairing.json` ile başlatıp dosyadaki `uri` değerini alın.
 
 ### Denetimler
 
 | # | Adım | Beklenen | ✓ |
 |---|---|---|---|
-| 1 | Menüden **Yansıt Alıcı**'yı açın | Tam ekran bekleme ekranı: büyük QR, 6 haneli kod, tahta adı ve IP adresi | ☐ |
+| 1 | Menüden **CastHop**'u açın | Tam ekran bekleme ekranı: büyük QR, 6 haneli kod, tahta adı ve IP adresi | ☐ |
 | 2 | Ağ kablosunu/Wi-Fi'ı kesip 10 sn bekleyin, geri bağlayın | Önce "Ağ bağlantısı yok" uyarısı, bağlanınca QR geri gelir | ☐ |
 | 3 | `fake-sender/bin/fake-sender --uri 'yansit://c?...' --input test.h264 --fps 60 --frames 1800` | 1 sn içinde görüntü tam ekran; top akıcı hareket eder, takılma yok | ☐ |
 | 4 | Akış sırasında ekrana dokunun | Üstte gönderici adı ve `… ms · 60 fps · … Mbps` bilgisi, 4 sn sonra kaybolur | ☐ |
@@ -66,7 +66,7 @@ alıcıyı `yansit-receiver --pairing-file ~/yansit-pairing.json` ile başlatıp
 ### Sonuç bildirimi
 
 - "Hazırlık 3" komutlarının çıktısı
-- Alıcı günlüğü: `yansit-receiver --verbose 2>&1 | tee ~/yansit.log` ile başlatıp denetimlerden sonra
+- Alıcı günlüğü: `casthop --verbose 2>&1 | tee ~/yansit.log` ile başlatıp denetimlerden sonra
   `~/yansit.log` (özellikle `video boru hattı: … (donanım|yazılım)` satırı)
 - Sahte göndericinin son satırındaki JSON özet (`last_c2d_ms`, `receiver_frames_dropped`)
 - Başarısız adımların numarası ve mümkünse fotoğraf
@@ -110,7 +110,7 @@ ayarların yalnız desteklenen değerleri gösterdiğini doğrulamak.
    ```bash
    docker build -t yansit-deb12 -f receiver/ci/Dockerfile receiver/ci
    docker run --rm -it --network host -v "$PWD":/src -w /src yansit-deb12 sh -c \
-     'receiver/ci/build-and-test.sh /tmp/b >/dev/null && /tmp/b/src/yansit-receiver --headless --verbose --pairing-file /src/p.json'
+     'receiver/ci/build-and-test.sh /tmp/b >/dev/null && /tmp/b/src/casthop --headless --verbose --pairing-file /src/p.json'
    ```
    QR yerine `p.json` içindeki `uri` değerini bir QR üreticisiyle (ör. `qrencode -t ansiutf8 "$(jq -r .uri p.json)"`)
    ekrana basıp okutun.
@@ -129,7 +129,7 @@ ayarların yalnız desteklenen değerleri gösterdiğini doğrulamak.
 | 7 | Yeniden bağlanıp uygulamadaki **Yansıtmayı Durdur** | ≤ 1 sn içinde durur | ☐ |
 | 8 | Yansıtırken tahtada ekrana dokunup **Yansıtmayı durdur** | Tablette "Yansıtma tahtadan durduruldu" | ☐ |
 | 9 | Aynı (kullanılmış) QR'ın fotoğrafını okutun | "QR kodu artık geçerli değil" | ☐ |
-| 10 | Tahtada Yansıt kapalıyken QR okutun | "Tahtada Yansıt açık değil" | ☐ |
+| 10 | Tahtada CastHop kapalıyken QR okutun | "Tahtada CastHop açık değil" | ☐ |
 | 11 | Tableti başka bir Wi-Fi ağına bağlayıp okutun | "Tahtaya ulaşılamadı" + hotspot önerisi | ☐ |
 | 12 | Sistem penceresinde **İptal** | "Ekran paylaşımına izin verilmedi"; tahta bekleme ekranına döner | ☐ |
 | 13 | **Ayarlar** → Gelişmiş | Yalnız tabletin desteklediği çözünürlük/fps/bit hızı seçenekleri görünür | ☐ |
@@ -165,9 +165,28 @@ dar bant, kalıcı eşleştirme); burada yalnız gerçek donanımın davranış�
 | 10 | Tablet ve tahta farklı Wi-Fi ağlarındayken bağlanın | "Tablet ve tahta farklı ağlarda" + hotspot adımları | ☐ |
 | 11 | Hotspot adımlarını uygulayın (tablet hotspot, tahta ona bağlı) | Yeni QR ile bağlantı kurulur | ☐ |
 | 12 | Kalabalık/2,4 GHz bir ağda 5 dk yansıtın | Görüntü zaman zaman kalitesini düşürür ama gecikme birikmez (kartta gecikme < 300 ms civarı) | ☐ |
+| 13 | Ağı bit hızı tabana inecek kadar zayıflatın (uzaklaşın veya ağı yükleyin), 10 sn bekleyin | Tablette "Ağ zayıf: kalite otomatik düşürüldü"; tahtada çözünürlük düşer, oturum kopmaz, görüntü siyah kalmaz | ☐ |
+| 14 | Geçiş anındaki görüntü kesintisini ölçün | Kısa kesinti; süreyi not edin (eşikler tasarım tahmini, ayar gerekebilir) | ☐ |
+| 15 | Kalite düşükken tableti döndürün | Görüntü döner, kalite seçili ön ayara dönmez | ☐ |
+| 16 | Ağı düzeltip en az 70 sn bekleyin | Kalite kendiliğinden bir basamak yükselir, uyarı kalkar; seçilen ön ayarı aşmaz | ☐ |
+| 17 | Ayarlar → Gelişmiş'te elle değer verip 13. adımı tekrarlayın | Ön ayar değişmez, yalnız bit hızı düşer | ☐ |
 
 **Sonuç bildirimi:** `adb logcat -s YansitMirror YansitEncoder YansitService` çıktısı ve alıcının `--verbose`
 günlüğü; 1 ve 3. adımlarda ölçülen süreler.
+
+---
+
+## CastHop adına geçiş (gerçek tahta ve tablet)
+
+Paket yükseltmesi temiz Debian 12 kapsayıcısında denenir. Burada gerçek masaüstü ve tablet güncellemesi denetlenir.
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | v0.1.2 kurulu tahtada "Tahta açılınca başlat"ı açın, yeni `.deb` kurun | Menüde tek CastHop; eski ad görünmez | ☐ |
+| 2 | Tahtayı yeniden başlatın | CastHop kendiliğinden açılır | ☐ |
+| 3 | `kur` ile kurulu tahtada 1 ve 2. adımları `kur` komutuyla tekrarlayın | Aynı sonuç; "Tahta açılınca başlat" çalışır | ☐ |
+| 4 | Tablet uygulamasını yeni APK ile güncelleyin (silmeden) | Uygulama CastHop adıyla açılır, hatırlanan tahtalar yerinde | ☐ |
+| 5 | Eski tablet uygulamasıyla yeni tahtaya bağlanın | Bağlantı ve yansıtma çalışır | ☐ |
 
 ---
 
@@ -185,7 +204,7 @@ tahtanın hoparlöründen gerçek ses ve dudak senkronu denetlenir.
 | 5 | **Devam et** | Ses ≤ 1 sn içinde geri gelir | ☐ |
 | 6 | Ayarlar → "Sesi tahtaya aktar" kapalı, yeniden bağlanın | Ses tabletten çalar; ana ekranda "Ses kapalı (Ayarlar)." | ☐ |
 | 7 | Ses iznini reddedip bağlanın | Görüntü normal; "Ses aktarılmıyor: ses izni verilmedi." | ☐ |
-| 8 | Tahtada `yansit-receiver --no-audio` | Tablette "Tahtada ses kapalı; ses tabletten çalar." | ☐ |
+| 8 | Tahtada `casthop --no-audio` | Tablette "Tahtada ses kapalı; ses tabletten çalar." | ☐ |
 | 9 | Wi-Fi'ı 2 sn kesip açın | Görüntüyle birlikte ses de geri gelir | ☐ |
 | 10 | 10 dk yansıtma (video oynatırken) | Ses kesilmez, giderek kaymaz | ☐ |
 
@@ -201,8 +220,8 @@ satırları), 3. ve 10. adımlardaki gözlem.
 | 1 | Tahtada **Ayarlar** → adı "7-A Sınıfı" yapıp **Kaydet** | Bekleme ekranında yeni ad; QR yenilenir | ☐ |
 | 2 | Tema **Açık** | Arayüz açık renge geçer, yazılar okunaklı | ☐ |
 | 3 | **Doldur (kenarları kırp)** ile dikey tableti yansıtın | Görüntü ekranı doldurur (üst/alt kırpılır), bozulma yok; **Sığdır** ile kenar boşluklu | ☐ |
-| 4 | "Tahta açılınca Yansıt'ı başlat" açıp tahtayı yeniden başlatın | Oturum açılınca Yansıt tam ekran gelir | ☐ |
-| 5 | Yansıtırken ekrana dokunup **Ekran görüntüsü** | "Ekran görüntüsü kaydedildi: …/Resimler/Yansıt/…png"; dosya açılınca tablet görüntüsü (bilgi çubuğu yok) | ☐ |
+| 4 | "Tahta açılınca CastHop'u başlat" açıp tahtayı yeniden başlatın | Oturum açılınca CastHop tam ekran gelir | ☐ |
+| 5 | Yansıtırken ekrana dokunup **Ekran görüntüsü** | "Ekran görüntüsü kaydedildi: …/Resimler/CastHop/…png"; dosya açılınca tablet görüntüsü (bilgi çubuğu yok) | ☐ |
 | 6 | **Eşleştirilmiş tabletler** → bir tableti **Unut** | O tablet bir sonraki bağlanışta "Tahta bu tableti tanımıyor" alır | ☐ |
 | 7 | Tablette **Kodla bağlan (QR olmadan)** | Android 17: sistemin tahta seçicisi; daha eskide "Ağdaki tahtalar" listesi | ☐ |
 | 8 | Tahtayı seçip ekrandaki 6 haneli kodu girin | Bağlanır; tahta "Hatırlanan tahtalar"a eklenir | ☐ |
@@ -228,7 +247,7 @@ ve ölçümü her değişiklikte entegrasyon testinde denetlenir. Burada **gerç
 | 3 | 1 dk bekleyip değeri not edin | ortalama: ____ ms, p95: ____ ms | ☐ |
 | 4 | Telefonla tableti ve tahtayı aynı karede 10 kez fotoğraflayın | İki saat arasındaki farkların ortancası: ____ ms (panel gecikmesi dahil) | ☐ |
 | 5 | 2. ve 4. adımların farkı | ≈ tahta panelinin gecikmesi (RISKS R8); büyükse tahtada "oyun modu"/düşük gecikme ayarı aranır | ☐ |
-| 6 | 30 dk yansıtma (ölçüm ekranı açık) | Değer giderek artmaz; tahtada `ps -o rss= -C yansit-receiver` başta/sonda: ____ / ____ MB | ☐ |
+| 6 | 30 dk yansıtma (ölçüm ekranı açık) | Değer giderek artmaz; tahtada `ps -o rss= -C casthop` başta/sonda: ____ / ____ MB | ☐ |
 | 7 | Aynı ölçümü **Dengeli** ve 2,4 GHz ağda tekrarlayın | sonuç: ____ ms | ☐ |
 
 **Sonuç bildirimi:** tablet modeli, tahta modeli (CPU, `vainfo`), Wi-Fi bandı/kanalı, ölçülen değerler ve fotoğraflar.

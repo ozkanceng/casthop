@@ -13,7 +13,7 @@ public sealed interface ReachResult {
 
     /**
      * Hiçbir adrese bağlanılamadı.
-     * [refused]: en az bir adres bağlantıyı reddetti (tahta açık ama Yansıt çalışmıyor/port kapalı);
+     * [refused]: en az bir adres bağlantıyı reddetti (tahta açık ama CastHop çalışmıyor/port kapalı);
      * aksi halde zaman aşımı veya ağ hatası (farklı ağ, istemci yalıtımı — RISKS R1).
      */
     public data class Unreachable(val refused: Boolean) : ReachResult

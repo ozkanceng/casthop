@@ -1,11 +1,11 @@
-# receiver/ — Yansıt alıcı / receiver
+# receiver/ — CastHop alıcı / receiver
 
 C++20 + Qt 6.4 (QML) + GStreamer 1.22. Hedef: Pardus ETAP 23 / Debian 12, x86_64.
 
 ```bash
 ci/install-deps.sh                 # Debian 12 / Pardus 23 (sudo)
 ci/build-and-test.sh build         # derle + test
-./build/src/yansit-receiver --windowed
+./build/src/casthop --windowed
 ci/build-deb.sh out                # .deb paketi
 ```
 
@@ -38,7 +38,7 @@ dener (GStreamer 1.22'de sürücüye bağlı, bkz. RISKS R6).
 
 Ayarlar (`~/.config/Yansit/yansit-receiver.conf`) bekleme ekranındaki **Ayarlar** düğmesinden değiştirilir; komut
 satırı seçenekleri o çalışma için önceliklidir. "Tahta açılınca başlat" `~/.config/autostart/` altına bir XDG
-autostart dosyası yazar. Ekran görüntüleri `~/Resimler/Yansıt/` altına kaydedilir.
+autostart dosyası yazar. Ekran görüntüleri `~/Resimler/CastHop/` altına kaydedilir.
 
 mDNS: `avahi-daemon` çalışıyorsa tahta `_yansit._tcp` olarak yayınlanır (tabletler QR'sız bulup 6 haneli kodla
 bağlanabilir). Avahi yoksa yalnız bu kolaylık olmaz; QR akışı etkilenmez. `YANSIT_ALLOW_SW_HEVC=1` H.265'i yazılım

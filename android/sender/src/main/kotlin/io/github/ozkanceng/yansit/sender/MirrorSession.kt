@@ -39,6 +39,8 @@ data class MirrorStats(
     val droppedFrames: Long,
     val width: Int,
     val height: Int,
+    /** Quality is below the chosen preset because the network cannot carry it. */
+    val autoLowered: Boolean = false,
 )
 
 /** Bağlantının anlık durumu (arayüzde "yeniden bağlanılıyor" göstermek için). */
@@ -61,6 +63,7 @@ sealed interface SessionEnd {
  *   RESUME ile sürdürülür (Wi-Fi kopması); VIDEO yeniden bağlanır, CONFIG yeniden gönderilir ve hemen IDR istenir.
  * - Döndürme: [reconfigure]; duraklatma: [pause]/[unpause].
  * - Kodlayıcı hatası: aynı ayarla yeniden başlatma, tekrarlarsa [fallbackPlan] ile daha düşük ayar.
+ * - Kalıcı zayıf ağ: [QualityGovernor] kararıyla [qualityStep] alt veya üst ön ayara geçer.
  *
  * [start] HELLO kabul edilir edilmez çağrılır (yansıtma onayı beklenirken oturum canlı kalsın diye);
  * [startVideo] ekran yakalama hazır olunca.
@@ -74,6 +77,8 @@ class MirrorSession(
     private val fallbackPlan: (StreamPlan) -> StreamPlan? = { null },
     /** Ses durdu veya yeniden bağlanamadı (görüntü sürer). */
     private val onAudioIssue: (Throwable) -> Unit = {},
+    /** Applies a [QualityStep] (resizes the source, calls [reconfigure]); `false` if there is nothing to move to. */
+    private val qualityStep: (QualityStep) -> Boolean = { false },
 ) {
     data class Config(
         val pingIntervalMs: Long = 1000,
@@ -86,6 +91,7 @@ class MirrorSession(
          * yol boşaltılır: kareler atılır, ardından IDR ile devam edilir. Gecikme birikmez (RISKS R7).
          */
         val latencyBudgetUs: Long = 300_000,
+        val quality: QualityGovernor.Config = QualityGovernor.Config(),
     )
 
     @Volatile private var session: Session = initial
@@ -102,6 +108,9 @@ class MirrorSession(
     private var audioSender: Thread? = null
     @Volatile private var plan: StreamPlan? = null
     @Volatile private var bitrate: BitrateController? = null
+    private val quality = QualityGovernor(config.quality)
+    private val qualityStepsDown = AtomicInteger()
+    private val keyframeGate = KeyframeGate()
     @Volatile private var lastConfig: ByteArray? = null
     @Volatile private var lastReport: ControlMessage.ReceiverReport? = null
     @Volatile private var lastRxUs: Long = MonotonicClock.nowUs()
@@ -150,7 +159,6 @@ class MirrorSession(
         sendStreamConfig(plan)
         sender = Thread(::sendLoop, "mirror-video").apply {
             isDaemon = true
-            priority = Thread.MAX_PRIORITY
             priority = Thread.MAX_PRIORITY
             start()
         }
@@ -461,6 +469,7 @@ class MirrorSession(
             var flags = frame.flags
             if (discontinuity) flags = flags or FrameFlags.DISCONTINUITY
             val payload = if (frame.isConfig) withCodec(plan!!, frame.data) else frame.data
+            if (frame.isKeyframe) keyframeGate.onWriteStarted(MonotonicClock.nowUs())
             try {
                 channel.send(flags, frame.ptsUs, payload)
                 if (!frame.isConfig) framesSent.incrementAndGet()
@@ -468,6 +477,7 @@ class MirrorSession(
             } catch (e: IOException) {
                 linkLost(epoch.get(), e)
             }
+            if (frame.isKeyframe && keyframeGate.onWriteEnded()) forceKeyframe()
         }
     }
 
@@ -507,6 +517,7 @@ class MirrorSession(
     /** IDR isteklerini birleştirir (PROTOCOL.md §7.2: 200 ms'den sık istekler tek IDR). */
     private fun requestKeyframe() {
         val now = MonotonicClock.nowUs()
+        if (!keyframeGate.onRequest(now)) return
         val last = lastKeyframeRequestUs.get()
         if (now - last < KEYFRAME_COALESCE_US || !lastKeyframeRequestUs.compareAndSet(last, now)) return
         source?.requestKeyframe()
@@ -534,10 +545,37 @@ class MirrorSession(
 
     private fun bitrateTick() {
         val b = bitrate ?: return
-        b.tick(MonotonicClock.nowUs() / 1000)?.let { bps ->
+        val nowMs = MonotonicClock.nowUs() / 1000
+        b.tick(nowMs)?.let { bps ->
             source?.setBitrate(bps)
             video?.setSendBufferBytes(sendBufferFor(bps))
         }
+        qualityTick(nowMs, b)
+    }
+
+    private fun qualityTick(nowMs: Long, b: BitrateController) {
+        val p = plan ?: return
+        if (paused || linkState != LinkState.CONNECTED) {
+            quality.clearTimers()
+            return
+        }
+        val step = quality.tick(nowMs, b.appliedBps, p.minBps, p.maxBps) ?: return
+        // Restarting the encoder takes a while; the bitrate tick must keep its pace.
+        scheduler.execute { applyQualityStep(step) }
+    }
+
+    private fun applyQualityStep(step: QualityStep) {
+        val changed = try {
+            !ended.get() && qualityStep(step)
+        } catch (_: RuntimeException) {
+            false
+        }
+        if (!changed) {
+            quality.onRejected()
+            return
+        }
+        quality.onSwitched(MonotonicClock.nowUs() / 1000, step)
+        if (step == QualityStep.DOWN) qualityStepsDown.incrementAndGet() else qualityStepsDown.decrementAndGet()
     }
 
     private fun statsTick() {
@@ -563,6 +601,7 @@ class MirrorSession(
                 droppedFrames = queue.droppedTotal,
                 width = p.width,
                 height = p.height,
+                autoLowered = qualityStepsDown.get() > 0,
             ),
         )
     }

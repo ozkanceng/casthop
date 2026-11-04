@@ -1,7 +1,7 @@
 #!/bin/sh
 # Taşınabilir paketi temiz bir Debian 12 / Pardus 23 üzerinde dener: yalnız masaüstünde her zaman bulunan
 # sistem kütüphaneleri kurulur (gömülmeyenler: GL/EGL, X11/xcb/Wayland, ses istemcisi, fontconfig...).
-#   receiver/ci/test-portable.sh yansit-receiver-<sürüm>-<mimari>.tar.gz
+#   receiver/ci/test-portable.sh casthop-<sürüm>-<mimari>.tar.gz
 set -eu
 ARCHIVE="$(realpath "$1")"
 export DEBIAN_FRONTEND=noninteractive
@@ -14,11 +14,11 @@ apt-get install -y -qq --no-install-recommends \
     libfreetype6 libdbus-1-3 libpulse0 libasound2 libglib2.0-0 fonts-noto-core >/dev/null
 WORK="$(mktemp -d)"
 tar -C "$WORK" -xzf "$ARCHIVE"
-DIR="$(echo "$WORK"/yansit-receiver-*)"
+DIR="$(echo "$WORK"/casthop-*)"
 
 # Gömülü her ikili ve eklentinin bağımlılıkları çözülebilmeli.
 missing=0
-for f in "$DIR/bin/yansit-receiver" "$DIR/libexec/gst-plugin-scanner" $(find "$DIR" -name '*.so*' -type f); do
+for f in "$DIR/bin/casthop" "$DIR/libexec/gst-plugin-scanner" $(find "$DIR" -name '*.so*' -type f); do
     if LD_LIBRARY_PATH="$DIR/lib" ldd "$f" 2>/dev/null | grep -q "not found"; then
         echo "eksik bağımlılık: $f"
         LD_LIBRARY_PATH="$DIR/lib" ldd "$f" | grep "not found"
@@ -29,15 +29,27 @@ done
 
 # Başsız modda başlar, TLS sunucusunu ve video/ses çözücüleri yükler, düzgün kapanır.
 mkdir -p -m 700 "$WORK/rt"
-XDG_RUNTIME_DIR="$WORK/rt" "$DIR/yansit-receiver" --headless --verbose --data-dir "$WORK/data" --qr-host 127.0.0.1 \
+XDG_RUNTIME_DIR="$WORK/rt" "$DIR/casthop" --headless --verbose --data-dir "$WORK/data" --qr-host 127.0.0.1 \
     --pairing-file "$WORK/p.json" --exit-after 4000 >"$WORK/log" 2>&1
 cat "$WORK/log"
 grep -q "dinleniyor" "$WORK/log"
 [ -s "$WORK/p.json" ]
 # Arayüz: gömülü Qt platform eklentisi ve QML modülleri (QtQuick.Controls vb.) yüklenmeli; uyarı ölümcül.
 QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FATAL_WARNINGS=1 XDG_RUNTIME_DIR="$WORK/rt" \
-    "$DIR/yansit-receiver" --windowed --exit-after 3000 --port 47801 --data-dir "$WORK/data" --qr-host 127.0.0.1 \
+    "$DIR/casthop" --windowed --exit-after 3000 --port 47801 --data-dir "$WORK/data" --qr-host 127.0.0.1 \
     >"$WORK/gui.log" 2>&1 || { cat "$WORK/gui.log"; exit 1; }
 # The GL sink must load from the bundle; a plugin that fails to load quietly costs GPU rendering.
 grep -q "qml6glsink eklentisi: var" "$WORK/gui.log" || { cat "$WORK/gui.log"; exit 1; }
+
+# Upgrade from an earlier portable install: the autostart entry must keep working.
+HOME_DIR="$WORK/home"
+ENTRY="$HOME_DIR/.config/autostart/io.github.ozkanceng.yansit.receiver.desktop"
+mkdir -p "$(dirname "$ENTRY")"
+printf '[Desktop Entry]\nType=Application\nName=Yansıt Alıcı\nName[en]=Yansıt Receiver\nExec="%s"\n' \
+    "$HOME_DIR/.local/opt/yansit/bin/yansit-receiver" >"$ENTRY"
+HOME="$HOME_DIR" XDG_CONFIG_HOME="" sh "$DIR/install-user.sh"
+grep -qx "Exec=\"$HOME_DIR/.local/opt/yansit/casthop\"" "$ENTRY" || { cat "$ENTRY"; exit 1; }
+grep -qx "Name=CastHop" "$ENTRY" || { cat "$ENTRY"; exit 1; }
+[ -x "$HOME_DIR/.local/opt/yansit/casthop" ]
+[ -x "$HOME_DIR/.local/opt/yansit/yansit-receiver" ]
 echo "taşınabilir paket temiz sistemde çalışıyor"

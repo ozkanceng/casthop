@@ -1,10 +1,10 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: yansit
+Upstream-Name: casthop
 Upstream-Contact: https://github.com/ozkanceng/tablet-mirror/issues
 Source: https://github.com/ozkanceng/tablet-mirror
 
 Files: *
-Copyright: 2026 The Yansıt Authors
+Copyright: 2026 The CastHop Authors
 License: Apache-2.0
 
 License: Apache-2.0

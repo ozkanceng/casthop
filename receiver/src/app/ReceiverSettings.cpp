@@ -84,8 +84,11 @@ void ReceiverSettings::setAutostart(bool on) {
             qCWarning(lcSettings) << "otomatik başlatma dosyası yazılamadı:" << path;
             return;
         }
-        const QByteArray exec = QCoreApplication::applicationFilePath().toUtf8();
-        f.write("[Desktop Entry]\nType=Application\nName=Yansıt Alıcı\nName[en]=Yansıt Receiver\n"
+        // The portable binary cannot start without the environment its launcher sets up.
+        QByteArray exec = qgetenv("YANSIT_LAUNCHER");
+        if (exec.isEmpty())
+            exec = QCoreApplication::applicationFilePath().toUtf8();
+        f.write("[Desktop Entry]\nType=Application\nName=CastHop\nName[en]=CastHop\n"
                 "Icon=io.github.ozkanceng.yansit.receiver\nExec=\"" + exec + "\"\n"
                 "X-GNOME-Autostart-enabled=true\nNoDisplay=false\n");
         if (!f.commit()) {
