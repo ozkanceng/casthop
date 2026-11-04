@@ -1,6 +1,7 @@
 package io.github.ozkanceng.yansit
 
 import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.media.projection.MediaProjectionConfig
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -118,6 +119,13 @@ private fun YansitApp() {
     val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         consentInFlight = false
         MirrorController.onConsentResult(context, result.resultCode == Activity.RESULT_OK, result.resultCode, result.data)
+    }
+
+    // The camera image is not rotated before encoding, so camera mode keeps the screen in landscape.
+    val cameraActive = (state as? MirrorState.Mirroring)?.cameraSize != null
+    LaunchedEffect(cameraActive) {
+        (context as? Activity)?.requestedOrientation =
+            if (cameraActive) ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
 
     // Tahta kabul edince sistemin ekran paylaşımı onayı istenir (her oturumda zorunlu).

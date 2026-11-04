@@ -14,6 +14,17 @@ class DiscoveryTxtTest {
         val r = DiscoveryTxt.parse(txt)!!
         assertEquals("7-A Sınıfı", r.name)
         assertEquals(fp, r.fingerprintPrefix)
+        assertNull(r.kind)
+    }
+
+    @Test
+    fun keepsKnownKindsOnly() {
+        val b64 = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(16))
+        fun kindOf(value: String) = DiscoveryTxt.parse(
+            mapOf("v" to "1".toByteArray(), "fp" to b64.toByteArray(), "kind" to value.toByteArray()),
+        )!!.kind
+        assertEquals("tv", kindOf("tv"))
+        assertNull(kindOf("toaster"))
     }
 
     @Test

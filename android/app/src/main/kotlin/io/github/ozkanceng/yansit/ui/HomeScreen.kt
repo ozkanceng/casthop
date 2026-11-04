@@ -43,6 +43,16 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import io.github.ozkanceng.yansit.stream.MirrorController
+import io.github.ozkanceng.yansit.data.AppSettings
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.material3.Switch
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -227,6 +237,36 @@ private fun ConnectChoices(boards: List<RememberedBoard>, actions: HomeActions) 
         OutlinedButton(onClick = actions.onCode, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
             ButtonLabel(R.string.action_code, Icons.Rounded.Pin)
         }
+        CameraModeRow()
+    }
+}
+
+/** One switch: the next connection sends the camera instead of the screen. */
+@Composable
+private fun CameraModeRow() {
+    val context = LocalContext.current
+    val settings = remember(context) { AppSettings(context) }
+    var on by remember { mutableStateOf(settings.cameraMode) }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 72.dp)
+            .toggleable(value = on, role = Role.Switch) {
+                on = it
+                settings.cameraMode = it
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.camera_mode), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.camera_mode_desc),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Switch(checked = on, onCheckedChange = null)
     }
 }
 
@@ -382,6 +422,15 @@ private fun MirroringCard(state: MirrorState.Mirroring, modifier: Modifier) {
                     StatGrid(state.stats)
                 }
             }
+            state.cameraSize?.let { size ->
+                CameraPreview(size, MirrorController::setCameraPreview, Modifier.fillMaxWidth())
+                if (state.canSwitchCamera) {
+                    OutlinedButton(
+                        onClick = MirrorController::switchCamera,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
+                    ) { Text(stringResource(R.string.action_switch_camera)) }
+                }
+            }
             if (!state.reconnecting) {
                 Text(
                     stringResource(audioText(state.audio)),
@@ -474,6 +523,7 @@ private fun audioText(a: AudioState): Int = when (a) {
     AudioState.OFF_SETTING -> R.string.audio_off_setting
     AudioState.OFF_BOARD -> R.string.audio_off_board
     AudioState.OFF_PERMISSION -> R.string.audio_off_permission
+    AudioState.OFF_CAMERA -> R.string.audio_off_camera
     AudioState.UNSUPPORTED -> R.string.audio_unsupported
     AudioState.FAILED -> R.string.audio_failed
 }
@@ -500,6 +550,7 @@ private fun errorText(error: MirrorError?): Pair<Int, Int?> = when (error) {
     MirrorError.STOPPED_BY_BOARD -> R.string.err_stopped_by_board to null
     MirrorError.BOARD_CLOSED -> R.string.err_board_closed to null
     MirrorError.TAKEN_OVER -> R.string.err_taken_over to R.string.err_taken_over_body
+    MirrorError.CAMERA_FAILED -> R.string.err_camera to R.string.err_camera_body
     MirrorError.PROJECTION_ENDED -> R.string.err_projection_ended to R.string.err_projection_ended_body
     MirrorError.INTERNAL -> R.string.err_internal to null
 }

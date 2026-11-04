@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Computer
+import androidx.compose.material.icons.rounded.CoPresent
+import androidx.compose.material.icons.rounded.Tablet
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,9 +36,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.ozkanceng.yansit.R
+import androidx.compose.ui.graphics.vector.ImageVector
 import io.github.ozkanceng.yansit.stream.DiscoveredBoard
 
 /** Ağda bulunan tahtalar (Android 16 ve öncesi; Android 17+ sistem seçicisi kullanılır). */
+private fun iconOf(kind: String?): ImageVector = when (kind) {
+    "pc" -> Icons.Rounded.Computer
+    "tablet" -> Icons.Rounded.Tablet
+    "board" -> Icons.Rounded.CoPresent
+    else -> Icons.Rounded.Tv
+}
+
 @Composable
 fun DiscoverScreen(boards: List<DiscoveredBoard>, onPick: (DiscoveredBoard) -> Unit, onBack: () -> Unit) {
     SubScreen(stringResource(R.string.discover_title), onBack) {
@@ -44,7 +55,7 @@ fun DiscoverScreen(boards: List<DiscoveredBoard>, onPick: (DiscoveredBoard) -> U
             Text(stringResource(R.string.discover_searching), style = MaterialTheme.typography.bodyLarge)
         }
         for (b in boards) {
-            NavigationCard(title = b.name, icon = Icons.Rounded.Tv, onClick = { onPick(b) }, modifier = Modifier.fillMaxWidth())
+            NavigationCard(title = b.name, icon = iconOf(b.kind), onClick = { onPick(b) }, modifier = Modifier.fillMaxWidth())
         }
         Text(
             stringResource(R.string.discover_hint),

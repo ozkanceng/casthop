@@ -77,6 +77,8 @@ Tek dinleme portu, üç TLS bağlantısı (CONTROL, VIDEO, AUDIO). İlk bağlant
 
 **Alıcıda ses zamanlaması:** ses boru hattı sistem monotonik saatini ve sıfır temel zamanı kullanır (çalışma zamanı = `CLOCK_MONOTONIC`); paketin PTS'i göndericideki yakalama anı + saat ofsetidir, boru hattı gecikmesi = hedef ses gecikmesi. Hedef, görüntünün yakalama→çizim ortalaması + bir ekran karesi olarak her raporda güncellenir (en az 40, en çok 250 ms) → ses, görüntü ekrana çıktığında çalar. Zamanında çalınamayacak paket atılır ve RECEIVER_REPORT `audio_late` ile bildirilir. Saat ofsetinin hızla oturması için gönderici ilk PING'leri 50 ms aralıkla yollar.
 
+**Kamera modu:** ekran yerine kamera gönderilir. `CameraCapture` Camera2 ile tek oturumda iki çıkış açar: kodlayıcı yüzeyi ve öğretmenin önizlemesi. MediaProjection ve onay ekranı gerekmez; servis `camera` türüyle ön plana geçer. Kamera çıktı boyutu oturum boyunca sabittir, bu yüzden `QualityGovernor` ön ayar değiştirmez, yalnız bit hızı uyarlanır. Görüntü kodlamadan önce döndürülmediği için ekran yatay kilitlenir. Ses gönderilmez: uygulama sesi yakalama MediaProjection ister.
+
 **Servis ve yaşam döngüsü:** onay sonucu → `MirrorService` başlat → `ServiceCompat.startForeground(..., FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)` → `getMediaProjection()` → `registerCallback()` → `createVirtualDisplay()` (bir kez). `onStop()` → kaynakları bırak, alıcıya `BYE(reason=projection_stopped)`, arayüzde "Yansıtma durdu — tekrar başlat".
 
 **UI (Compose):** Ana ekran tek büyük buton; bağlantı sırasında durum kartı (gecikme/FPS/bit hızı), Duraklat/Durdur; hatırlanan tahtalar listesi; ayarlar (ön ayar, gelişmiş, ses, tema, dil). TR varsayılan, EN; Material 3 dinamik/karanlık tema.

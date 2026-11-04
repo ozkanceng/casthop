@@ -176,6 +176,19 @@ günlüğü; 1 ve 3. adımlarda ölçülen süreler.
 
 ---
 
+## Kamera yansıtma (gerçek tablet)
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Ana ekranda "Kamerayı yansıt"ı açıp bağlanın | Ekran paylaşım onayı çıkmaz; tablette ve alıcıda kamera görüntüsü, yatay ve baş aşağı değil | ☐ |
+| 2 | Tablette önizlemeye bakın | Görüntü dik ve doğru oranda; telefon ve doğal yönü yatay tabletlerde ayrı ayrı denetleyin | ☐ |
+| 3 | "Kamerayı değiştir" | Ön kamera gelir, yayın kopmaz | ☐ |
+| 4 | Duraklat, devam et | Alıcıda son görüntü kalır, ≤ 1 sn içinde görüntü döner | ☐ |
+| 5 | Uygulamayı arka plana alıp geri dönün | Yayın sürer, önizleme geri gelir | ☐ |
+| 6 | Wi-Fi'ı 2 sn kapatıp açın | Kendiliğinden devam eder | ☐ |
+
+---
+
 ## CastHop adına geçiş (gerçek tahta ve tablet)
 
 Paket yükseltmesi temiz Debian 12 kapsayıcısında denenir. Burada gerçek masaüstü ve tablet güncellemesi denetlenir.

@@ -10,6 +10,8 @@ import android.media.projection.MediaProjection
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.Surface
+import android.util.Size
 import android.view.Display
 import androidx.core.content.ContextCompat
 import io.github.ozkanceng.yansit.BuildConfig
@@ -76,11 +78,12 @@ enum class MirrorError {
     BOARD_CLOSED,
     TAKEN_OVER,
     PROJECTION_ENDED,
+    CAMERA_FAILED,
     INTERNAL,
 }
 
 /** Sesin durumu (arayüzde bilgi satırı). */
-enum class AudioState { ON, OFF_SETTING, OFF_BOARD, OFF_PERMISSION, UNSUPPORTED, FAILED }
+enum class AudioState { ON, OFF_SETTING, OFF_BOARD, OFF_PERMISSION, OFF_CAMERA, UNSUPPORTED, FAILED }
 
 sealed interface MirrorState {
     data object Idle : MirrorState
@@ -96,6 +99,9 @@ sealed interface MirrorState {
         /** Ağ koptu, oturum sürdürülmeye çalışılıyor (görüntü tahtada donuk kalır). */
         val reconnecting: Boolean = false,
         val audio: AudioState = AudioState.OFF_SETTING,
+        /** Camera mode: the size of the picture being sent; `null` when the screen is mirrored. */
+        val cameraSize: Size? = null,
+        val canSwitchCamera: Boolean = false,
     ) : MirrorState
     /** Bitti; [error] `null` ise kullanıcı kendisi durdurdu. */
     data class Ended(val board: String, val error: MirrorError?) : MirrorState
@@ -130,9 +136,14 @@ object MirrorController {
     /** Uzun kopmada eşleştirmeyle yeniden bağlanma denemesi süresi. */
     private const val LONG_RECONNECT_WINDOW_NS = 60_000_000_000L
 
+    /** Upper limit for camera mode; the preset and the receiver can lower it. */
+    private const val CAMERA_MAX_WIDTH = 1920
+    private const val CAMERA_MAX_HEIGHT = 1080
+
     /** Yansıtma sürerken tutulan sistem kaynakları. */
-    private class Capture(val service: MirrorService, val projection: MediaProjection) {
+    private class Capture(val service: MirrorService, val projection: MediaProjection?) {
         var display: VirtualDisplay? = null
+        var camera: CameraCapture? = null
         var encoder: ScreenEncoder? = null
         var plan: StreamPlan? = null
         /** Preset in use when the network or encoder moved away from the chosen one. */
@@ -144,10 +155,12 @@ object MirrorController {
             displayListener = null
             display?.release()
             display = null
+            camera?.release()
+            camera = null
             encoder?.release()
             encoder = null
             try {
-                projection.stop()
+                projection?.stop()
             } catch (e: RuntimeException) {
                 Log.w(TAG, "projection.stop", e)
             }
@@ -186,7 +199,11 @@ object MirrorController {
                     val s = newMirrorSession(result.session)
                     synchronized(lock) { session = s }
                     s.start()
-                    _state.value = MirrorState.AwaitingConsent(board)
+                    if (AppSettings(appContext).cameraMode) {
+                        startCameraService()
+                    } else {
+                        _state.value = MirrorState.AwaitingConsent(board)
+                    }
                 }
             }
         }
@@ -314,6 +331,85 @@ object MirrorController {
     }
 
     // --- Yakalama ---
+
+    /** Camera mode needs no screen capture consent, only the camera permission. */
+    private fun startCameraService() {
+        val granted = ContextCompat.checkSelfPermission(appContext, Manifest.permission.CAMERA) ==
+            PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            fail(MirrorError.CAMERA_FAILED)
+            return
+        }
+        _state.value = MirrorState.Starting(board)
+        ContextCompat.startForegroundService(appContext, MirrorService.startCameraIntent(appContext, board))
+    }
+
+    /** [MirrorService] is in the foreground with the camera type. */
+    internal fun onCameraServiceReady(service: MirrorService) {
+        val s = synchronized(lock) {
+            session?.also { capture = Capture(service, null) }
+        }
+        if (s == null) {
+            service.stopForegroundAndSelf()
+            return
+        }
+        scope.launch { startCameraCapture(service, s) }
+    }
+
+    private fun startCameraCapture(service: MirrorService, s: MirrorSession) {
+        val settings = AppSettings(service)
+        val w = s.welcome
+        val base = StreamPlanner.plan(
+            CAMERA_MAX_WIDTH, CAMERA_MAX_HEIGHT, settings.preset,
+            ReceiverDisplay(w.displayWidth, w.displayHeight, w.displayRefresh), encodersFor(settings, w), settings.overrides,
+        )
+        if (base == null) {
+            fail(MirrorError.NO_ENCODER)
+            return
+        }
+        val caps = encodersFor(settings, w).first { it.name == base.encoderName }
+        val size = CameraCapture.pickSize(service, base.width, base.height) {
+            it.width % caps.widthAlignment == 0 && it.height % caps.heightAlignment == 0 &&
+                caps.isSupported(it.width, it.height, base.fps)
+        }
+        if (size == null) {
+            fail(MirrorError.CAMERA_FAILED)
+            return
+        }
+        val plan = base.copy(width = size.width, height = size.height)
+        val encoder = ScreenEncoder(caps)
+        try {
+            synchronized(lock) {
+                capture?.encoder = encoder
+                capture?.plan = plan
+            }
+            s.startVideo(plan, encoder)
+            val camera = CameraCapture(service, encoder.inputSurface, size, plan.fps) { e ->
+                Log.e(TAG, "kamera durdu", e)
+                scope.launch { fail(MirrorError.CAMERA_FAILED) }
+            }
+            synchronized(lock) { capture?.camera = camera }
+            camera.start()
+            _state.value = MirrorState.Mirroring(
+                board, null, audio = AudioState.OFF_CAMERA, cameraSize = size, canSwitchCamera = camera.canSwitch,
+            )
+            Log.i(TAG, "kamera: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName})")
+        } catch (e: IOException) {
+            Log.w(TAG, "video bağlantısı kurulamadı", e)
+            s.stop(ByeReason.ERROR)
+        } catch (e: RuntimeException) {
+            Log.e(TAG, "kodlayıcı başlatılamadı", e)
+            fail(MirrorError.ENCODER_FAILED)
+        }
+    }
+
+    fun setCameraPreview(surface: Surface?) {
+        synchronized(lock) { capture?.camera }?.setPreview(surface)
+    }
+
+    fun switchCamera() {
+        synchronized(lock) { capture?.camera }?.switchCamera()
+    }
 
     /** [MirrorService] ön plana geçip MediaProjection'ı aldı. */
     internal fun onProjectionReady(service: MirrorService, projection: MediaProjection) {
@@ -452,6 +548,7 @@ object MirrorController {
     private fun lowerPlan(current: StreamPlan): StreamPlan? {
         val (c, s) = synchronized(lock) { capture to session }
         if (c == null || s == null) return null
+        if (c.camera != null) return null // the camera output size is fixed for the session
         val active = c.preset ?: AppSettings(c.service).preset
         val next = active.lower ?: active
         val plan = currentPlan(c.service, s, next)?.takeIf { it != current } ?: return null
@@ -467,7 +564,7 @@ object MirrorController {
     @Synchronized
     private fun stepQuality(step: QualityStep): Boolean {
         val (c, s) = synchronized(lock) { capture to session }
-        if (c == null || s == null) return false
+        if (c == null || s == null || c.camera != null) return false
         val settings = AppSettings(c.service)
         if (settings.overrides != StreamOverrides()) return false
         val active = c.preset ?: settings.preset
@@ -492,6 +589,7 @@ object MirrorController {
         if (c == null || s == null || st !is MirrorState.Mirroring || st.paused) return
         // Yeni kare üretimi durur: tahtada son kare ve "Yansıtma duraklatıldı" kalır.
         c.display?.surface = null
+        c.camera?.pause()
         s.pause()
         _state.value = st.copy(paused = true)
     }
@@ -501,6 +599,7 @@ object MirrorController {
         val st = _state.value
         if (c == null || s == null || st !is MirrorState.Mirroring || !st.paused) return
         c.display?.surface = c.encoder?.inputSurface
+        c.camera?.resume()
         s.unpause()
         _state.value = st.copy(paused = false)
     }
@@ -629,10 +728,13 @@ object MirrorController {
         try {
             // Önceki oturum kodlayıcıyı durdurdu; aynı Surface ve VirtualDisplay ile yeniden başlar.
             s.startVideo(plan, encoder)
-            val audio = startAudio(c.service, c.projection, s)
+            val audio = c.projection?.let { startAudio(c.service, it, s) } ?: AudioState.OFF_CAMERA
             val cur = _state.value
             if (cur is MirrorState.Mirroring) {
-                if (cur.paused) c.display?.surface = encoder.inputSurface
+                if (cur.paused) {
+                    c.display?.surface = encoder.inputSurface
+                    c.camera?.resume()
+                }
                 _state.value = cur.copy(reconnecting = false, paused = false, audio = audio)
             }
             Log.i(TAG, "eşleştirmeyle yeniden bağlanıldı")

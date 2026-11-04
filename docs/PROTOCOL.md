@@ -339,7 +339,7 @@ yansit://c?v=1&h=192.168.1.20,10.42.0.1&p=47800&t=<token>&f=<fp>&n=<ad>
 
 Token kullanıldığında veya 10 dk'da bir yenilenir; QR ekranının görünür olmasına bağlı değildir.
 
-**mDNS:** `_yansit._tcp.local`, TXT: `v=1`, `name=<ad>`, `fp=<parmak izinin ilk 16 baytı base64url>`. mDNS yalnız bulma içindir; kimlik doğrulama yine PIN/eşleştirme ile yapılır ve tam parmak izi TLS'te görülen değerle `fp` öneki üzerinden kontrol edilir.
+**mDNS:** `_yansit._tcp.local`, TXT: `v=1`, `name=<ad>`, `fp=<parmak izinin ilk 16 baytı base64url>`, isteğe bağlı `kind=board|tv|pc|tablet` (yalnız liste simgesi için; bilinmeyen değer yok sayılır). mDNS yalnız bulma içindir; kimlik doğrulama yine PIN/eşleştirme ile yapılır ve tam parmak izi TLS'te görülen değerle `fp` öneki üzerinden kontrol edilir.
 
 ## 9. Örnek baytlar (test vektörü tohumları)
 

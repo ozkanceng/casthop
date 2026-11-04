@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
 
     <!-- QR okumak için kamera gerekir ama kamerasız cihaz da (ileride PIN ile) kurabilsin. -->
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
@@ -42,6 +43,6 @@
         <service
             android:name=".stream.MirrorService"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
+            android:foregroundServiceType="mediaProjection|camera" />
     </application>
 </manifest>

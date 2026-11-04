@@ -37,9 +37,21 @@ class MirrorService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_START -> start(intent)
+            ACTION_START_CAMERA -> startCamera(intent)
             else -> stopSelf()
         }
         return START_NOT_STICKY
+    }
+
+    private fun startCamera(intent: Intent) {
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            notification(intent.getStringExtra(EXTRA_BOARD).orEmpty()),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA,
+        )
+        wifi.acquire()
+        MirrorController.onCameraServiceReady(this)
     }
 
     private fun start(intent: Intent) {
@@ -122,10 +134,14 @@ class MirrorService : Service() {
         private const val CHANNEL_ID = "mirroring"
         private const val NOTIFICATION_ID = 1
         private const val ACTION_START = "io.github.ozkanceng.yansit.START"
+        private const val ACTION_START_CAMERA = "io.github.ozkanceng.yansit.START_CAMERA"
         private const val ACTION_STOP = "io.github.ozkanceng.yansit.STOP"
         private const val EXTRA_RESULT_CODE = "result_code"
         private const val EXTRA_RESULT_DATA = "result_data"
         private const val EXTRA_BOARD = "board"
+
+        fun startCameraIntent(context: Context, board: String): Intent =
+            Intent(context, MirrorService::class.java).setAction(ACTION_START_CAMERA).putExtra(EXTRA_BOARD, board)
 
         fun startIntent(context: Context, resultCode: Int, data: Intent, board: String): Intent =
             Intent(context, MirrorService::class.java)

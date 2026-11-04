@@ -21,6 +21,7 @@ data class DiscoveredBoard(
     val hosts: List<String>,
     val port: Int,
     val fingerprintPrefix: Bytes,
+    val kind: String? = null,
 )
 
 /**
@@ -157,7 +158,7 @@ class BoardDiscovery(context: Context) {
         val txt = DiscoveryTxt.parse(info.attributes) ?: return null
         val hosts = addresses.filterIsInstance<Inet4Address>().mapNotNull { it.hostAddress }
         if (hosts.isEmpty() || info.port !in 1..65535) return null
-        return DiscoveredBoard(txt.name ?: info.serviceName, hosts.take(4), info.port, txt.fingerprintPrefix)
+        return DiscoveredBoard(txt.name ?: info.serviceName, hosts.take(4), info.port, txt.fingerprintPrefix, txt.kind)
     }
 
     private companion object {

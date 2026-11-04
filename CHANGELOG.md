@@ -5,12 +5,15 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 ## [Yayımlanmamış / Unreleased]
 
 ### Eklendi / Added
+- Kamerayı yansıtma: ana ekrandaki anahtarla ekran yerine kamera gönderilir; kitap, defter ve belge göstermek için. Önizleme tablette görünür, ön ve arka kamera arasında geçilir.
+- Ağda bulma listesi alıcının türünü (tahta, TV, bilgisayar, tablet) simgeyle gösteriyor.
 - Ağ uzun süre yetersizse tablet çözünürlüğü ve kare hızını kendiliğinden düşürüyor, ağ düzelince geri yükseltiyor; öğretmen Ayarlar'a girmek zorunda değil.
 
 ### Düzeltildi / Fixed
 - `kur` komutuyla kurulan tahtada "Tahta açılınca başlat" uygulamayı açamıyordu; eski kayıt da güncelleniyor.
 
 ### Değiştirildi / Changed
+- Tablet uygulamasının metinleri artık yalnız tahtadan değil, her alıcıdan söz ediyor ("Ekrana Bağlan").
 - Ürünün yeni adı **CastHop**. Paket, indirme dosyaları ve menü adı değişti; `.deb` eski `yansit-receiver` paketinin yerini alıyor. Eşleşmeler, ayarlar ve tablet uygulaması güncellemesi korunuyor; eski tablet ve yeni tahta birlikte çalışıyor.
 - Tıkalı ağda anahtar kareler üst üste binmiyor; önceki kare yazılırken gelen istekler tek isteğe indiriliyor.
 - Daha düşük gecikme: yansıtma sırasında Wi-Fi güç tasarrufu kapatılıyor, tahtadaki donanım çözücü kare bekletmiyor, periyodik anahtar kare aralığı 2 sn'den 10 sn'ye çıktı.
