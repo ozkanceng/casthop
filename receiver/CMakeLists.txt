@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(yansit-receiver
-    VERSION 0.1.0
+    VERSION 0.1.1
     DESCRIPTION "Yansıt — Pardus ETAP akıllı tahta alıcısı"
     HOMEPAGE_URL "https://github.com/ozkanceng/tablet-mirror"
     LANGUAGES CXX)
