@@ -14,7 +14,6 @@
     <string name="state_awaiting_consent">Confirm screen sharing…</string>
     <string name="state_starting">Starting…</string>
     <string name="state_mirroring">Mirroring to %1$s</string>
-    <string name="mirroring_stats">Latency %1$s ms · %2$d fps · %3$.1f Mbps · %4$d×%5$d</string>
     <string name="mirroring_hint">You can stop from the notification or this screen.</string>
     <string name="ended_by_user">Mirroring stopped.</string>
     <string name="err_unreachable">Cannot reach the board</string>
@@ -88,9 +87,6 @@
     <string name="err_board_forgot">The board no longer knows this tablet</string>
     <string name="err_board_forgot_body">The pairing may have been removed on the board. Scan the QR code on the board again.</string>
     <string name="hotspot_title">If the school network blocks it: use the tablet\'s hotspot</string>
-    <string name="hotspot_steps">1. On the tablet, turn on Settings → Connections → Mobile hotspot.
-2. On the board, connect to the tablet\'s network from the network icon.
-3. Scan the new QR code shown on the board.</string>
     <string name="action_pause">Pause</string>
     <string name="action_resume">Resume</string>
     <string name="state_paused">Paused. The board keeps the last picture; your screen is not shared until you resume.</string>
@@ -128,4 +124,47 @@
     <string name="settings_latency_desc">Open this screen while mirroring: the board shows the time between the tablet drawing a frame and the board displaying it.</string>
     <string name="settings_latency_open">Open measurement screen</string>
     <string name="latency_hint">The board shows \"end-to-end … ms\" in its info bar. Manual method: photograph the tablet and the board together; the difference between the two clocks is the latency.</string>
+    <string name="action_guide">How do I connect?</string>
+    <string name="guide_link_desc">Step-by-step guide and common problems</string>
+    <string name="guide_quick_title">Connect in 3 steps</string>
+    <string name="guide_prepare_title">Before you start</string>
+    <string name="guide_prepare_1">Open Yansıt Receiver on the board. A QR code and a 6-digit code appear.</string>
+    <string name="guide_prepare_2">Keep the tablet and the board on the same Wi-Fi network.</string>
+    <string name="guide_prepare_3">On the first connection the app shows which permissions it needs and why.</string>
+    <string name="guide_qr_title">Connect with the QR code (recommended)</string>
+    <string name="guide_qr_1">On the tablet, tap \"Connect to board\" (\"New board with QR\" if you already have remembered boards).</string>
+    <string name="guide_qr_2">Point the camera at the QR code on the board.</string>
+    <string name="guide_qr_3">Answer \"Start\" to Android\'s screen sharing prompt.</string>
+    <string name="guide_qr_action">Scan the QR code</string>
+    <string name="guide_code_title">Connect with the code (no camera)</string>
+    <string name="guide_code_1">Tap \"Connect with code\".</string>
+    <string name="guide_code_2">Pick your board from the boards on the same network.</string>
+    <string name="guide_code_3">Enter the 6-digit code shown on the board.</string>
+    <string name="guide_code_4">Answer \"Start\" to Android\'s screen sharing prompt.</string>
+    <string name="guide_remembered_title">In later lessons</string>
+    <string name="guide_remembered_1">A board you have connected to appears under \"Remembered boards\" on the home screen.</string>
+    <string name="guide_remembered_2">Tap its name and answer \"Start\". Yansıt Receiver must be open on the board.</string>
+    <string name="guide_during_title">While mirroring</string>
+    <string name="guide_during_1">\"Pause\" keeps the last picture on the board while you do something else on the tablet.</string>
+    <string name="guide_during_2">To stop, tap \"Stop mirroring\" or \"Stop\" in the notification.</string>
+    <string name="guide_during_3">If Wi-Fi drops briefly, mirroring recovers by itself.</string>
+    <string name="guide_faq_title">Common problems</string>
+    <string name="faq_stutter">The picture stutters or looks blurry</string>
+    <string name="faq_stutter_body">In Settings, set picture quality to \"Balanced\" or \"Weak network\". Prefer 5 GHz Wi-Fi.</string>
+    <string name="faq_sound">There is no sound</string>
+    <string name="faq_sound_body">Check that the sound permission was granted and that \"Play sound on the board\" is on in Settings. Some apps do not allow their audio to be shared.</string>
+    <string name="faq_lock">Mirroring stops when the screen locks</string>
+    <string name="faq_lock_body">This is a security rule on Android 15 and later. Increase the tablet\'s screen timeout.</string>
+    <string name="state_expanded">Expanded</string>
+    <string name="state_collapsed">Collapsed</string>
+    <string name="stat_latency">Latency</string>
+    <string name="stat_latency_value">%1$s ms</string>
+    <string name="stat_fps">Frames/s</string>
+    <string name="stat_bitrate">Data rate</string>
+    <string name="stat_bitrate_value">%1$.1f Mbps</string>
+    <string name="stat_resolution">Resolution</string>
+    <string name="stat_resolution_value">%1$d×%2$d</string>
+    <string name="hotspot_step_1">On the tablet, open Settings → Connections → Mobile hotspot.</string>
+    <string name="hotspot_step_2">On the board, join the tablet\'s network from the network icon.</string>
+    <string name="hotspot_step_3">Scan the new QR code that appears on the board.</string>
 </resources>

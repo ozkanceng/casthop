@@ -5,6 +5,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 ## [Yayımlanmamış / Unreleased]
 
 ### Eklendi / Added
+- Tablet uygulamasına "Nasıl bağlanırım?" rehberi: QR ve kodla bağlanma, hatırlanan tahtalar, hotspot yolu, yansıtma sırasında yapılabilecekler ve sık sorunlar; ana ekranda 3 adımlık kısa özet.
+- Tablet uygulaması yeniden tasarlandı: tam renk token'ları (açık/koyu), ikonlar, kartlar, yatay tablette iki sütun, istatistik kutuları ve QR tarayıcı çerçevesi.
 - Proje planı, mimari, protokol v1 taslağı ve risk analizi (`docs/`).
 - Monorepo iskeleti: `android/` (Kotlin + Compose kabuğu, saf-JVM `:protocol` modülü), `receiver/` (C++20 + Qt6 QML kabuğu; tahtanın paylaşılabilir ağ adreslerini listeler).
 - CI: Android lint/test/APK, alıcı Debian 12 derleme + test (normal ve ASan/UBSan), `.deb` paketi, gizli bilgi taraması; etiketle otomatik sürüm yayımlama.

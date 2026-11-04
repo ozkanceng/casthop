@@ -35,7 +35,7 @@ projesi istek üzerine bu kaynakları da sağlar (GitHub Issues).
 | Bileşen | Kullanım | Lisans |
 |---|---|---|
 | Kotlin standart kitaplığı, kotlinx.coroutines | dil, eşzamanlılık | Apache-2.0 |
-| AndroidX (core, activity, lifecycle), Jetpack Compose, Material 3 | arayüz | Apache-2.0 |
+| AndroidX (core, activity, lifecycle), Jetpack Compose, Material 3, Material Icons | arayüz | Apache-2.0 |
 | CameraX (camera2, lifecycle, view) | QR tarama kamerası | Apache-2.0 |
 | zxing-cpp (`io.github.zxing-cpp:android`) | QR çözme | Apache-2.0 |
 | kotlinx.serialization (json) | yalnız testler ve `tools/fake-sender` | Apache-2.0 |

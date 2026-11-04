@@ -2,6 +2,8 @@ package io.github.ozkanceng.yansit.ui
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,27 +14,42 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Pin
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.QrCodeScanner
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.ozkanceng.yansit.R
@@ -55,117 +72,233 @@ class HomeActions(
     val onResume: () -> Unit,
     val onDismiss: () -> Unit,
     val onSettings: () -> Unit,
+    val onGuide: () -> Unit,
 )
 
-/** Ana ekran: tek büyük eylem düğmesi, hatırlanan tahtalar ve duruma göre bilgi kartı. */
+/**
+ * Ana ekran. Boştayken bağlanma seçenekleri ve kısa rehber; bağlantı sürerken tek bir durum sütunu gösterilir.
+ * Geniş ekranda (yatay tablet) bağlanma görünümü iki sütuna ayrılır.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(state: MirrorState, boards: List<RememberedBoard>, versionName: String, actions: HomeActions) {
-    Scaffold { padding ->
-        Column(
-            modifier = Modifier
+    val idle = state is MirrorState.Idle || state is MirrorState.Ended
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.app_name), color = MaterialTheme.colorScheme.primary) },
+                actions = {
+                    if (idle) {
+                        IconButton(onClick = actions.onGuide) {
+                            Icon(Icons.AutoMirrored.Rounded.HelpOutline, stringResource(R.string.action_guide))
+                        }
+                        IconButton(onClick = actions.onSettings) {
+                            Icon(Icons.Rounded.Settings, stringResource(R.string.action_settings))
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+            )
+        },
+    ) { padding ->
+        BoxWithConstraints(
+            Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            contentAlignment = Alignment.TopCenter,
         ) {
-            Text(
-                text = stringResource(R.string.app_name),
-                style = MaterialTheme.typography.displayMedium,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            val contentWidth = Modifier.widthIn(max = 560.dp).fillMaxWidth()
-            when (state) {
-                MirrorState.Idle -> {
-                    Text(
-                        stringResource(R.string.home_tagline),
-                        style = MaterialTheme.typography.titleMedium,
-                        textAlign = TextAlign.Center,
-                        modifier = contentWidth,
-                    )
-                    ConnectChoices(boards, actions, contentWidth)
-                }
-                is MirrorState.Connecting -> Progress(stringResource(R.string.state_connecting, state.board), contentWidth)
-                is MirrorState.WaitingApproval -> Progress(stringResource(R.string.state_waiting_approval, state.board), contentWidth)
-                is MirrorState.AwaitingConsent -> Progress(stringResource(R.string.state_awaiting_consent), contentWidth)
-                is MirrorState.Starting -> Progress(stringResource(R.string.state_starting, state.board), contentWidth)
-                is MirrorState.Mirroring -> {
-                    MirroringCard(state, contentWidth)
-                    if (state.paused) {
-                        BigButton(R.string.action_resume, actions.onResume, contentWidth)
-                    } else {
-                        FilledTonalButton(onClick = actions.onPause, modifier = contentWidth.heightIn(min = 64.dp)) {
-                            Text(stringResource(R.string.action_pause), style = MaterialTheme.typography.titleMedium)
-                        }
-                    }
-                    BigButton(R.string.action_stop_mirroring, actions.onStop, contentWidth, destructive = true)
-                }
-                is MirrorState.Ended -> {
-                    EndedCard(state.error, contentWidth)
-                    ConnectChoices(boards, actions, contentWidth)
-                    TextButton(onClick = actions.onDismiss) { Text(stringResource(R.string.action_ok)) }
-                }
+            if (idle) {
+                ConnectView(state, boards, versionName, actions, wide = maxWidth >= WideLayoutWidth)
+            } else {
+                SessionView(state, actions)
             }
-            if (state is MirrorState.Connecting || state is MirrorState.WaitingApproval || state is MirrorState.Starting) {
-                OutlinedButton(onClick = actions.onStop, modifier = Modifier.heightIn(min = 56.dp)) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            }
-            if (state is MirrorState.Idle || state is MirrorState.Ended) {
-                OutlinedButton(onClick = actions.onSettings, modifier = Modifier.heightIn(min = 56.dp)) {
-                    Text(stringResource(R.string.action_settings))
-                }
-            }
-            Text(
-                text = stringResource(R.string.home_version, versionName),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
 
-/** Hatırlanan tahtalar (tek dokunuş) + QR ile yeni tahta. Tahta yoksa yalnız büyük QR düğmesi. */
+/** Bağlantı yokken gösterilen görünüm: hata kartı, bağlanma seçenekleri, kısa adımlar ve rehber bağlantısı. */
 @Composable
-private fun ConnectChoices(boards: List<RememberedBoard>, actions: HomeActions, modifier: Modifier) {
-    if (boards.isEmpty()) {
-        BigButton(R.string.action_connect, actions.onScan, modifier)
-        OutlinedButton(onClick = actions.onCode, modifier = modifier.heightIn(min = 56.dp)) {
-            Text(stringResource(R.string.action_code))
-        }
-        return
-    }
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.boards_title), style = MaterialTheme.typography.titleMedium)
-        for (b in boards) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { actions.onBoard(b) }, modifier = Modifier.weight(1f).heightIn(min = 64.dp)) {
-                    Text(b.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-                val forgetDesc = stringResource(R.string.board_forget_desc, b.name)
-                TextButton(
-                    onClick = { actions.onForget(b) },
-                    modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = forgetDesc },
-                ) { Text(stringResource(R.string.board_forget)) }
+private fun ConnectView(
+    state: MirrorState,
+    boards: List<RememberedBoard>,
+    versionName: String,
+    actions: HomeActions,
+    wide: Boolean,
+) {
+    val ended = state as? MirrorState.Ended
+    val hero: @Composable () -> Unit = { Hero() }
+    val choices: @Composable () -> Unit = {
+        if (ended != null) {
+            EndedCard(ended.error, actions.onGuide, Modifier.fillMaxWidth())
+            TextButton(onClick = actions.onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(R.string.action_ok))
             }
         }
-        OutlinedButton(onClick = actions.onScan, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
-            Text(stringResource(R.string.action_scan_qr), style = MaterialTheme.typography.titleMedium)
+        ConnectChoices(boards, actions)
+    }
+    val quickSteps: @Composable () -> Unit = {
+        if (boards.isEmpty() && ended?.error == null) {
+            SectionCard(stringResource(R.string.guide_quick_title), Modifier.fillMaxWidth()) {
+                StepList(GuideSteps.qr)
+            }
         }
-        OutlinedButton(onClick = actions.onCode, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
-            Text(stringResource(R.string.action_code))
-        }
+    }
+    val guideLink: @Composable () -> Unit = {
+        NavigationCard(
+            title = stringResource(R.string.action_guide),
+            subtitle = stringResource(R.string.guide_link_desc),
+            icon = Icons.AutoMirrored.Rounded.HelpOutline,
+            onClick = actions.onGuide,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+    val version: @Composable () -> Unit = {
         Text(
-            stringResource(R.string.boards_hint),
-            style = MaterialTheme.typography.bodyMedium,
+            text = stringResource(R.string.home_version, versionName),
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    if (wide) {
+        Row(Modifier.widthIn(max = 1120.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                hero()
+                guideLink()
+            }
+            Column(
+                Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                choices()
+                quickSteps()
+                version()
+            }
+        }
+    } else {
+        Column(
+            Modifier.widthIn(max = 560.dp).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // Hata varken önce çözüm görünsün.
+            if (ended?.error == null) hero()
+            choices()
+            quickSteps()
+            guideLink()
+            version()
+        }
+    }
+}
+
+@Composable
+private fun Hero() {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        MirrorIllustration(Modifier.fillMaxWidth().padding(horizontal = 8.dp))
+        Text(
+            stringResource(R.string.home_tagline),
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
 
+/** Hatırlanan tahtalar (tek dokunuş) + QR ile yeni tahta. Tahta yoksa QR birincil eylemdir. */
 @Composable
-private fun BigButton(@StringRes label: Int, onClick: () -> Unit, modifier: Modifier, destructive: Boolean = false) {
+private fun ConnectChoices(boards: List<RememberedBoard>, actions: HomeActions) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (boards.isEmpty()) {
+            BigButton(R.string.action_connect, Icons.Rounded.QrCodeScanner, actions.onScan, Modifier.fillMaxWidth())
+        } else {
+            Text(stringResource(R.string.boards_title), style = MaterialTheme.typography.titleLarge)
+            for (b in boards) BoardRow(b, actions)
+            Text(
+                stringResource(R.string.boards_hint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(onClick = actions.onScan, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
+                ButtonLabel(R.string.action_scan_qr, Icons.Rounded.QrCodeScanner)
+            }
+        }
+        OutlinedButton(onClick = actions.onCode, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)) {
+            ButtonLabel(R.string.action_code, Icons.Rounded.Pin)
+        }
+    }
+}
+
+@Composable
+private fun BoardRow(board: RememberedBoard, actions: HomeActions) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        NavigationCard(
+            title = board.name,
+            icon = Icons.Rounded.Tv,
+            onClick = { actions.onBoard(board) },
+            modifier = Modifier.weight(1f),
+        )
+        val forgetDesc = stringResource(R.string.board_forget_desc, board.name)
+        TextButton(
+            onClick = { actions.onForget(board) },
+            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = forgetDesc },
+        ) { Text(stringResource(R.string.board_forget)) }
+    }
+}
+
+/** Bağlantı kurulurken ve yansıtma sürerken gösterilen sütun. */
+@Composable
+private fun SessionView(state: MirrorState, actions: HomeActions) {
+    Column(
+        Modifier.widthIn(max = 560.dp).fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        val width = Modifier.fillMaxWidth()
+        when (state) {
+            is MirrorState.Connecting -> Progress(stringResource(R.string.state_connecting, state.board))
+            is MirrorState.WaitingApproval -> Progress(stringResource(R.string.state_waiting_approval, state.board))
+            is MirrorState.AwaitingConsent ->
+                Progress(stringResource(R.string.state_awaiting_consent), stringResource(R.string.err_consent_body))
+            is MirrorState.Starting -> Progress(stringResource(R.string.state_starting, state.board))
+            is MirrorState.Mirroring -> {
+                MirroringCard(state, width)
+                if (state.paused) {
+                    BigButton(R.string.action_resume, Icons.Rounded.PlayArrow, actions.onResume, width)
+                } else {
+                    FilledTonalButton(onClick = actions.onPause, modifier = width.heightIn(min = 64.dp)) {
+                        ButtonLabel(R.string.action_pause, Icons.Rounded.Pause)
+                    }
+                }
+                BigButton(R.string.action_stop_mirroring, Icons.Rounded.Stop, actions.onStop, width, destructive = true)
+            }
+            MirrorState.Idle, is MirrorState.Ended -> Unit
+        }
+        if (state is MirrorState.Connecting || state is MirrorState.WaitingApproval || state is MirrorState.Starting) {
+            OutlinedButton(onClick = actions.onStop, modifier = Modifier.heightIn(min = 56.dp)) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ButtonLabel(@StringRes label: Int, icon: ImageVector) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Icon(icon, contentDescription = null)
+        Text(stringResource(label), style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+@Composable
+private fun BigButton(
+    @StringRes label: Int,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    destructive: Boolean = false,
+) {
     Button(
         onClick = onClick,
         modifier = modifier.heightIn(min = 72.dp),
@@ -178,27 +311,55 @@ private fun BigButton(@StringRes label: Int, onClick: () -> Unit, modifier: Modi
             ButtonDefaults.buttonColors()
         },
     ) {
-        Text(stringResource(label), style = MaterialTheme.typography.titleLarge)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
+            Text(stringResource(label), style = MaterialTheme.typography.titleLarge)
+        }
     }
 }
 
 @Composable
-private fun Progress(text: String, modifier: Modifier) {
-    Row(
-        modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
-        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
+private fun Progress(text: String, hint: String? = null) {
+    Card(
+        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        border = CardDefaults.outlinedCardBorder(),
     ) {
-        CircularProgressIndicator(modifier = Modifier.size(32.dp))
-        Text(text, style = MaterialTheme.typography.titleMedium)
+        Column(
+            Modifier.fillMaxWidth().padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(40.dp))
+            Text(text, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center)
+            if (hint != null) {
+                Text(
+                    hint,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun MirroringCard(state: MirrorState.Mirroring, modifier: Modifier) {
-    Card(modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.state_mirroring, state.board), style = MaterialTheme.typography.titleLarge)
+    Card(
+        modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        border = CardDefaults.outlinedCardBorder(),
+    ) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                IconBadge(Icons.Rounded.Tv)
+                Text(
+                    stringResource(R.string.state_mirroring, state.board),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f),
+                )
+            }
             when {
                 state.reconnecting -> Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -216,22 +377,10 @@ private fun MirroringCard(state: MirrorState.Mirroring, modifier: Modifier) {
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.secondary,
                 )
-                state.stats != null -> QualityLabel(state.stats)
-            }
-            when {
-                state.reconnecting || state.paused -> Unit
-                state.stats != null -> Text(
-                    stringResource(
-                        R.string.mirroring_stats,
-                        state.stats.latencyMs?.toString() ?: "–",
-                        state.stats.fps.toInt(),
-                        state.stats.bitrateBps / 1_000_000.0,
-                        state.stats.width,
-                        state.stats.height,
-                    ),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                state.stats != null -> {
+                    QualityLabel(state.stats)
+                    StatGrid(state.stats)
+                }
             }
             if (!state.reconnecting) {
                 Text(
@@ -251,22 +400,57 @@ private fun MirroringCard(state: MirrorState.Mirroring, modifier: Modifier) {
 }
 
 @Composable
-private fun EndedCard(error: MirrorError?, modifier: Modifier) {
+private fun StatGrid(stats: MirrorStats) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatTile(R.string.stat_latency, stringResource(R.string.stat_latency_value, stats.latencyMs?.toString() ?: "–"), Modifier.weight(1f))
+            StatTile(R.string.stat_fps, stats.fps.toInt().toString(), Modifier.weight(1f))
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            StatTile(R.string.stat_bitrate, stringResource(R.string.stat_bitrate_value, stats.bitrateBps / 1_000_000.0), Modifier.weight(1f))
+            StatTile(R.string.stat_resolution, stringResource(R.string.stat_resolution_value, stats.width, stats.height), Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun StatTile(@StringRes label: Int, value: String, modifier: Modifier) {
+    Surface(modifier, color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.small) {
+        Column(Modifier.padding(12.dp)) {
+            Text(
+                stringResource(label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(value, style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"))
+        }
+    }
+}
+
+@Composable
+private fun EndedCard(error: MirrorError?, onGuide: () -> Unit, modifier: Modifier) {
     val (title, body) = errorText(error)
     Card(
         modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
-        colors = if (error == null) CardDefaults.cardColors() else CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-        ),
+        colors = if (error == null) {
+            CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest)
+        } else {
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        },
     ) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(title), style = MaterialTheme.typography.titleLarge)
             if (body != null) Text(stringResource(body), style = MaterialTheme.typography.bodyLarge)
             // Okul ağı istemci yalıtımı yapıyorsa en güvenilir yol tabletin hotspot'u (RISKS R1).
             if (error == MirrorError.UNREACHABLE || error == MirrorError.DIFFERENT_NETWORK) {
                 Text(stringResource(R.string.hotspot_title), style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.hotspot_steps), style = MaterialTheme.typography.bodyLarge)
+                StepList(GuideSteps.hotspot)
+                TextButton(onClick = onGuide, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.action_guide), color = MaterialTheme.colorScheme.onErrorContainer)
+                }
             }
         }
     }
@@ -277,7 +461,7 @@ private fun EndedCard(error: MirrorError?, modifier: Modifier) {
 private fun QualityLabel(stats: MirrorStats) {
     val latency = stats.latencyMs ?: return
     val (label, color) = when {
-        latency <= 120 -> R.string.quality_good to MaterialTheme.colorScheme.primary
+        latency <= 120 -> R.string.quality_good to MaterialTheme.colorScheme.tertiary
         latency <= 250 -> R.string.quality_fair to MaterialTheme.colorScheme.secondary
         else -> R.string.quality_poor to MaterialTheme.colorScheme.error
     }
@@ -319,7 +503,7 @@ private fun errorText(error: MirrorError?): Pair<Int, Int?> = when (error) {
     MirrorError.INTERNAL -> R.string.err_internal to null
 }
 
-private val previewActions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {})
+private val previewActions = HomeActions({}, {}, {}, {}, {}, {}, {}, {}, {}, {})
 private val previewBoard = RememberedBoard(
     "7-A Sınıfı", listOf("192.168.1.20"), 47800, Bytes.fromHex("00".repeat(32)), Bytes.fromHex("00".repeat(16)),
     Bytes.fromHex("00".repeat(32)), 0,

@@ -34,6 +34,7 @@ import io.github.ozkanceng.yansit.sender.StreamPlanner
 import io.github.ozkanceng.yansit.stream.currentDisplaySize
 import io.github.ozkanceng.yansit.ui.AppPermissions
 import io.github.ozkanceng.yansit.ui.DiscoverScreen
+import io.github.ozkanceng.yansit.ui.GuideScreen
 import io.github.ozkanceng.yansit.ui.PinScreen
 import io.github.ozkanceng.yansit.ui.HomeActions
 import io.github.ozkanceng.yansit.ui.LatencyScreen
@@ -54,7 +55,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { HOME, PERMISSIONS, SCANNER, SETTINGS, DISCOVER, PIN, LATENCY }
+private enum class Screen { HOME, GUIDE, PERMISSIONS, SCANNER, SETTINGS, DISCOVER, PIN, LATENCY }
 
 @Composable
 private fun YansitApp() {
@@ -179,8 +180,10 @@ private fun YansitApp() {
                 onResume = MirrorController::resume,
                 onDismiss = MirrorController::dismiss,
                 onSettings = { screen = Screen.SETTINGS },
+                onGuide = { screen = Screen.GUIDE },
             ),
         )
+        Screen.GUIDE -> GuideScreen(onScan = ::startScan, onCode = ::startCode, onBack = { screen = Screen.HOME })
         Screen.PERMISSIONS -> PermissionScreen(
             missing = AppPermissions.missing(context).filter {
                 (pendingBoard == null && !pendingCode) || it.permission == AppPermissions.ACCESS_LOCAL_NETWORK
