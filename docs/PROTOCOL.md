@@ -115,7 +115,7 @@ CONTROL bağlantısında 5 sn hiçbir çerçeve gelmezse bağlantı ölü sayıl
 TLV:  tag u8 | len u16 | value[len]
 ```
 
-- `msg_flags` bit0 = **CRITICAL**: alıcı bu `msg_type`'ı tanımıyorsa `BYE(MALFORMED)` ile kapatmalı. Bit0=0 ve tanınmayan tip → yok sayılır (ileri uyumluluk).
+- `msg_flags` bit0 = **CRITICAL**: alıcı bu `msg_type`'ı tanımıyorsa `BYE(MALFORMED)` ile kapatmalı. Bit0=0 ve tanınmayan tip → yok sayılır (ileri uyumluluk). Bağlantının ilk mesajı bu kuralın dışındadır: HELLO, RESUME veya ATTACH değilse `REJECT(MALFORMED)` ile kapatılır (§4).
 - Bilinmeyen `tag` → yok sayılır **MUST**. Aynı `tag` iki kez → MALFORMED. Zorunlu `tag` eksik → MALFORMED. Sabit uzunluklu tipte `len` uyuşmazlığı → MALFORMED.
 - Değer tipleri: `u8/u16/u32/u64/i64` (len 1/2/4/8/8), `bool` (len 1; 0 = yanlış, diğer her değer doğru; gönderen yalnız 0/1 yazar), `bytes[N]`, `str` (en fazla 255 bayt, geçerli UTF-8; aşırı uzun kodlama, vekil kod noktası ve U+10FFFF üstü geçersiz), `list<u8>` (len = eleman sayısı), `pairs` (`codec u8, flags u8` çiftleri; len çift **MUST**).
 - Gönderen TLV'leri **artan tag sırasıyla** yazar (kanonik kodlama; test vektörleri bu sırayı kullanır). Alıcı sıraya bağımlı olmamalıdır.
@@ -281,7 +281,7 @@ Tüm alanlar Z. Aralıkta hiç kare gelmediyse gecikme alanları 0'dır.
 offset = ((t1 − t0) + (t2 − t3)) / 2     # yanıtlayan_saat − başlatan_saat
 rtt    = (t3 − t0) − (t2 − t1)
 ```
-Son 8 örnekten en düşük `rtt`'li örneğin `offset`'i kullanılır. R, S'nin PING'lerinden aynı ofseti (işaret ters) hesaplayabilsin diye S her PING'e son hesapladığı ofseti `0x03 offset_us i64` (O) ekleyebilir.
+Son 8 örnekten en düşük `rtt`'li örneğin `offset`'i kullanılır. S her PING'e son hesapladığı ofseti `0x03 offset_us i64` (O) ekleyebilir. Değer `R_saati − S_saati`'dir: R, S'nin damgasına bu değeri ekleyerek kendi saatine çevirir. Alan isteğe bağlıdır, ama R ofseti öğrenene kadar ses paketlerini atar; ses isteyen S alanı göndermelidir.
 
 ### 7.5 Zaman aşımları (özet)
 
@@ -337,7 +337,7 @@ yansit://c?v=1&h=192.168.1.20,10.42.0.1&p=47800&t=<token>&f=<fp>&n=<ad>
 | `f` | Sertifika parmak izi, 32 bayt, base64url, dolgusuz (43 karakter) |
 | `n` | Tahta adı, yüzde-kodlu UTF-8 |
 
-Token, tahtada QR ekranı göründükçe geçerlidir; kullanıldığında veya 10 dk'da bir yenilenir.
+Token kullanıldığında veya 10 dk'da bir yenilenir; QR ekranının görünür olmasına bağlı değildir.
 
 **mDNS:** `_yansit._tcp.local`, TXT: `v=1`, `name=<ad>`, `fp=<parmak izinin ilk 16 baytı base64url>`. mDNS yalnız bulma içindir; kimlik doğrulama yine PIN/eşleştirme ile yapılır ve tam parmak izi TLS'te görülen değerle `fp` öneki üzerinden kontrol edilir.
 
@@ -382,7 +382,7 @@ Kodlayıcı/ayrıştırıcı hataları iki uygulamada da aynı adlarla bulunur v
 | STRING_TOO_LONG | `str` 255 bayttan uzun |
 | UNKNOWN_CRITICAL_MESSAGE | tanınmayan msg_type ve CRITICAL bayrağı |
 
-Bu hatalardan herhangi biri CONTROL'de `BYE(MALFORMED)`, medya bağlantısında doğrudan kapatma ile sonuçlanır.
+Çerçeve hatalarında (BAD_MAGIC, UNSUPPORTED_VERSION, UNKNOWN_FRAME_TYPE, FRAME_TOO_LARGE, TRUNCATED) çerçeve sınırı kaybolduğu için bağlantı yanıtsız kapatılır. Çerçevesi sağlam ama içeriği hatalı CONTROL mesajı `BYE(MALFORMED)` ile sonuçlanır; medya bağlantısında doğrudan kapatılır.
 
 ## 10. Sürümleme
 
@@ -390,7 +390,36 @@ Bu hatalardan herhangi biri CONTROL'de `BYE(MALFORMED)`, medya bağlantısında 
 - Geriye uyumlu eklemeler (yeni tag, CRITICAL olmayan yeni msg_type, yeni flag biti) sürüm artırmaz; bu belgenin "Değişiklikler" bölümüne yazılır.
 - Uyumsuz değişiklik → sürüm `2`; R `CHALLENGE.min/max_version` ile desteklediği aralığı bildirir, S ortak en yüksek sürümü seçer.
 
+## 11. Alıcı davranışı
+
+Bu bölüm her alıcı uygulaması için bağlayıcıdır. Pardus alıcısı referanstır; ayrışma varsa `tools/conformance` karar verir.
+
+**Kimlik.** Kendinden imzalı X.509 v3 sertifika, TLS 1.3, ALPN `yansit/1`. Parmak izi leaf sertifikanın DER'inin SHA-256'sıdır. Gönderici CA, ad veya süre denetlemez; yalnız parmak izini karşılaştırır. Sertifika süresi dolunca yeniden üretilir. Bu olunca eşleşmiş cihazlar yeniden QR okutur.
+
+**Bağlantı sınırları.** Kimlik doğrulamadan önce en çok 16 bağlantı tutulur. TLS ve ilk mesaj için 10 sn verilir. Sessizlik süresi (5 sn) yalnız CONTROL bağlantısına uygulanır. Medya bağlantısı PAUSE sırasında sessiz kalabilir. Onay bekleyen bağlantıda sessizlik süresi işlemez.
+
+**HELLO sırası.**
+1. `version` ≠ 1 → `REJECT(VERSION_UNSUPPORTED)`.
+2. Başka bir bağlantı onay bekliyorsa kimlik bilgisi harcanmadan `REJECT(BUSY_DENIED)`.
+3. Kimlik bilgisi doğrulanır: hız sınırı, PIN kilidi, token, PIN veya eşleştirme anahtarı.
+4. Aktif oturum varsa: aynı `device_id` ile eşleştirme anahtarından gelen cihaz oturumunu onaysız devralır. Diğerleri `PENDING_APPROVAL` alır ve 20 sn içinde onay gelmezse `REJECT(BUSY_TIMEOUT)` ile kapatılır.
+
+**Eşleştirme.** Cihaz başına tek anahtar tutulur; yeni eşleştirme eskisinin yerine geçer. Kalıcı kayıt yalnız yerel uygulama verisindedir ve hiçbir günlüğe yazılmaz.
+
+**ATTACH.** Aynı türde yeni bir ATTACH eski bağlantının yerine geçer ve eskisini kapatır. RESUME penceresinde, yani CONTROL yokken gelen ATTACH `SESSION_UNKNOWN` alır.
+
+**RESUME.** Pencere dolmamışsa ve kanıt doğruysa kabul edilir. Eski CONTROL hâlâ açık olabilir, çünkü S kopmayı R'den önce fark etmiş olabilir: R eski CONTROL ve tüm medya bağlantılarını kapatır, yeni `attach_key` ve `resume_token` üretir.
+
+**Görüntü.** Çözücü önünde 4'ten çok kare 250 ms boyunca birikirse kareler IDR'ye kadar atılır ve `KEYFRAME_REQUEST(BACKLOG_DROPPED)` gönderilir. Her durumda aşılmayan sınır 30 karedir; ilk kare çizilene kadar bu sınır 120'dir. H.265 yalnız donanım çözücü varsa WELCOME'da bildirilir.
+
+**Ses.** Hedef gecikme, görüntünün yakalama→çizim ortalaması + bir ekran karesidir, 40–250 ms ile sınırlıdır. `pts + offset + hedef` anı 5 ms içinde geçmiş olan paket atılır ve `audio_late` artar.
+
+**Keşif.** Hizmet adı UTF-8 karakter ortasından kesilmeden 63 bayta indirilir. Ad boşsa `CastHop` kullanılır. QR'da yalnız yerel IPv4 adresleri bulunur.
+
+**Test sözleşmesi.** Başsız çalışabilen her alıcı `--headless --port N --pairing-file F --stats-file F` seçeneklerini destekler. `pairing-file` JSON: `uri`, `pin`, `port`, `fingerprint`, `token`; token veya PIN değişince yeniden yazılır. `stats-file`: oturum bitince bir JSON satırı, en az `frames_received`, `frames_rendered`, `frames_dropped`, `first_frame_ms`.
+
 ## Değişiklikler
 - v1-taslak (2026-11-03): ilk tanım.
 - v1 (2026-11-03, M1): test vektörleriyle donduruldu. `offset_us` i64, `request_pairing`/`audio_enabled` bool, STREAM_CONFIG ve SENDER_STATS Z/O ayrımı, kanonik tag sırası ve hata kodu listesi eklendi.
 - v1 (2026-11-05): tel formatı değişmedi. IDR isteklerinin bekletilmesi (§7.2) ve otomatik ön ayar geçişi (§7.6) eklendi; ürün adı CastHop oldu, tel üzerindeki `yansit` adları korundu.
+- v1 (2026-11-05): tel formatı değişmedi. Alıcı davranışı yazıya geçirildi (§11); belge ile Pardus alıcısı arasındaki çelişkiler koda göre düzeltildi.
