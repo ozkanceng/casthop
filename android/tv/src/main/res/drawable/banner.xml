@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 320x180 TV launcher banner: the app mark and the word "CastHop" drawn with strokes, so no font is bundled. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path
+        android:fillColor="#FF0B5CAD"
+        android:pathData="M0,0 L320,0 L320,180 L0,180 Z" />
+    <!-- Screen -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineJoin="round"
+        android:strokeWidth="4"
+        android:pathData="M28,64 L92,64 Q96,64 96,68 L96,106 Q96,110 92,110 L28,110 Q24,110 24,106 L24,68 Q24,64 28,64 Z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="4"
+        android:pathData="M48,120 L72,120 M60,110 L60,120" />
+    <!-- Cast waves -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FF9FD3FF"
+        android:strokeLineCap="round"
+        android:strokeWidth="3.5"
+        android:pathData="M40,98 Q40,86 52,86 M40,98 Q40,76 62,76" />
+    <path
+        android:fillColor="#FF9FD3FF"
+        android:pathData="M40,98 m-3,0 a3,3 0,1 1,6 0 a3,3 0,1 1,-6 0" />
+    <!-- "CastHop": each letter is 22 wide in a 34 tall box, baseline y = 106 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="5"
+        android:pathData="M133,80 A13,15 0 1 0 133,102
+            M160,88 A10,10 0 1 0 160,98 M160,84 L160,106
+            M184,88 Q176,82 170,88 Q167,94 176,95 Q186,97 182,103 Q176,108 167,103
+            M196,74 L196,100 Q196,106 204,105 M190,84 L203,84
+            M216,72 L216,106 M238,72 L238,106 M216,89 L238,89
+            M263,95 A10,11 0 1 0 243,95 A10,11 0 1 0 263,95
+            M272,84 L272,118 M272,95 A10,11 0 1 1 292,95 A10,11 0 1 1 272,95" />
+</vector>

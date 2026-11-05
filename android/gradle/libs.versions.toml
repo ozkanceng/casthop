@@ -11,6 +11,7 @@ junit4 = "4.13.2"
 serializationJson = "1.12.0"
 camerax = "1.6.2"
 zxingCpp = "3.1.1"
+zxingCore = "3.5.3"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -35,6 +36,7 @@ camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "cam
 camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
 camera-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
 zxing-cpp = { module = "io.github.zxing-cpp:android", version.ref = "zxingCpp" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxingCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

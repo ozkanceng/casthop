@@ -26,6 +26,7 @@ include(":app")
 include(":protocol")
 include(":sender")
 include(":receiver-core")
+include(":tv")
 
 // Test aracı: android/ dışında durur ama aynı version catalog ve :protocol modülünü kullanır.
 include(":fake-sender")

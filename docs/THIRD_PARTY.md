@@ -38,6 +38,7 @@ projesi istek üzerine bu kaynakları da sağlar (GitHub Issues).
 | AndroidX (core, activity, lifecycle), Jetpack Compose, Material 3, Material Icons | arayüz | Apache-2.0 |
 | CameraX (camera2, lifecycle, view) | QR tarama kamerası | Apache-2.0 |
 | zxing-cpp (`io.github.zxing-cpp:android`) | QR çözme | Apache-2.0 |
+| ZXing core (`com.google.zxing:core`) | `android/tv`: QR üretme | Apache-2.0 |
 | kotlinx.serialization (json) | yalnız testler ve `tools/fake-sender` | Apache-2.0 |
 | JUnit 5 | yalnız testler | EPL-2.0 |
 
