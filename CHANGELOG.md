@@ -5,6 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 ## [Yayımlanmamış / Unreleased]
 
 ### Eklendi / Added
+- Windows alıcısı: `casthop-setup-x86_64.exe` kurucusu Qt ve GStreamer'ı içinde getiriyor, güvenlik duvarı kuralını ekliyor ve Başlat menüsüne giriyor. Görüntü varsa Direct3D 11 donanım çözücüsüyle çözülüyor, işlemciyle çiziliyor. Ağda bulma `DnsServiceRegister` ile çalışıyor; anahtar dosyası yalnız geçerli kullanıcıya açık.
 - Ağ uzun süre yetersizse tablet çözünürlüğü ve kare hızını kendiliğinden düşürüyor, ağ düzelince geri yükseltiyor; öğretmen Ayarlar'a girmek zorunda değil.
 
 ### Düzeltildi / Fixed
