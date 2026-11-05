@@ -28,4 +28,12 @@ class RunOffThreadTest {
         release.countDown()
         assertTrue(elapsedMs < 2_000, "waited $elapsedMs ms")
     }
+
+    @Test
+    fun `a failed close does not stop the next one`() {
+        var closed = false
+        listOf(AutoCloseable { throw java.io.IOException("reset") }, AutoCloseable { closed = true })
+            .forEach(::closeQuietly)
+        assertTrue(closed)
+    }
 }

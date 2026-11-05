@@ -629,10 +629,10 @@ class MirrorSession(
             audioSource?.stop()
         } catch (_: RuntimeException) {
         }
-        video?.close()
-        audio?.close()
+        // Closing a TLS socket writes close_notify, and end() can run on the UI thread, where Android forbids that.
+        val channels = listOfNotNull(video, audio, session)
+        runOffThread(CONTROL_WRITE_WAIT_MS) { channels.forEach(::closeQuietly) }
         audioSender?.interrupt()
-        session.close()
         sender?.interrupt()
         onEnd(reason)
     }
@@ -651,6 +651,14 @@ class MirrorSession(
 }
 
 /** Runs [block] on its own thread and waits at most [waitMs], so a stalled socket cannot freeze the caller. */
+/** The link is going away anyway, so one failed close must not stop the rest. */
+internal fun closeQuietly(channel: AutoCloseable) {
+    try {
+        channel.close()
+    } catch (_: Exception) {
+    }
+}
+
 internal fun runOffThread(waitMs: Long, block: () -> Unit) {
     val done = CountDownLatch(1)
     Thread({
