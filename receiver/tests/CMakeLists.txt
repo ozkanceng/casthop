@@ -14,6 +14,7 @@ add_executable(yansit_tests
     test_identity.cpp
     test_latency_pattern.cpp
     test_mdns.cpp
+    test_media.cpp
     test_pairing.cpp
     test_session.cpp
     test_vectors.cpp

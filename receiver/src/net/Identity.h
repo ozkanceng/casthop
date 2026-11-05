@@ -23,7 +23,7 @@ protocol::Key32 certificateFingerprint(const std::string& certificatePem);
 
 /**
  * `dir/cert.pem` + `dir/key.pem` varsa ve birbiriyle eşleşiyorsa yükler; yoksa veya bozuksa yenisini
- * üretip yazar (anahtar dosyası 0600). Dizin yoksa oluşturulur.
+ * üretip yazar (anahtarı yalnız geçerli kullanıcı okur). Dizin yoksa oluşturulur.
  */
 Identity loadOrCreateIdentity(const std::filesystem::path& dir, const std::string& commonName);
 

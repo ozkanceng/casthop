@@ -7,8 +7,8 @@
 namespace yansit {
 
 /**
- * Tahtada kalıcı ayarlar (`~/.config/Yansit/yansit-receiver.conf`). Komut satırı seçenekleri bunları o çalışma
- * için geçersiz kılar. Otomatik başlatma XDG autostart dosyasıyla yapılır (`~/.config/autostart`).
+ * Tahtada kalıcı ayarlar (Linux: `~/.config/Yansit/yansit-receiver.conf`, Windows: `HKCU\Software\Yansit`). Komut
+ * satırı seçenekleri bunları o çalışma için geçersiz kılar. Otomatik başlatma için bkz. `app/Platform.h`.
  */
 class ReceiverSettings : public QObject {
     Q_OBJECT
@@ -44,9 +44,6 @@ public:
     /// Draws video on the CPU, for boards where GL rendering is broken.
     bool compatibleVideo() const;
     void setCompatibleVideo(bool on);
-
-    /// XDG autostart dosyasının yolu.
-    static QString autostartFile();
 
 signals:
     void changed();

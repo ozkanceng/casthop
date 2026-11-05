@@ -1,4 +1,5 @@
 #include "app/DiagnosticLog.h"
+#include "app/Platform.h"
 #include "app/QrImageProvider.h"
 #include "app/RenderCheck.h"
 #include "app/ReceiverService.h"
@@ -24,18 +25,16 @@
 #include <QQuickWindow>
 #include <QSGRendererInterface>
 #include <QScreen>
-#include <QSocketNotifier>
 #include <QStandardPaths>
 #include <QTimer>
 #include <QTranslator>
 #include <QUrl>
 
 #include <algorithm>
-#include <csignal>
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <optional>
-#include <unistd.h>
 
 Q_LOGGING_CATEGORY(lcMain, "yansit.main")
 
@@ -44,31 +43,13 @@ using SinkMode = yansit::media::VideoPipeline::SinkMode;
 
 namespace {
 
-int g_signalPipe[2] = {-1, -1};
-
-void onSignal(int) {
-    const char c = 1;
-    [[maybe_unused]] const auto n = ::write(g_signalPipe[1], &c, 1);
-}
-
-/// SIGINT/SIGTERM'de BYE gönderip düzgün kapanmak için (self-pipe).
+/// A signal or console event sends BYE and closes down in order.
 void installQuitOnSignal(ReceiverService& service) {
-    if (::pipe(g_signalPipe) != 0)
-        return;
-    auto* notifier = new QSocketNotifier(g_signalPipe[0], QSocketNotifier::Read, &service);
-    QObject::connect(notifier, &QSocketNotifier::activated, &service, [&service, notifier] {
-        char c;
-        [[maybe_unused]] const auto n = ::read(g_signalPipe[0], &c, 1);
-        notifier->setEnabled(false);
+    yansit::platform::onQuitRequested(&service, [&service] {
         service.shutdown();
         // Kapanış çerçevelerinin gönderilmesi için kısa süre tanı.
         QTimer::singleShot(300, qApp, &QCoreApplication::quit);
     });
-    struct sigaction sa {};
-    sa.sa_handler = onSignal;
-    sigemptyset(&sa.sa_mask);
-    sigaction(SIGINT, &sa, nullptr);
-    sigaction(SIGTERM, &sa, nullptr);
 }
 
 bool hasArg(int argc, char* argv[], const char* name) {
@@ -83,6 +64,17 @@ bool glSinkInstalled() {
     if (!f)
         return false;
     gst_object_unref(f);
+    return true;
+}
+
+/// Loading the plugin registers the GstGLQt6VideoItem QML type. On Windows the factory can exist while the plugin
+/// cannot load, for example when it was built against another Qt.
+bool loadGlSink() {
+    GstElement* probe = gst_element_factory_make("qml6glsink", nullptr);
+    if (!probe)
+        return false;
+    gst_object_ref_sink(probe);
+    gst_object_unref(probe);
     return true;
 }
 
@@ -168,6 +160,7 @@ void setAppInfo() {
 }
 
 int runHeadless(int argc, char* argv[]) {
+    yansit::platform::attachParentConsole();
     QCoreApplication app(argc, argv);
     setAppInfo();
     QCommandLineParser parser;
@@ -202,7 +195,7 @@ void logEnvironment() {
     const bool installed = glSinkInstalled();
     qCInfo(lcMain) << "qml6glsink eklentisi:" << (installed ? "var" : "yok");
     if (!installed)
-        qCInfo(lcMain).noquote() << "qml6glsink yüklenemedi:" << yansit::pluginLoadError("libgstqml6.so");
+        qCInfo(lcMain).noquote() << "qml6glsink yüklenemedi:" << yansit::pluginLoadError(yansit::platform::gstPluginFile("qml6"));
     for (const std::uint8_t codec : {yansit::protocol::Codec::H264, yansit::protocol::Codec::H265})
         for (const auto& d : yansit::media::availableDecoders(codec))
             qCInfo(lcMain).noquote() << "çözücü:" << QString::fromStdString(d.factory) << (d.hardware ? "(donanım)" : "(yazılım)");
@@ -252,7 +245,11 @@ int runGui(int argc, char* argv[]) {
     // Kalıcı ayarlar; komut satırı seçenekleri bu çalışma için önceliklidir.
     yansit::ReceiverSettings settings;
     // The UI never uses a sink that draws nothing: without GL, frames are drawn on the CPU.
-    const bool gl = glPlugin && !settings.compatibleVideo() && qEnvironmentVariable("YANSIT_RENDERER") != QLatin1String("cpu");
+    bool gl = glPlugin && !settings.compatibleVideo() && qEnvironmentVariable("YANSIT_RENDERER") != QLatin1String("cpu");
+    if (gl && !loadGlSink()) {
+        qCInfo(lcMain) << "qml6glsink yüklenemedi, CPU çizim kullanılıyor";
+        gl = false;
+    }
     opt->sinkMode = gl ? SinkMode::Gl : SinkMode::Cpu;
     if (!parser.isSet(o.name))
         opt->name = settings.boardName();
@@ -273,15 +270,6 @@ int runGui(int argc, char* argv[]) {
     const QString lang = QLocale().language() == QLocale::English ? QStringLiteral("en") : QStringLiteral("tr");
     if (translator.load(QStringLiteral(":/i18n/yansit_%1.qm").arg(lang)))
         QGuiApplication::installTranslator(&translator);
-
-    if (gl) {
-        // qml6glsink eklentisinin yüklenmesi GstGLQt6VideoItem QML türünü kaydeder.
-        GstElement* probe = gst_element_factory_make("qml6glsink", nullptr);
-        if (probe) {
-            gst_object_ref_sink(probe);
-            gst_object_unref(probe);
-        }
-    }
 
     ReceiverService service(*opt);
     installQuitOnSignal(service);
@@ -337,6 +325,7 @@ int runGui(int argc, char* argv[]) {
 } // namespace
 
 int main(int argc, char* argv[]) {
+    yansit::platform::prepareRuntime();
     gst_init(&argc, &argv);
     const int rc = hasArg(argc, argv, "--headless") ? runHeadless(argc, argv) : runGui(argc, argv);
     gst_deinit();

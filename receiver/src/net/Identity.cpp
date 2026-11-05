@@ -1,5 +1,6 @@
 #include "net/Identity.h"
 
+#include "net/SecureFile.h"
 #include "protocol/Crypto.h"
 
 #include <openssl/bio.h>
@@ -9,12 +10,6 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include <cerrno>
-#include <cstring>
 #include <fstream>
 #include <memory>
 #include <sstream>
@@ -89,33 +84,6 @@ std::string readFile(const std::filesystem::path& p) {
     std::ostringstream ss;
     ss << in.rdbuf();
     return ss.str();
-}
-
-/// Geçici dosyaya verilen izinle yazar ve atomik olarak yerine taşır.
-void writeFileAtomic(const std::filesystem::path& p, const std::string& data, mode_t mode) {
-    const std::filesystem::path tmp = p.string() + ".tmp";
-    ::unlink(tmp.c_str());
-    const int fd = ::open(tmp.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, mode);
-    if (fd < 0)
-        throw std::runtime_error("yazılamadı: " + tmp.string() + ": " + std::strerror(errno));
-    std::size_t off = 0;
-    while (off < data.size()) {
-        const ssize_t n = ::write(fd, data.data() + off, data.size() - off);
-        if (n < 0) {
-            if (errno == EINTR)
-                continue;
-            const int err = errno;
-            ::close(fd);
-            ::unlink(tmp.c_str());
-            throw std::runtime_error("yazılamadı: " + tmp.string() + ": " + std::strerror(err));
-        }
-        off += std::size_t(n);
-    }
-    if (::fsync(fd) != 0 || ::close(fd) != 0) {
-        ::unlink(tmp.c_str());
-        throw std::runtime_error("yazılamadı: " + tmp.string());
-    }
-    std::filesystem::rename(tmp, p);
 }
 
 } // namespace
@@ -196,12 +164,11 @@ Identity loadOrCreateIdentity(const std::filesystem::path& dir, const std::strin
         }
     }
 
-    std::filesystem::create_directories(dir);
-    std::filesystem::permissions(dir, std::filesystem::perms::owner_all, std::filesystem::perm_options::replace);
+    createPrivateDirectory(dir);
     id = generateIdentity(commonName);
     // Önce anahtar: sertifika yazılmadan çökme olursa bir sonraki açılışta eşleşmeyen çift yeniden üretilir.
-    writeFileAtomic(keyPath, id.privateKeyPem, 0600);
-    writeFileAtomic(certPath, id.certificatePem, 0644);
+    writeFileAtomic(keyPath, id.privateKeyPem, FileAccess::Private);
+    writeFileAtomic(certPath, id.certificatePem, FileAccess::Shared);
     return id;
 }
 

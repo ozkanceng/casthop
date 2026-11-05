@@ -1,0 +1,11 @@
+{
+  "name": "casthop-receiver",
+  "version-string": "0.2.0",
+  "description": "Windows build dependencies. Linux uses Debian 12 packages and ignores this file.",
+  "dependencies": [
+    "gtest",
+    "libqrencode",
+    "nlohmann-json",
+    "openssl"
+  ]
+}

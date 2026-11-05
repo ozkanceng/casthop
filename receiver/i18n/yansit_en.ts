@@ -203,6 +203,10 @@
         <translation>Security certificate could not be created: %1</translation>
     </message>
     <message>
+        <source>No H.264 video decoder found. Reinstall CastHop.</source>
+        <translation>No H.264 video decoder found. Reinstall CastHop.</translation>
+    </message>
+    <message>
         <source>No H.264 video decoder found. Install the gstreamer1.0-libav package.</source>
         <translation>No H.264 video decoder found. Install the gstreamer1.0-libav package.</translation>
     </message>
