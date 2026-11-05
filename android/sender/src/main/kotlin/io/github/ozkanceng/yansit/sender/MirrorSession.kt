@@ -15,6 +15,7 @@ import io.github.ozkanceng.yansit.protocol.client.MonotonicClock
 import io.github.ozkanceng.yansit.protocol.client.SenderClient
 import io.github.ozkanceng.yansit.protocol.client.Session
 import java.io.IOException
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -248,7 +249,7 @@ class MirrorSession(
                 newPlan.maxBps,
             ),
         )
-        trySend { sendStreamConfig(newPlan) }
+        sendOffThread { sendStreamConfig(newPlan) }
         startSource(newPlan)
     }
 
@@ -256,14 +257,14 @@ class MirrorSession(
     fun pause() {
         if (paused || ended.get()) return
         paused = true
-        trySend { session.control.send(ControlMessage.Pause) }
+        sendOffThread { session.control.send(ControlMessage.Pause) }
     }
 
     /** Duraklatmayı bitirir; ilk kare IDR olur (PROTOCOL.md §7.2). */
     fun unpause() {
         if (!paused || ended.get()) return
         paused = false
-        trySend { session.control.send(ControlMessage.Unpause) }
+        sendOffThread { session.control.send(ControlMessage.Unpause) }
         forceKeyframe()
     }
 
@@ -543,6 +544,9 @@ class MirrorSession(
         }
     }
 
+    /** For calls that can come from the UI thread, where Android forbids socket writes. */
+    private fun sendOffThread(block: () -> Unit) = runOffThread(CONTROL_WRITE_WAIT_MS) { trySend(block) }
+
     private fun bitrateTick() {
         val b = bitrate ?: return
         val nowMs = MonotonicClock.nowUs() / 1000
@@ -613,7 +617,7 @@ class MirrorSession(
             is SessionEnd.EncoderFailed -> ByeReason.ERROR
             else -> null
         }
-        if (bye != null && linkState == LinkState.CONNECTED) trySend { session.control.send(ControlMessage.Bye(bye)) }
+        if (bye != null && linkState == LinkState.CONNECTED) sendOffThread { session.control.send(ControlMessage.Bye(bye)) }
         scheduler.shutdownNow()
         queue.close()
         audioQueue.close()
@@ -638,9 +642,23 @@ class MirrorSession(
         fun sendBufferFor(bps: Long): Int = (bps / 8 / 10).coerceIn(32L * 1024, 512L * 1024).toInt()
 
         const val BITRATE_TICK_MS = 250L
+        const val CONTROL_WRITE_WAIT_MS = 300L
         const val FAST_PINGS = 4
         const val FAST_PING_INTERVAL_MS = 50L
         const val STATS_INTERVAL_MS = 1000L
         const val KEYFRAME_COALESCE_US = 200_000L
     }
+}
+
+/** Runs [block] on its own thread and waits at most [waitMs], so a stalled socket cannot freeze the caller. */
+internal fun runOffThread(waitMs: Long, block: () -> Unit) {
+    val done = CountDownLatch(1)
+    Thread({
+        try {
+            block()
+        } finally {
+            done.countDown()
+        }
+    }, "mirror-control").apply { isDaemon = true }.start()
+    done.await(waitMs, TimeUnit.MILLISECONDS)
 }

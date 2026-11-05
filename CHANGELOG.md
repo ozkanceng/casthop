@@ -15,6 +15,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 - Ağ uzun süre yetersizse tablet çözünürlüğü ve kare hızını kendiliğinden düşürüyor, ağ düzelince geri yükseltiyor; öğretmen Ayarlar'a girmek zorunda değil.
 
 ### Düzeltildi / Fixed
+- Tablette "Yansıtmayı Durdur"a basınca uygulama çöküyordu; aynı hata duraklatma ve devam düğmelerinde de olabilirdi.
 - `kur` komutuyla kurulan tahtada "Tahta açılınca başlat" uygulamayı açamıyordu; eski kayıt da güncelleniyor.
 
 ### Değiştirildi / Changed
