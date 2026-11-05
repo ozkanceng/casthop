@@ -4,8 +4,15 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+## [0.3.3] - 2026-11-05
+
 ### Eklendi / Added
 - Kurulum sitesi artık İngilizce de konuşuyor: dil tarayıcı diline göre seçilir, sayfanın üstündeki düğmeyle değiştirilir ve seçim hatırlanır. Tek komutlu `kur` betiğinin mesajları da sistem diline göre Türkçe veya İngilizce çıkar.
+- Gizlilik politikası sayfası (`/privacy.html`, Türkçe ve İngilizce); Google Play için gerekli.
+- Sürüm iş akışı Google Play için imzalı bir AAB üretiyor; herkese açık sürüme konmaz, yalnız iş akışı çıktısı olarak 30 gün saklanır.
+
+### Değiştirildi / Changed
+- **Tablet uygulamasının paket adı `com.sorumatik.casthop` oldu** (Google Play kimliği kalıcıdır). Kotlin paketi değişmedi. Eski paket adıyla (`io.github.ozkanceng.yansit`) kurulu tabletler bu sürüme güncellenmez: yeni uygulama ayrı kurulur, eskisini silebilirsiniz; eşleştirmeler yeniden yapılır. Protokol değişmedi, eski ve yeni sürümler aynı alıcılarla çalışır.
 
 ## [0.3.2] - 2026-11-05
 
