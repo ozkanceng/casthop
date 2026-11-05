@@ -5,7 +5,7 @@
 | `fake-sender` | ✅ M2 | H.264 Annex-B dosyasını protokol üzerinden gerçek zaman hızında yollar. `--engine mirror`: Android uygulamasının gönderici çekirdeğiyle (`android/sender`) |
 | `integration` | ✅ M2 | Sahte gönderici ↔ alıcı uçtan uca senaryoları (CI: `integration.yml`) |
 | `conformance` | ✅ | Herhangi bir alıcıyı `fake-sender` ile dener: `tools/conformance/run.py --help`. Yeni alıcılar bunu geçmeli (`docs/PROTOCOL.md` §11). |
-| `fake-receiver` | ✅ M3 | Ayrı araç gerekmedi: `casthop --headless` (Linux veya `receiver/ci/Dockerfile`) bir dizüstünde tahtasız alıcıdır; bkz. TESTING.md M3 |
+| `fake-receiver` | ✅ | Android TV alıcısının çekirdeği (`android/receiver-core`) JVM'de, ekransız: `tools/conformance` ile protokolü dener. Kod çözmez; kareler gelince "çizildi" sayılır. Linux'ta gerçek ekransız alıcı için `casthop --headless` (bkz. TESTING.md M3) |
 | `latency` | ✅ M7 | Zaman damgalı test deseni (tablette Ayarlar → Gecikme ölçümü) + alıcıda otomatik ölçüm; bkz. [latency/README.md](latency/README.md) |
 | `soak` | ✅ M7 | Uzun süre testi: gecikme eğimi, RSS, kayıp → CSV + SVG (CI: `soak.yml`, her gece 30 dk) |
 

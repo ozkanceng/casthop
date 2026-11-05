@@ -265,3 +265,28 @@ ve ölçümü her değişiklikte entegrasyon testinde denetlenir. Burada **gerç
 
 **Sonuç bildirimi:** tablet modeli, tahta modeli (CPU, `vainfo`), Wi-Fi bandı/kanalı, ölçülen değerler ve fotoğraflar.
 README'deki "Ölçülen performans" tablosu bu sonuçlarla güncellenir.
+
+---
+
+## Android TV alıcısı (gerçek televizyon ve kumanda)
+
+`android/tv` emülatörde çalıştırılabilir; ama donanım çözücü, gerçek ses çıkışı, kumanda ve mDNS orada sınanamaz.
+Hata ayıklama derlemesinde eşleşme bilgisi `adb shell am broadcast -n io.github.ozkanceng.casthop.tv/.DebugTestReceiver`
+ile `files/test/pairing.json` dosyasına yazılır (`adb exec-out run-as io.github.ozkanceng.casthop.tv cat files/test/pairing.json`).
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Android TV'ye APK'yı kurun, TV ana ekranına bakın | Uygulama afişi (banner) okunaklı görünür, uygulama TV başlatıcısından açılır | ☐ |
+| 2 | Bekleme ekranına 3 m uzaktan bakın | Başlık, kod ve QR okunur; tabletin kamerası QR'ı okur | ☐ |
+| 3 | Yalnız kumandayla Ayarlar'ı açın, ad değiştirin, sesi kapatıp açın, Geri ile dönün | Odak her zaman görünür, hiçbir yerde takılı kalmaz; ad alanından aşağı okla çıkılır | ☐ |
+| 4 | Aynı ağdaki tabletten yansıtın | Tahta listesinde TV'nin adı görünür (mDNS); bağlantı QR'sız da kurulur | ☐ |
+| 5 | 10 dk yansıtın, kumandada Tamam'a basın | Çözücü adı donanım çözücüsüdür; gecikme ve kare hızı görünür, Yansıtmayı Durdur çalışır | ☐ |
+| 6 | Tablette video oynatın | Ses TV hoparlöründen duyulur, dudak senkronu kaymaz; HDMI/ARC kullanılıyorsa ayrıca deneyin | ☐ |
+| 7 | Tableti döndürün | Görüntü oranı korunarak yeniden çizilir | ☐ |
+| 8 | Yansıtırken ikinci tabletle bağlanın | Onay penceresi çıkar, odak Reddet'tedir; iki seçenek de doğru çalışır | ☐ |
+| 9 | TV'yi yalnız kabloyla ağa bağlayın (Wi-Fi'siz model varsa) | Uygulama kurulur, yansıtma çalışır | ☐ |
+| 10 | Yansıtırken Home ile çıkın, geri dönün | Oturum biter, gönderici haberdar olur; dönüşte yeni QR ve kod görünür | ☐ |
+| 11 | Android 17 cihazda ilk açılış | Yerel ağ izni sorulur; reddedilince uyarı ve İzin Ver düğmesi görünür, izin verilince bağlantı kurulur | ☐ |
+| 12 | Dokunmatik Android tahta veya tablette çalıştırın | Aynı APK LAUNCHER'dan açılır; düğmeler ve yansıtma denetimleri dokunmayla çalışır | ☐ |
+
+**Sonuç bildirimi:** cihaz modeli, Android sürümü, çözücü adı, gecikme, ses gözlemi.

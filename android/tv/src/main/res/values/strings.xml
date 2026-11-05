@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">CastHop</string>
+    <string name="waiting_title">Bu ekrana yansıtın</string>
+    <string name="waiting_step_app">Telefon veya tabletinizde CastHop\'u açın.</string>
+    <string name="waiting_step_scan">QR kodunu okutun ya da aşağıdaki kodu girin.</string>
+    <string name="waiting_pin_label">Bağlantı kodu</string>
+    <string name="waiting_same_network">İki cihaz aynı Wi-Fi ağında olmalı.</string>
+    <string name="waiting_address">Adres: %1$s</string>
+    <string name="waiting_no_network">Ağ bağlantısı yok. Bu cihazı Wi-Fi\'a veya kabloya bağlayın.</string>
+    <string name="waiting_starting">CastHop başlıyor…</string>
+    <string name="qr_description">Bağlanmak için QR kodu</string>
+    <string name="local_network_denied">Yerel ağ izni verilmedi. Bu izin olmadan cihazlar bu ekrana ulaşamaz.</string>
+    <string name="action_allow">İzin Ver</string>
+    <string name="action_settings">Ayarlar</string>
+    <string name="action_stop_mirroring">Yansıtmayı Durdur</string>
+    <string name="action_resume_watching">Görüntüye Dön</string>
+    <string name="action_close">Kapat</string>
+    <string name="action_save">Kaydet</string>
+    <string name="action_cancel">Vazgeç</string>
+    <string name="action_rename">Değiştir</string>
+    <string name="action_forget">Unut</string>
+    <string name="action_approve">Bağlansın</string>
+    <string name="action_deny">Reddet</string>
+    <string name="state_connecting">%1$s bağlanıyor…</string>
+    <string name="state_paused">Yansıtma duraklatıldı</string>
+    <string name="state_paused_detail">%1$s ekranı yeniden paylaştığında görüntü geri gelir.</string>
+    <string name="state_reconnecting">Bağlantı koptu, yeniden deneniyor…</string>
+    <string name="state_video_failed">Bu cihaz gelen görüntüyü çözemiyor.</string>
+    <string name="approval_title">Yeni bağlantı isteği</string>
+    <string name="approval_body">%1$s bu ekrana yansıtmak istiyor. Kabul ederseniz %2$s bağlantısı kesilir.</string>
+    <string name="approval_body_idle">%1$s bu ekrana yansıtmak istiyor.</string>
+    <string name="stats_latency">Gecikme: %1$d ms</string>
+    <string name="stats_latency_unknown">Gecikme: ölçülüyor</string>
+    <string name="stats_rate">%1$.0f kare/sn · %2$d kbit/sn</string>
+    <string name="stats_dropped">Atlanan kare: %1$d</string>
+    <string name="stats_decoder">Çözücü: %1$s</string>
+    <string name="settings_title">Ayarlar</string>
+    <string name="settings_name">Ekran adı</string>
+    <string name="settings_name_hint">Cihazlar bu ekranı bu adla görür.</string>
+    <string name="settings_audio">Sesi çal</string>
+    <string name="settings_audio_hint">Yeni bağlantılarda geçerli olur.</string>
+    <string name="settings_on">Açık</string>
+    <string name="settings_off">Kapalı</string>
+    <string name="settings_trusted">Hatırlanan cihazlar</string>
+    <string name="settings_trusted_empty">Hatırlanan cihaz yok.</string>
+    <string name="settings_version">Sürüm %1$s</string>
+    <string name="error_port_in_use">Bağlantı noktası kullanımda. CastHop\'un başka bir kopyası açık olabilir.</string>
+    <string name="error_identity">Güvenlik sertifikası oluşturulamadı.</string>
+    <string name="error_no_decoder">Bu cihazda H.264 görüntü çözücü bulunamadı.</string>
+</resources>

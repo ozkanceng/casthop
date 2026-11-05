@@ -25,7 +25,11 @@ rootProject.name = "yansit"
 include(":app")
 include(":protocol")
 include(":sender")
+include(":receiver-core")
+include(":tv")
 
 // Test aracı: android/ dışında durur ama aynı version catalog ve :protocol modülünü kullanır.
 include(":fake-sender")
 project(":fake-sender").projectDir = file("../tools/fake-sender")
+include(":fake-receiver")
+project(":fake-receiver").projectDir = file("../tools/fake-receiver")
