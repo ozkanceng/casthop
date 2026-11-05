@@ -16,17 +16,17 @@ final class PacketDecoder {
     }
 
     private static let noMoreInput: OSStatus = 0x6E6D6F72 // 'nmor'
-    /// The longest Opus packet.
-    private static let maxFrames: AVAudioFrameCount = 5760
 
     let format: AVAudioFormat
     private var converter: AudioConverterRef?
     private let input = Input()
+    private let maxFrames: AVAudioFrameCount
 
     /// `sampleRate` and `channels` come from the codec's CONFIG.
     init?(formatId: AudioFormatID, sampleRate: Double, channels: UInt32, framesPerPacket: UInt32, cookie: Data?) {
         guard let out = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: channels) else { return nil }
         format = out
+        maxFrames = framesPerPacket * 6 // the longest Opus packet is 120 ms
         var source = AudioStreamBasicDescription(mSampleRate: sampleRate, mFormatID: formatId, mFormatFlags: 0, mBytesPerPacket: 0,
                                                  mFramesPerPacket: framesPerPacket, mBytesPerFrame: 0,
                                                  mChannelsPerFrame: channels, mBitsPerChannel: 0, mReserved: 0)
@@ -63,8 +63,10 @@ final class PacketDecoder {
     /// Nil if the codec gave no audio for this packet, as a decoder may while it primes.
     func decode(_ packet: Data) -> AVAudioPCMBuffer? {
         guard let converter, !packet.isEmpty,
-              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: Self.maxFrames) else { return nil }
-        var frames = UInt32(Self.maxFrames)
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: maxFrames) else { return nil }
+        // The buffer list reports frameLength, so it must show the whole capacity before the converter writes.
+        buffer.frameLength = maxFrames
+        var frames = UInt32(maxFrames)
         let status: OSStatus = packet.withUnsafeBytes { raw in
             input.data = raw.baseAddress
             input.size = UInt32(raw.count)
@@ -143,6 +145,8 @@ public final class AudioPlayer: @unchecked Sendable {
     deinit { teardown() }
 
     public func setClockOffset(_ offset: Int64?) { offsetUs = offset }
+
+    public var currentTargetUs: UInt64 { targetUs }
 
     public func takeStats() -> Stats {
         defer { stats = Stats() }
