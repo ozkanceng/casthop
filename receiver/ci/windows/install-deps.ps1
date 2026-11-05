@@ -19,7 +19,7 @@ foreach ($name in $packages.Keys) {
     $file = Join-Path $DownloadDir $name
     if (-not (Test-Path $file) -or (Get-FileHash $file -Algorithm SHA256).Hash -ne $packages[$name]) {
         Write-Host "Downloading $name"
-        Invoke-Native curl.exe @('--fail', '--location', '--silent', '--show-error', '--retry', '3', '--output', $file, "$baseUrl/$name")
+        Invoke-Native curl.exe @('--fail', '--location', '--silent', '--show-error', '--retry', '5', '--retry-all-errors', '--retry-delay', '10', '--output', $file, "$baseUrl/$name")
     }
     if ((Get-FileHash $file -Algorithm SHA256).Hash -ne $packages[$name]) {
         throw "Checksum mismatch: $name"
