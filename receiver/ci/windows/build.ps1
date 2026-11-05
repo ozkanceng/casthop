@@ -38,5 +38,7 @@ if (-not $SkipTests) {
     Invoke-Native "$gst\bin\gst-inspect-1.0.exe" @('avdec_h264')
     $env:QT_FORCE_STDERR_LOGGING = '1'
     $env:QT_QPA_PLATFORM = 'offscreen'
+    # The offscreen platform looks for fonts in Qt's own folder, which has none. A warning there fails the smoke test.
+    $env:QT_QPA_FONTDIR = "$env:WINDIR\Fonts"
     Invoke-Native ctest @('--test-dir', $BuildDir, '--output-on-failure', '--timeout', '120')
 }
