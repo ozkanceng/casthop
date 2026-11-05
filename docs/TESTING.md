@@ -410,3 +410,14 @@ cd apple && xcodegen generate && open CastHop.xcodeproj
 | 9 | Opus gönderen Android ile ses | AudioToolbox çözer; cihaz çözemezse AAC seçilir | ☐ |
 
 **Sonuç bildirimi:** cihaz modeli, sistem sürümü, ağ, ölçülen bellek ve gecikme değerleri.
+
+## Yeni simgeler (gerçek cihaz)
+
+- [ ] Android tablette başlatıcı simgesi yuvarlak ve kare maskede kesilmeden görünüyor.
+- [ ] Android 13 ve üstünde temalı simge açıkken tek renkli simge okunuyor.
+- [ ] Yansıtma bildiriminde durum çubuğu simgesi C ve nokta olarak seçiliyor.
+- [ ] Android TV ana ekranında afiş tam görünüyor, yazı kesilmiyor.
+- [ ] Apple TV'de simgenin iki katmanı odaklanınca doğru hareket ediyor.
+- [ ] Mac Dock'ta, iPhone ve iPad ana ekranında simge kenar boşluğu doğru görünüyor.
+- [ ] Windows kurucusunda, Başlat menüsünde ve görev çubuğunda simge net görünüyor.
+- [ ] Pardus menüsünde ve tahta görev çubuğunda simge net görünüyor.

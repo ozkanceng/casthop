@@ -1,31 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- CastHop mark, scaled from brand/casthop-icon.svg into the 66 dp adaptive icon safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Tahta -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="4"
-        android:strokeLineJoin="round"
-        android:pathData="M30,34 L78,34 Q82,34 82,38 L82,64 Q82,68 78,68 L30,68 Q26,68 26,64 L26,38 Q26,34 30,34 Z" />
-    <!-- Ayak -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="4"
         android:strokeLineCap="round"
-        android:pathData="M46,76 L62,76 M54,68 L54,76" />
-    <!-- Yansıtma dalgaları -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FF9FD3FF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:pathData="M40,58 Q40,48 50,48 M40,58 Q40,42 56,42" />
-    <path
-        android:fillColor="#FF9FD3FF"
-        android:pathData="M40,58 m-3,0 a3,3 0,1 1,6 0 a3,3 0,1 1,-6 0" />
+        android:strokeWidth="11.76"
+        android:pathData="M73.57,37.17 A25.82,25.82 0 1 0 73.57,70.83" />
+    <path android:pathData="M50.41,42.89 H57.59 A4.25,4.25 0 0 1 61.84,47.14 V60.86 A4.25,4.25 0 0 1 57.59,65.11 H50.41 A4.25,4.25 0 0 1 46.16,60.86 V47.14 A4.25,4.25 0 0 1 50.41,42.89 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="46.16"
+                android:startY="42.89"
+                android:endX="61.84"
+                android:endY="65.11"
+                android:startColor="#FFFFCB57"
+                android:endColor="#FFFF9326" />
+        </aapt:attr>
+    </path>
+    <path android:pathData="M72.63,54 a7.19,7.19 0 1 0 14.38,0 a7.19,7.19 0 1 0 -14.38,0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="72.63"
+                android:startY="46.81"
+                android:endX="87.01"
+                android:endY="61.19"
+                android:startColor="#FFFFCB57"
+                android:endColor="#FFFF9326" />
+        </aapt:attr>
+    </path>
 </vector>

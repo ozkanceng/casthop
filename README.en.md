@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="brand/casthop-logo-on-dark.svg">
+  <img src="brand/casthop-logo.svg" width="322" height="70" alt="CastHop">
+</picture>
+
 # CastHop
 
 **Mirror a tablet or phone wirelessly to smart boards, TVs and computers.**

@@ -1,48 +1,55 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 320x180 TV launcher banner: the app mark and the word "CastHop" drawn with strokes, so no font is bundled. -->
+<!-- 320x180 TV launcher banner: the mark and wordmark from brand/casthop-logo.svg, drawn as paths so no font is bundled. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="320dp"
     android:height="180dp"
     android:viewportWidth="320"
     android:viewportHeight="180">
-    <path
-        android:fillColor="#FF0B5CAD"
-        android:pathData="M0,0 L320,0 L320,180 L0,180 Z" />
-    <!-- Screen -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineJoin="round"
-        android:strokeWidth="4"
-        android:pathData="M28,64 L92,64 Q96,64 96,68 L96,106 Q96,110 92,110 L28,110 Q24,110 24,106 L24,68 Q24,64 28,64 Z" />
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeWidth="4"
-        android:pathData="M48,120 L72,120 M60,110 L60,120" />
-    <!-- Cast waves -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FF9FD3FF"
-        android:strokeLineCap="round"
-        android:strokeWidth="3.5"
-        android:pathData="M40,98 Q40,86 52,86 M40,98 Q40,76 62,76" />
-    <path
-        android:fillColor="#FF9FD3FF"
-        android:pathData="M40,98 m-3,0 a3,3 0,1 1,6 0 a3,3 0,1 1,-6 0" />
-    <!-- "CastHop": each letter is 22 wide in a 34 tall box, baseline y = 106 -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="5"
-        android:pathData="M133,80 A13,15 0 1 0 133,102
-            M160,88 A10,10 0 1 0 160,98 M160,84 L160,106
-            M184,88 Q176,82 170,88 Q167,94 176,95 Q186,97 182,103 Q176,108 167,103
-            M196,74 L196,100 Q196,106 204,105 M190,84 L203,84
-            M216,72 L216,106 M238,72 L238,106 M216,89 L238,89
-            M263,95 A10,11 0 1 0 243,95 A10,11 0 1 0 263,95
-            M272,84 L272,118 M272,95 A10,11 0 1 1 292,95 A10,11 0 1 1 272,95" />
+    <path android:pathData="M0,0 L320,0 L320,180 L0,180 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="0"
+                android:endX="320"
+                android:endY="180"
+                android:startColor="#FF2388F0"
+                android:endColor="#FF083C96" />
+        </aapt:attr>
+    </path>
+    <group
+        android:scaleX="0.21"
+        android:scaleY="0.21"
+        android:translateX="4.24"
+        android:translateY="36.24">
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeWidth="72"
+            android:pathData="M375.8,153 A158,158 0 1 0 375.8,359" />
+        <path
+            android:fillColor="#FFFFB23E"
+            android:pathData="M234,188 H278 A26,26 0 0 1 304,214 V298 A26,26 0 0 1 278,324 H234 A26,26 0 0 1 208,298 V214 A26,26 0 0 1 234,188 Z M370,256 a44,44 0 1 0 88,0 a44,44 0 1 0 -88,0 Z" />
+    </group>
+    <group
+        android:scaleX="0.33"
+        android:scaleY="0.33"
+        android:translateX="114"
+        android:translateY="57">
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:strokeWidth="16"
+            android:pathData="M74.6,74.3 A40,40 0 1 0 74.6,125.7
+                M103,112 a28,28 0 1 0 56,0 a28,28 0 1 0 -56,0 M159,84 V140
+                M227,92 C220,82 192,80 191,98 C190,114 229,108 228,126 C227,144 196,144 187,130
+                M270,62 V120 C270,136 280,141 294,139 M256,84 H290
+                M322,60 V140 M382,60 V140 M322,100 H382
+                M410,112 a28,28 0 1 0 56,0 a28,28 0 1 0 -56,0
+                M494,112 a28,28 0 1 0 56,0 a28,28 0 1 0 -56,0 M494,84 V168" />
+    </group>
 </vector>

@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CastHop Kurulum</title>
-<link rel="icon" href="data:,">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="description" content="Tablet ekranını akıllı tahtaya, TV'ye ve bilgisayara kablosuz yansıtan CastHop'u iki adımda kurun.">
 <style>
 :root {
@@ -25,7 +26,8 @@ body {
 }
 main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 48px; }
 header { text-align: center; margin-bottom: 32px; }
-h1 { margin: 0; color: var(--primary); font-size: 44px; line-height: 1.2; }
+h1 { margin: 0; font-size: 44px; line-height: 1.2; }
+h1 img { display: block; width: 100%; max-width: 322px; height: auto; margin: 0 auto; }
 header p { margin: 8px 0 0; font-size: 22px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; min-width: 0; }
@@ -65,7 +67,7 @@ footer a { color: var(--primary); }
 <body>
 <main>
   <header>
-    <h1>CastHop</h1>
+    <h1><picture><source media="(prefers-color-scheme: dark)" srcset="logo-on-dark.svg"><img src="logo.svg" width="322" height="70" alt="CastHop"></picture></h1>
     <p>Tablet ekranını akıllı tahtaya, TV'ye ve bilgisayara kablosuz yansıtın.</p>
   </header>
 
