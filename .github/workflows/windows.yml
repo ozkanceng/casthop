@@ -1,0 +1,138 @@
+name: Windows
+
+# Windows receiver: MSVC build, unit tests, installer, and the conformance test against the installed program.
+on:
+  push:
+    branches: [main, multi-platform]
+    paths:
+      - "receiver/**"
+      - "protocol/**"
+      - "android/protocol/**"
+      - "android/sender/**"
+      - "tools/conformance/**"
+      - "tools/fake-sender/**"
+      - ".github/workflows/windows.yml"
+  pull_request:
+    paths:
+      - "receiver/**"
+      - "protocol/**"
+      - "android/protocol/**"
+      - "android/sender/**"
+      - "tools/conformance/**"
+      - "tools/fake-sender/**"
+      - ".github/workflows/windows.yml"
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fake-sender:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # android/ also configures :app, which needs the SDK path.
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-37.0"
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Build fake-sender
+        run: ./gradlew --stacktrace :fake-sender:installDist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: fake-sender-windows
+          path: tools/fake-sender/build/install/fake-sender
+          retention-days: 7
+
+  receiver:
+    needs: fake-sender
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}\\vcpkg-cache,readwrite"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          arch: win64_msvc2022_64
+          cache: true
+
+      - uses: actions/cache@v6
+        with:
+          path: gstreamer-downloads
+          key: gstreamer-${{ hashFiles('receiver/ci/windows/install-deps.ps1') }}
+
+      - name: Install GStreamer
+        run: ./receiver/ci/windows/install-deps.ps1 -DownloadDir "$env:GITHUB_WORKSPACE\gstreamer-downloads"
+
+      - name: Install ffmpeg
+        run: choco install ffmpeg -y --no-progress
+
+      - uses: actions/cache@v6
+        with:
+          path: vcpkg-cache
+          key: vcpkg-${{ hashFiles('receiver/vcpkg.json') }}
+
+      - name: Prepare vcpkg cache
+        run: New-Item -ItemType Directory -Force -Path vcpkg-cache
+
+      - name: Build and test
+        run: ./receiver/ci/windows/build.ps1
+
+      - name: Build installer
+        run: ./receiver/ci/windows/package.ps1
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: receiver-windows
+          path: out/casthop-setup-x86_64.exe
+          retention-days: 14
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: fake-sender-windows
+          path: fake-sender
+
+      - name: Test installer and conformance
+        run: |
+          ./receiver/ci/windows/test-package.ps1 -Setup out/casthop-setup-x86_64.exe `
+            -FakeSender fake-sender/bin/fake-sender.bat -WorkDir "$env:RUNNER_TEMP\casthop"
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: windows-logs
+          path: |
+            ${{ runner.temp }}/casthop/**/*.log
+            ${{ runner.temp }}/casthop/**/*.json
+            ${{ runner.temp }}/casthop/**/*.jsonl
+            receiver/build-windows/Testing/Temporary/*.log
+          retention-days: 14

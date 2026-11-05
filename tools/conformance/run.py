@@ -62,10 +62,14 @@ class Run:
         if not self.args.receiver:
             return
         self.pairing.unlink(missing_ok=True)
-        cmd = self.args.receiver.format(port=self.args.port, data=self.work / "data", pairing=self.pairing,
-                                        stats=self.stats)
+        values = {"port": self.args.port, "data": self.work / "data", "pairing": self.pairing, "stats": self.stats}
+        # Split before formatting: POSIX rules would eat the backslashes of Windows paths.
+        posix = os.name == "posix"
+        cmd = [part.format(**values) for part in shlex.split(self.args.receiver, posix=posix)]
+        if not posix:
+            cmd = [part.strip('"') for part in cmd]
         log = open(self.work / "receiver.log", "wb")
-        self.proc = subprocess.Popen(shlex.split(cmd), stdout=log, stderr=subprocess.STDOUT)
+        self.proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT)
         self.wait(lambda: self.pairing.exists() and self.pairing.stat().st_size > 0, 15, "receiver not ready")
 
     def stop_receiver(self):
