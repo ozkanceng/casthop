@@ -224,6 +224,11 @@ int runGui(int argc, char* argv[]) {
     if (glPlugin)
         QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL); // qml6glsink OpenGL ister
 
+#ifdef _WIN32
+    // The default native style refuses customized controls, and every control here is customized. Fusion is what Linux uses.
+    if (!qEnvironmentVariableIsSet("QT_QUICK_CONTROLS_STYLE"))
+        qputenv("QT_QUICK_CONTROLS_STYLE", "Fusion");
+#endif
     QGuiApplication app(argc, argv);
     setAppInfo();
     yansit::installDiagnosticLog();
