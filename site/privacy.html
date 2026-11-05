@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CastHop Gizlilik Politikası</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="description" content="CastHop Android uygulamasının gizlilik politikası: veri toplamaz, hesap, reklam ve izleme yoktur.">
+<style>
+:root {
+  color-scheme: light dark;
+  --primary: #0b5cad; --on-primary: #fff; --primary-soft: #d5e3ff; --on-primary-soft: #001b3d;
+  --bg: #f6f8fc; --card: #fff; --text: #181c22; --muted: #434852; --line: #c3c7d1; --code: #eaeef4;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #a7c8ff; --on-primary: #003063; --primary-soft: #00468b; --on-primary-soft: #d5e3ff;
+    --bg: #111318; --card: #191c20; --text: #e1e2e9; --muted: #c3c6d0; --line: #43474f; --code: #272a2f;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text); line-height: 1.5; font-size: 18px;
+  font-family: "Noto Sans", Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 48px; }
+header { text-align: center; margin-bottom: 32px; }
+h1 { margin: 0; font-size: 44px; line-height: 1.2; }
+h1 img { display: block; width: 100%; max-width: 322px; height: auto; margin: 0 auto; }
+header p { margin: 8px 0 0; font-size: 22px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; min-width: 0; }
+.card h2 { margin: 0 0 16px; font-size: 26px; line-height: 1.25; display: flex; align-items: center; gap: 12px; }
+.num {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--primary-soft); color: var(--on-primary-soft); font-size: 20px;
+}
+ol { margin: 0 0 16px; padding-left: 24px; }
+li { margin-bottom: 8px; }
+kbd { font: inherit; font-weight: 600; white-space: nowrap; }
+.command {
+  background: var(--code); border-radius: 12px; padding: 12px 16px; margin: 0 0 12px; overflow-wrap: anywhere;
+  font: 16px/1.5 "Noto Sans Mono", ui-monospace, Menlo, monospace;
+}
+.button {
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 64px; padding: 12px 24px;
+  border: 0; border-radius: 32px; background: var(--primary); color: var(--on-primary); text-decoration: none;
+  font: inherit; font-size: 20px; font-weight: 600; cursor: pointer;
+}
+.button.secondary { background: transparent; color: var(--primary); border: 1px solid var(--line); min-height: 56px; font-size: 18px; }
+.button:hover { filter: brightness(1.08); }
+:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+details p { margin: 8px 0 12px; color: var(--muted); }
+.qr { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.qr img { flex: none; width: 144px; height: 144px; background: #fff; border-radius: 8px; }
+.qr p { margin: 0; color: var(--muted); }
+.note { margin: 12px 0 0; color: var(--muted); font-size: 16px; }
+.connect { margin-top: 16px; }
+.connect ol { margin-bottom: 0; }
+footer { margin-top: 32px; text-align: center; color: var(--muted); font-size: 16px; }
+footer a { color: var(--primary); }
+.lang { width: fit-content; margin: 0 0 16px auto; padding: 8px 24px; }
+.doc h2.title { display: block; font-size: 32px; margin: 8px 0 4px; }
+.doc h3 { margin: 28px 0 8px; font-size: 22px; line-height: 1.3; }
+.doc p, .doc li { overflow-wrap: anywhere; }
+.doc a { color: var(--primary); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <button class="button secondary lang" type="button" id="lang" lang="en">English</button>
+    <h1><picture><source media="(prefers-color-scheme: dark)" srcset="logo-on-dark.svg"><img src="logo.svg" width="322" height="70" alt="CastHop"></picture></h1>
+  </header>
+
+  <article class="card doc">
+    <p><a href="./" data-i18n="back">← Kurulum sayfası</a></p>
+    <h2 class="title" data-i18n="h1">Gizlilik politikası</h2>
+    <p class="note" data-i18n="updated">Son güncelleme: 5 Kasım 2026. Bu politika CastHop Android uygulaması (paket adı <strong>com.sorumatik.casthop</strong>) için geçerlidir.</p>
+
+    <h3 data-i18n="s1_h">Özet</h3>
+    <p data-i18n="s1_p">CastHop kişisel veri <strong>toplamaz</strong>, saklamaz, satmaz ve üçüncü kişilerle paylaşmaz. Hesap, reklam, analiz ve izleme yoktur. Geliştiricinin sunucusu yoktur; uygulamanın ağ trafiği yalnızca sizin seçtiğiniz ekrana, yerel ağınız içinde gider.</p>
+
+    <h3 data-i18n="s2_h">Yansıtırken ne olur?</h3>
+    <p data-i18n="s2_p">Siz başlattığınızda tabletinizin ekranı, uygulama sesi, isteğe bağlı olarak kamera görüntüsü ve mikrofon sesi, seçtiğiniz alıcı ekrana (akıllı tahta, TV veya bilgisayar) gönderilir. Veri yalnızca yerel ağda dolaşır, TLS 1.3 ile şifrelenir ve internete çıkmaz. Uygulama bu görüntü ve sesi kaydetmez; yansıtmayı durdurduğunuzda gönderim biter.</p>
+
+    <h3 data-i18n="s3_h">Cihazınızda saklananlar</h3>
+    <p data-i18n="s3_p">Bağlandığınız ekranların adı, ağ adresi ve eşleştirme anahtarı ile uygulama ayarları yalnızca uygulamanın kendi özel alanında tutulur. Bu veri yedeklenmez, hiçbir yere gönderilmez; bir ekranı «unut» dediğinizde ya da uygulamayı kaldırdığınızda silinir.</p>
+
+    <h3 data-i18n="s4_h">İzinler ve amaçları</h3>
+    <ul>
+      <li data-i18n="p_screen"><strong>Ekran yakalama:</strong> yalnızca siz başlattığınızda ekranı yansıtmak için. Android her seferinde onay ister.</li>
+      <li data-i18n="p_camera"><strong>Kamera:</strong> eşleştirme QR kodunu okumak ve isteğe bağlı kamera yansıtma için.</li>
+      <li data-i18n="p_mic"><strong>Mikrofon:</strong> yalnızca ses yansıtmayı seçtiğinizde.</li>
+      <li data-i18n="p_net"><strong>Yerel ağ ve ağ erişimi:</strong> aynı ağdaki ekranı bulmak ve ona bağlanmak için. Uygulama internet üzerindeki hiçbir sunucuya istek göndermez.</li>
+      <li data-i18n="p_notif"><strong>Bildirimler ve ön plan hizmeti:</strong> yansıtma sürerken bildirim göstermek ve yansıtmanın arka planda kesilmemesi için.</li>
+    </ul>
+
+    <h3 data-i18n="s5_h">Üçüncü taraflar</h3>
+    <p data-i18n="s5_p">Uygulamada reklam, analiz, çökme raporu veya izleme bileşeni yoktur. Hiçbir veri üçüncü taraflarla paylaşılmaz.</p>
+
+    <h3 data-i18n="s6_h">Çocuklar</h3>
+    <p data-i18n="s6_p">CastHop öğretmenler ve yetişkin kullanıcılar için tasarlanmıştır; çocuklara yönelik değildir ve çocuklardan veri toplamaz.</p>
+
+    <h3 data-i18n="s7_h">Açık kaynak</h3>
+    <p data-i18n="s7_p">Kaynak kodu Apache-2.0 lisansıyla herkese açıktır; bu politikadaki iddiaları kodda doğrulayabilirsiniz: <a href="https://github.com/ozkanceng/casthop">github.com/ozkanceng/casthop</a>.</p>
+
+    <h3 data-i18n="s8_h">Değişiklikler ve iletişim</h3>
+    <p data-i18n="s8_p">Politika değişirse bu sayfa ve üstteki tarih güncellenir. Sorular için <a href="https://github.com/ozkanceng/casthop/issues">GitHub sorun sayfasını</a> kullanabilirsiniz.</p>
+  </article>
+</main>
+<script>
+const EN = {
+  "title": "CastHop Privacy Policy",
+  "description": "Privacy policy of the CastHop Android app: it collects no data and has no accounts, ads or tracking.",
+  "back": "← Setup page",
+  "h1": "Privacy policy",
+  "updated": "Last updated: 5 November 2026. This policy covers the CastHop Android app (package name <strong>com.sorumatik.casthop</strong>).",
+  "s1_h": "Summary",
+  "s1_p": "CastHop does <strong>not collect</strong>, store, sell or share personal data. There are no accounts, ads, analytics or tracking. The developer runs no server; the app's network traffic goes only to the screen you choose, inside your local network.",
+  "s2_h": "What happens while you mirror",
+  "s2_p": "When you start mirroring, your tablet's screen, the app's audio and, if you choose, the camera picture and microphone sound are sent to the receiver you picked (smart board, TV or computer). The data travels only over your local network, is encrypted with TLS 1.3 and never goes to the internet. The app does not record this picture or sound; sending stops when you stop mirroring.",
+  "s3_h": "What is stored on your device",
+  "s3_p": "The names, network addresses and pairing keys of the screens you connected to, and the app settings, are kept only in the app's own private storage. This data is not backed up and is sent nowhere; it is deleted when you tap “forget” on a screen or uninstall the app.",
+  "s4_h": "Permissions and why they are needed",
+  "p_screen": "<strong>Screen capture:</strong> only to mirror the screen when you start it. Android asks for your approval each time.",
+  "p_camera": "<strong>Camera:</strong> to scan the pairing QR code and for optional camera mirroring.",
+  "p_mic": "<strong>Microphone:</strong> only when you choose to mirror audio.",
+  "p_net": "<strong>Local network and network access:</strong> to find and connect to the screen on the same network. The app sends no requests to any server on the internet.",
+  "p_notif": "<strong>Notifications and foreground service:</strong> to show a notification while mirroring and keep it from being cut off in the background.",
+  "s5_h": "Third parties",
+  "s5_p": "The app contains no ads, analytics, crash reporting or tracking components. No data is shared with third parties.",
+  "s6_h": "Children",
+  "s6_p": "CastHop is designed for teachers and adult users; it is not directed at children and collects no data from anyone.",
+  "s7_h": "Open source",
+  "s7_p": "The source code is public under the Apache-2.0 license; you can check the claims in this policy in the code: <a href=\"https://github.com/ozkanceng/casthop\">github.com/ozkanceng/casthop</a>.",
+  "s8_h": "Changes and contact",
+  "s8_p": "If the policy changes, this page and the date above are updated. For questions, use the <a href=\"https://github.com/ozkanceng/casthop/issues\">GitHub issues page</a>."
+};
+const TR = {};
+const store = {
+  get() { try { return localStorage.getItem("casthop-lang"); } catch { return null; } },
+  set(value) { try { localStorage.setItem("casthop-lang", value); } catch { /* private window: choice lasts for this visit only */ } },
+};
+let lang = "tr";
+const text = (key) => (lang === "en" ? EN[key] : TR[key]);
+
+document.querySelectorAll("[data-i18n]").forEach((el) => { TR[el.dataset.i18n] = el.innerHTML; });
+TR.title = document.title;
+TR.description = document.querySelector('meta[name="description"]').content;
+
+function apply(next) {
+  lang = next;
+  document.documentElement.lang = next;
+  document.querySelectorAll("[data-i18n]").forEach((el) => { el.innerHTML = text(el.dataset.i18n); });
+  document.title = text("title");
+  document.querySelector('meta[name="description"]').content = text("description");
+  const toggle = document.getElementById("lang");
+  toggle.textContent = next === "en" ? "Türkçe" : "English";
+  toggle.lang = next === "en" ? "tr" : "en";
+}
+
+const saved = store.get();
+const browserIsTurkish = /^tr\b/i.test(navigator.language || "");
+apply(saved === "en" || saved === "tr" ? saved : browserIsTurkish ? "tr" : "en");
+document.getElementById("lang").addEventListener("click", () => {
+  const next = lang === "en" ? "tr" : "en";
+  store.set(next);
+  apply(next);
+});
+</script>
+</body>
+</html>
