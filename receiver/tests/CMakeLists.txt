@@ -21,7 +21,9 @@ add_executable(yansit_tests
 )
 target_compile_definitions(yansit_tests PRIVATE YANSIT_VECTORS_DIR="${YANSIT_VECTORS_DIR}")
 target_link_libraries(yansit_tests PRIVATE yansit_core nlohmann_json::nlohmann_json GTest::gtest GTest::gtest_main)
-gtest_discover_tests(yansit_tests DISCOVERY_TIMEOUT 60)
+# GLib allocates per-thread data in a constructor; gst_init in test_media makes LeakSanitizer see it.
+gtest_discover_tests(yansit_tests DISCOVERY_TIMEOUT 60
+    PROPERTIES ENVIRONMENT "LSAN_OPTIONS=suppressions=${CMAKE_CURRENT_SOURCE_DIR}/lsan.supp")
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/xdg-runtime)
 file(CHMOD ${CMAKE_CURRENT_BINARY_DIR}/xdg-runtime DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE)
