@@ -110,69 +110,82 @@ public enum IdentityStore {
     private static func expired(created: Date, now: Date) -> Bool { now.timeIntervalSince(created) >= renewAfter }
 
 #if os(macOS)
-    /// A private file keychain inside `directory`. The data protection keychain needs an entitlement that unsigned
-    /// command line builds cannot have, and tests must not touch the login keychain.
+    /// The key and certificate live in owner-only files. A TLS identity needs a keychain, and a keychain item trusts only
+    /// the binary that made it, so a new build would stall on an approval prompt. Each start therefore builds a throwaway
+    /// file keychain from those files. The data protection keychain needs an entitlement that unsigned command line
+    /// builds cannot have, and tests must not touch the login keychain.
     public static func loadOrCreate(directory: URL, now: Date = Date()) throws -> ReceiverIdentity {
         let fm = FileManager.default
         try fm.createDirectory(at: directory, withIntermediateDirectories: true,
                                attributes: [.posixPermissions: 0o700])
-        let keychainPath = directory.appendingPathComponent("identity.keychain-db").path
-        let passwordURL = directory.appendingPathComponent("keychain.secret")
+        let keyURL = directory.appendingPathComponent("identity.key")
         let certURL = directory.appendingPathComponent("certificate.der")
         let metaURL = directory.appendingPathComponent("identity.json")
 
-        if let der = try? Data(contentsOf: certURL), let secret = try? Data(contentsOf: passwordURL),
+        var stored: (key: Data, der: Data)?
+        if let key = try? Data(contentsOf: keyURL), let der = try? Data(contentsOf: certURL),
            let metaData = try? Data(contentsOf: metaURL), let meta = try? JSONDecoder().decode(Metadata.self, from: metaData),
-           !expired(created: meta.created, now: now), let existing = try? open(path: keychainPath, secret: secret, der: der) {
-            return existing
+           !expired(created: meta.created, now: now), SecCertificateCreateWithData(nil, der as CFData) != nil {
+            stored = (key, der)
         }
+        if stored == nil {
+            for url in [keyURL, certURL, metaURL] { try? fm.removeItem(at: url) }
+            let attributes: [String: Any] = [
+                kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
+                kSecAttrKeySizeInBits as String: 256,
+            ]
+            var error: Unmanaged<CFError>?
+            guard let key = SecKeyCreateRandomKey(attributes as CFDictionary, &error),
+                  let raw = SecKeyCopyExternalRepresentation(key, &error) else { throw IdentityError.keyGeneration }
+            let der = try SelfSignedCertificate.make(key: key, name: subject, now: now)
+            try FileStore.writePrivate(raw as Data, to: keyURL)
+            try FileStore.writePrivate(der, to: certURL)
+            try FileStore.writePrivate(try JSONEncoder().encode(Metadata(created: now)), to: metaURL)
+            stored = (raw as Data, der)
+        }
+        guard let stored else { throw IdentityError.incomplete }
+        return try buildKeychain(in: directory, key: stored.key, der: stored.der)
+    }
 
-        // Nothing usable: start over. Removing the file alone would leave the keychain known to the system.
+    /// `key` is the 04 || X || Y || D form that SecKey exports.
+    private static func sec1(_ key: Data) throws -> Data {
+        let bytes = [UInt8](key)
+        guard bytes.count == 97, bytes[0] == 0x04 else { throw IdentityError.incomplete }
+        let prime256v1: [UInt8] = [0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07]
+        let point = [UInt8](bytes[0..<65])
+        var body: [UInt8] = [0x02, 0x01, 0x01, 0x04, 0x20]
+        body += bytes[65...]
+        body += [0xA0, UInt8(prime256v1.count)]
+        body += prime256v1
+        body += [0xA1, 0x44, 0x03, 0x42, 0x00]
+        body += point
+        return Data([0x30, 0x81, UInt8(body.count)] + body)
+    }
+
+    private static func buildKeychain(in directory: URL, key: Data, der: Data) throws -> ReceiverIdentity {
+        let fm = FileManager.default
+        let path = directory.appendingPathComponent("session.keychain-db").path
+        // Removing the file alone would leave the keychain known to the system.
         var stale: SecKeychain?
-        if fm.fileExists(atPath: keychainPath), SecKeychainOpen(keychainPath, &stale) == errSecSuccess, let stale {
-            SecKeychainDelete(stale)
-        }
-        for url in [certURL, passwordURL, metaURL, URL(fileURLWithPath: keychainPath)] { try? fm.removeItem(at: url) }
+        if fm.fileExists(atPath: path), SecKeychainOpen(path, &stale) == errSecSuccess, let stale { SecKeychainDelete(stale) }
+        try? fm.removeItem(atPath: path)
+
         let secret = Data(Base64Url.encode(Auth.randomBytes(32)).utf8)
-        try FileStore.writePrivate(secret, to: passwordURL)
+        var made: SecKeychain?
+        let created = secret.withUnsafeBytes { SecKeychainCreate(path, UInt32(secret.count), $0.baseAddress, false, nil, &made) }
+        guard created == errSecSuccess, let keychain = made else { throw IdentityError.keychain(created) }
 
-        var keychain: SecKeychain?
-        let status = secret.withUnsafeBytes {
-            SecKeychainCreate(keychainPath, UInt32(secret.count), $0.baseAddress, false, nil, &keychain)
-        }
-        guard status == errSecSuccess, let keychain else { throw IdentityError.keychain(status) }
+        var parameters = SecItemImportExportKeyParameters(
+            version: UInt32(SEC_KEY_IMPORT_EXPORT_PARAMS_VERSION), flags: [], passphrase: nil, alertTitle: nil,
+            alertPrompt: nil, accessRef: nil, keyUsage: nil, keyAttributes: nil)
+        var format = SecExternalFormat.formatOpenSSL
+        var type = SecExternalItemType.itemTypePrivateKey
+        let imported = SecItemImport(try sec1(key) as CFData, nil, &format, &type, [], &parameters, keychain, nil)
+        guard imported == errSecSuccess else { throw IdentityError.keychain(imported) }
 
-        let attributes: [String: Any] = [
-            kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
-            kSecAttrKeySizeInBits as String: 256,
-            kSecAttrIsPermanent as String: true,
-            kSecUseKeychain as String: keychain,
-            kSecAttrLabel as String: subject,
-        ]
-        var error: Unmanaged<CFError>?
-        guard let key = SecKeyCreateRandomKey(attributes as CFDictionary, &error) else { throw IdentityError.keyGeneration }
-        let der = try SelfSignedCertificate.make(key: key, name: subject, now: now)
         guard let certificate = SecCertificateCreateWithData(nil, der as CFData) else { throw IdentityError.incomplete }
         let added = SecCertificateAddToKeychain(certificate, keychain)
         guard added == errSecSuccess else { throw IdentityError.keychain(added) }
-
-        try FileStore.writePrivate(der, to: certURL)
-        try FileStore.writePrivate(try JSONEncoder().encode(Metadata(created: now)), to: metaURL)
-        return try identity(keychain: keychain, secret: secret, certificate: certificate, der: der)
-    }
-
-    private static func open(path: String, secret: Data, der: Data) throws -> ReceiverIdentity {
-        var keychain: SecKeychain?
-        let opened = SecKeychainOpen(path, &keychain)
-        guard opened == errSecSuccess, let keychain else { throw IdentityError.keychain(opened) }
-        let unlocked = secret.withUnsafeBytes { SecKeychainUnlock(keychain, UInt32(secret.count), $0.baseAddress, true) }
-        guard unlocked == errSecSuccess else { throw IdentityError.keychain(unlocked) }
-        guard let certificate = SecCertificateCreateWithData(nil, der as CFData) else { throw IdentityError.incomplete }
-        return try identity(keychain: keychain, secret: secret, certificate: certificate, der: der)
-    }
-
-    private static func identity(keychain: SecKeychain, secret: Data, certificate: SecCertificate,
-                                 der: Data) throws -> ReceiverIdentity {
         var identity: SecIdentity?
         let status = SecIdentityCreateWithCertificate(keychain, certificate, &identity)
         guard status == errSecSuccess, let identity else { throw IdentityError.keychain(status) }
