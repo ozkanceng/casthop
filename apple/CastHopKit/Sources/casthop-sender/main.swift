@@ -8,7 +8,10 @@ import Foundation
 // Streams a media file through the same session and VideoToolbox path as the Broadcast Upload Extension.
 //
 // casthop-sender --pairing-file F --input movie.mp4 [--auth qr|pin] [--host H] [--port N] [--preset best|balanced|weak]
-//                [--frames N] [--rotate cw90|ccw90|180] [--no-audio] [--device-name NAME]
+//                [--frames N] [--rotate cw90|ccw90|180] [--no-audio] [--device-name NAME] [--broadcast-store DIR]
+//
+// --broadcast-store takes the path of the iOS app and extension: pair first, leave, then broadcast with the pairing key
+// through BroadcastEngine, with DIR as the App Group container.
 
 struct Options {
     var pairingFile: String?
@@ -21,6 +24,7 @@ struct Options {
     var rotation = FrameRotation.none
     var audio = true
     var deviceName = "casthop-sender"
+    var broadcastStore: String?
 }
 
 func fail(_ message: String) -> Never {
@@ -45,6 +49,7 @@ func parse() -> Options {
         case "--frames": o.frames = Int(value()) ?? .max
         case "--no-audio": o.audio = false
         case "--device-name": o.deviceName = value()
+        case "--broadcast-store": o.broadcastStore = value()
         case "--preset":
             switch value() {
             case "best": o.preset = .best
@@ -142,7 +147,8 @@ final class FileCapture: @unchecked Sendable {
     /// Fills the read-ahead before the session starts, so that its first frame is not late.
     func prepare(frames: Int) { next = prefetch(limit: frames) }
 
-    func run(rotation: FrameRotation, pipeline: ScreenPipeline, audio: AacEncoder?, firstFrame: @escaping (Int, Int) -> Void) {
+    func run(rotation: FrameRotation, video: (CVPixelBuffer, UInt64) -> Void, audio: (CMSampleBuffer) -> Void,
+             firstFrame: (Int, Int) -> Void) {
         var startHost: UInt64?
         var startPts = 0.0
         var firstSeen = false
@@ -164,7 +170,7 @@ final class FileCapture: @unchecked Sendable {
                 startHost! += now - dueUs
                 dueUs = now
             }
-            pipeline.push(image, rotation: rotation, ptsUs: MonotonicClock.nowUs())
+            video(image, MonotonicClock.nowUs())
             while let output = audioOutput {
                 guard let nextAudio = pendingAudio ?? output.copyNextSampleBuffer() else { break }
                 let audioPts = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(nextAudio))
@@ -179,8 +185,7 @@ final class FileCapture: @unchecked Sendable {
         reader.cancelReading()
     }
 
-    private func push(_ sample: CMSampleBuffer, to audio: AacEncoder?, startHost: UInt64, startPts: Double) {
-        guard let audio else { return }
+    private func push(_ sample: CMSampleBuffer, to audio: (CMSampleBuffer) -> Void, startHost: UInt64, startPts: Double) {
         let pts = CMTimeGetSeconds(CMSampleBufferGetPresentationTimeStamp(sample))
         var timing = CMSampleTimingInfo(duration: .invalid,
                                         presentationTimeStamp: CMTime(value: Int64(startHost) + Int64((pts - startPts) * 1e6), timescale: 1_000_000),
@@ -188,7 +193,7 @@ final class FileCapture: @unchecked Sendable {
         var retimed: CMSampleBuffer?
         CMSampleBufferCreateCopyWithNewTiming(allocator: nil, sampleBuffer: sample, sampleTimingEntryCount: 1,
                                               sampleTimingArray: &timing, sampleBufferOut: &retimed)
-        if let retimed { audio.push(retimed) }
+        if let retimed { audio(retimed) }
     }
 }
 
@@ -206,8 +211,56 @@ let caps = VideoToolboxCaps.available(allowH265: false)
 let device = DeviceInfo(name: options.deviceName, deviceId: Auth.randomBytes(ControlCodec.idSize), appVersion: "1.0",
                         videoCodecs: caps.map(\.codec), audioCodecs: [Codec.aacLc], maxWidth: 3840, maxHeight: 2160, maxFps: 60)
 
+/// What the app and the extension do on a device, with a file in place of the screen.
+func broadcast(directory: String) async throws {
+    let store = SharedStore(directory: URL(fileURLWithPath: directory))
+    let capture = try await FileCapture(path: inputPath, audio: options.audio)
+    capture.prepare(frames: options.frames)
+    var settings = store.settings
+    settings.preset = options.preset
+    settings.audioEnabled = options.audio
+    store.settings = settings
+
+    if store.selectedReceiver == nil {
+        let info = DeviceInfo(name: options.deviceName, deviceId: store.deviceId, appVersion: "1.0", videoCodecs: caps.map(\.codec),
+                              audioCodecs: [Codec.aacLc], maxWidth: 3840, maxHeight: 2160, maxFps: 60)
+        switch await ConnectFlow.pair(target: .qr(qr), device: info, store: store, nowMs: Int64(Date().timeIntervalSince1970 * 1000)) {
+        case .success(let receiver):
+            store.selectedFingerprint = receiver.fingerprint
+            print("paired with \(receiver.name)")
+        case .failure(let failure):
+            fail("pairing failed: \(failure)")
+        }
+    }
+
+    let engine = BroadcastEngine(store: store, device: .init(name: options.deviceName, appVersion: "1.0"))
+    let done = DispatchSemaphore(value: 0)
+    engine.onFinished = { failure in
+        print("broadcast ended: \(failure.map { "\($0)" } ?? "stopped")")
+        done.signal()
+    }
+    engine.start()
+    Thread.detachNewThread {
+        capture.run(rotation: options.rotation, video: { engine.video($0, rotation: options.rotation, ptsUs: $1) },
+                    audio: { engine.audio($0) }, firstFrame: { _, _ in })
+        Thread.sleep(forTimeInterval: 0.5)
+        print("status: \(store.status.phase), audio \(store.status.audio)")
+        engine.stop()
+    }
+    await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+        DispatchQueue.global().async {
+            done.wait()
+            c.resume()
+        }
+    }
+}
+
 Task {
     do {
+        if let directory = options.broadcastStore {
+            try await broadcast(directory: directory)
+            exit(0)
+        }
         let capture = try await FileCapture(path: inputPath, audio: options.audio)
         capture.prepare(frames: options.frames)
         let outcome = try await SenderClient.hello(endpoint: endpoint, credentials: credentials, device: device)
@@ -236,7 +289,8 @@ Task {
         let audio = capture.hasAudio && w.audioEnabled ? AacEncoder() : nil
         let started = DispatchSemaphore(value: 0)
         Thread.detachNewThread {
-            capture.run(rotation: options.rotation, pipeline: pipeline, audio: audio) { width, height in
+            capture.run(rotation: options.rotation, video: { pipeline.push($0, rotation: options.rotation, ptsUs: $1) },
+                        audio: { audio?.push($0) }) { width, height in
                 let p = plan(width, height)
                 pipeline.applied(width: p.width, height: p.height)
                 Task {

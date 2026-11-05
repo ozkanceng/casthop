@@ -26,7 +26,7 @@ public enum Preset: String, CaseIterable, Codable, Sendable {
     public var maxBps: Int64 { [24_000_000, 12_000_000, 5_000_000][index] }
     public var minBps: Int64 { [4_000_000, 2_000_000, 800_000][index] }
 
-    private var index: Int { Self.allCases.firstIndex(of: self)! }
+    var index: Int { Self.allCases.firstIndex(of: self)! }
 
     /// The next preset towards a weaker network.
     public var lower: Preset? { index + 1 < Self.allCases.count ? Self.allCases[index + 1] : nil }
