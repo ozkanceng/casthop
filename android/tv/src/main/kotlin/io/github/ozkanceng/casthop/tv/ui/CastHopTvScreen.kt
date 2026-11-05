@@ -263,7 +263,12 @@ private fun ApprovalDialog(sender: String, current: String, onApprove: () -> Uni
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = stringResource(R.string.approval_body, sender, current),
+                // The running sender may leave while this one waits.
+                text = if (current.isEmpty()) {
+                    stringResource(R.string.approval_body_idle, sender)
+                } else {
+                    stringResource(R.string.approval_body, sender, current)
+                },
                 color = TvColors.OnBackground,
                 fontSize = tokens.body,
                 lineHeight = tokens.body * DIALOG_LINE_HEIGHT,

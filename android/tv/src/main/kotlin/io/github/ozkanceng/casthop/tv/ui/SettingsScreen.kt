@@ -25,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
@@ -33,7 +32,6 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -168,11 +166,11 @@ private fun SettingRow(title: String, detail: String?, action: @Composable () ->
 private fun RenameDialog(name: String, onSave: (String) -> Unit, onDismiss: () -> Unit) {
     val tokens = LocalTvTokens.current
     var value by remember { mutableStateOf(name) }
-    val focus = LocalFocusManager.current
     val fieldFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { fieldFocus.requestFocus() }
+    val saveFocus = remember { FocusRequester() }
     val save = { if (value.isNotBlank()) onSave(value) }
     Dialog(onDismissRequest = onDismiss) {
+        LaunchedEffect(Unit) { fieldFocus.requestFocus() }
         Column(
             modifier = Modifier
                 .background(TvColors.Surface, RoundedCornerShape(tokens.corner))
@@ -196,7 +194,7 @@ private fun RenameDialog(name: String, onSave: (String) -> Unit, onDismiss: () -
                 singleLine = true,
                 textStyle = TextStyle(fontSize = tokens.body),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { focus.moveFocus(FocusDirection.Down) }),
+                keyboardActions = KeyboardActions(onDone = { saveFocus.requestFocus() }),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = TvColors.OnBackground,
                     unfocusedTextColor = TvColors.OnBackground,
@@ -210,12 +208,17 @@ private fun RenameDialog(name: String, onSave: (String) -> Unit, onDismiss: () -
                     // A text field keeps the arrows for its cursor; a remote still has to be able to leave it.
                     .onPreviewKeyEvent { event ->
                         val leave = event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown
-                        if (leave) focus.moveFocus(FocusDirection.Down)
+                        if (leave) saveFocus.requestFocus()
                         leave
                     },
             )
             Row(horizontalArrangement = Arrangement.spacedBy(tokens.gap)) {
-                TvButton(stringResource(R.string.action_save), save, primary = true)
+                TvButton(
+                    text = stringResource(R.string.action_save),
+                    onClick = save,
+                    modifier = Modifier.focusRequester(saveFocus),
+                    primary = true,
+                )
                 TvButton(stringResource(R.string.action_cancel), onDismiss)
             }
         }

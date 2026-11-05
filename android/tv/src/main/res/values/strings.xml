@@ -29,6 +29,7 @@
     <string name="state_video_failed">Bu cihaz gelen görüntüyü çözemiyor.</string>
     <string name="approval_title">Yeni bağlantı isteği</string>
     <string name="approval_body">%1$s bu ekrana yansıtmak istiyor. Kabul ederseniz %2$s bağlantısı kesilir.</string>
+    <string name="approval_body_idle">%1$s bu ekrana yansıtmak istiyor.</string>
     <string name="stats_latency">Gecikme: %1$d ms</string>
     <string name="stats_latency_unknown">Gecikme: ölçülüyor</string>
     <string name="stats_rate">%1$.0f kare/sn · %2$d kbit/sn</string>

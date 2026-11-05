@@ -28,6 +28,7 @@
     <string name="state_video_failed">This device cannot decode the incoming picture.</string>
     <string name="approval_title">New connection request</string>
     <string name="approval_body">%1$s wants to mirror to this screen. If you allow it, %2$s is disconnected.</string>
+    <string name="approval_body_idle">%1$s wants to mirror to this screen.</string>
     <string name="stats_latency">Latency: %1$d ms</string>
     <string name="stats_latency_unknown">Latency: measuring</string>
     <string name="stats_rate">%1$.0f fps · %2$d kbit/s</string>

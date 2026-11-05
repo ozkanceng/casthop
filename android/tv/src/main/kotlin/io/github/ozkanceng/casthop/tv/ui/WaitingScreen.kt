@@ -48,18 +48,28 @@ internal fun WaitingScreen(
             .safeDrawingPadding()
             .padding(horizontal = tokens.screenPaddingX, vertical = tokens.screenPaddingY),
     ) {
-        val qr: @Composable () -> Unit = { QrPanel(state) }
-        val details: @Composable () -> Unit = {
-            Details(state, localNetworkDenied, onRequestLocalNetwork, onOpenSettings, settingsFocus)
+        val qr: @Composable () -> Unit = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(tokens.gap),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                QrPanel(state)
+                TvButton(
+                    text = stringResource(R.string.action_settings),
+                    onClick = onOpenSettings,
+                    modifier = Modifier.focusRequester(settingsFocus),
+                )
+            }
         }
+        val details: @Composable () -> Unit = { Details(state, localNetworkDenied, onRequestLocalNetwork) }
         if (maxWidth >= maxHeight) {
             Row(
                 modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(tokens.gap * 2),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                qr()
-                Column(modifier = Modifier.weight(1f)) { details() }
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) { qr() }
+                Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState())) { details() }
             }
         } else {
             Column(
@@ -94,8 +104,6 @@ private fun Details(
     state: TvState,
     localNetworkDenied: Boolean,
     onRequestLocalNetwork: () -> Unit,
-    onOpenSettings: () -> Unit,
-    settingsFocus: FocusRequester,
 ) {
     val tokens = LocalTvTokens.current
     Column(verticalArrangement = Arrangement.spacedBy(tokens.gapSmall)) {
@@ -116,11 +124,6 @@ private fun Details(
             state.receiver.pin.isEmpty() -> Body(stringResource(R.string.waiting_starting))
             else -> Instructions(state)
         }
-        TvButton(
-            text = stringResource(R.string.action_settings),
-            onClick = onOpenSettings,
-            modifier = Modifier.padding(top = tokens.gapSmall).focusRequester(settingsFocus),
-        )
     }
 }
 

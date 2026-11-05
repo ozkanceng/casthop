@@ -204,7 +204,6 @@ internal class MediaCodecAudioBackend(
     }
 
     private fun writeLoop() {
-        val aligner = AudioAligner()
         var output: Output? = null
         var refused: PcmShape? = null
         try {
@@ -216,7 +215,7 @@ internal class MediaCodecAudioBackend(
                     output = Output.open(block.shape)
                     if (output == null) refused = block.shape
                 }
-                output?.play(block, aligner, clockUs(), pipeline)
+                output?.play(block, clockUs(), pipeline)
             }
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
@@ -273,12 +272,28 @@ internal class MediaCodecAudioBackend(
     private class Output(private val track: AudioTrack, val shape: PcmShape) {
         private val timestamp = AudioTimestamp()
         private var framesWritten = 0L
+        private var rolling = false
 
-        fun play(block: Block, aligner: AudioAligner, nowUs: Long, pipeline: AudioPipeline?) {
+        // The queue swings by up to a buffer as the output drains it in bursts, and that is not drift. Measured on
+        // the emulator: a fixed 15 ms tolerance threw away a quarter of the audio and starved the track.
+        private val aligner = AudioAligner(
+            maxOf(
+                AudioAligner.DEFAULT_TOLERANCE_US,
+                track.bufferSizeInFrames * MICROS_PER_SECOND / shape.rate / 2,
+            ),
+        )
+
+        fun play(block: Block, nowUs: Long, pipeline: AudioPipeline?) {
             val frameBytes = shape.frameBytes
             val frames = block.pcm.size / frameBytes
             val queuedUs = queuedUs()
-            val plan = aligner.plan(block.playAtUs, nowUs, queuedUs, frames * MICROS_PER_SECOND / shape.rate)
+            // A track starts only once its buffer holds enough. Trimming "late" audio before that would keep it from
+            // ever filling, and the stream would stay silent.
+            val plan = if (rolling) {
+                aligner.plan(block.playAtUs, nowUs, queuedUs, frames * MICROS_PER_SECOND / shape.rate)
+            } else {
+                AudioAligner.Plan(silenceUs = 0, skipUs = 0)
+            }
             if (plan.silenceUs > 0) {
                 val silence = (plan.silenceUs * shape.rate / MICROS_PER_SECOND).toInt() * frameBytes
                 write(ByteBuffer.allocate(silence))
@@ -297,12 +312,13 @@ internal class MediaCodecAudioBackend(
 
         /** Audio handed to the track but not heard yet. */
         private fun queuedUs(): Long {
-            val heard = if (track.getTimestamp(timestamp)) {
+            val heard = if (track.getTimestamp(timestamp) && timestamp.framePosition > 0) {
                 val sinceUs = (System.nanoTime() - timestamp.nanoTime) / NANOS_PER_MICRO
                 timestamp.framePosition + sinceUs * shape.rate / MICROS_PER_SECOND
             } else {
                 track.playbackHeadPosition.toLong() and U32_MASK
             }
+            if (heard > 0) rolling = true
             return ((framesWritten - heard) * MICROS_PER_SECOND / shape.rate).coerceAtLeast(0)
         }
 
