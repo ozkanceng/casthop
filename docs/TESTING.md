@@ -290,3 +290,43 @@ ile `files/test/pairing.json` dosyasına yazılır (`adb exec-out run-as io.gith
 | 12 | Dokunmatik Android tahta veya tablette çalıştırın | Aynı APK LAUNCHER'dan açılır; düğmeler ve yansıtma denetimleri dokunmayla çalışır | ☐ |
 
 **Sonuç bildirimi:** cihaz modeli, Android sürümü, çözücü adı, gecikme, ses gözlemi.
+
+---
+
+## Windows alıcısı (gerçek bilgisayar)
+
+CI (`.github/workflows/windows.yml`) kurucuyu kurar, uyum testini kurulu programa karşı çalıştırır ve kaldırır. Sunucu
+işletim sisteminde ekran kartı, ses aygıtı ve Wi-Fi olmadığı için aşağıdakiler gerçek Windows 10 ve 11 bilgisayarda denenir.
+
+### Kurulum
+
+- [ ] SmartScreen uyarısı ve imzasız kurucunun davranışı not edildi.
+- [ ] Kurulum Türkçe Windows'ta Türkçe, İngilizce Windows'ta İngilizce açılıyor.
+- [ ] Kullanıcı adında Türkçe karakter olan hesapta (`C:\Users\Özkan`) program açılıyor, sertifika ve eşleştirme korunuyor.
+- [ ] Başlat menüsünde CastHop var ve simgesi görünüyor.
+- [ ] `Get-NetFirewallRule -DisplayName 'CastHop*'` iki kural gösteriyor; ilk bağlantıda güvenlik duvarı sorusu çıkmıyor.
+- [ ] Ağ profili Ortak iken de tablet bağlanıyor.
+- [ ] `icacls %APPDATA%\Yansit\yansit-receiver\identity\key.pem` yalnız geçerli kullanıcıyı gösteriyor.
+- [ ] Üstüne yeniden kurulum eşleştirmeleri koruyor, kural sayısı artmıyor.
+- [ ] Program açıkken kaldırma sorunsuz bitiyor; "ayarlar da silinsin mi" sorusu iki yanıtla da doğru davranıyor.
+- [ ] Ayarlar → otomatik başlatma: oturum yeniden açılınca CastHop başlıyor; kapatınca veya kaldırınca `Run` değeri siliniyor.
+
+### Görüntü ve ses
+
+- [ ] Intel, AMD ve NVIDIA ekran kartında `%LOCALAPPDATA%\cache\yansit\receiver.log` içinde `d3d11h264dec (donanım)` görünüyor.
+- [ ] Donanım çözücüsü olmayan makinede (uzak masaüstü, sanal makine) `avdec_h264` ile görüntü geliyor.
+- [ ] H.265 yalnız donanım çözücüsü varken tabletlerde seçilebiliyor.
+- [ ] 1080p60 yansıtmada işlemci çiziminin işlemci kullanımı ve gecikmesi not edildi; kare kaybı birikmiyor.
+- [ ] Tablet döndürülünce görüntü doğru yönde, siyah ekran yok.
+- [ ] Ses duyuluyor ve görüntüyle aynı anda; kulaklık takılıp çıkarılınca ses sürüyor.
+- [ ] Yüksek DPI ekranda (%150, %200) arayüz ve QR net, dokunma hedefleri yeterince büyük.
+- [ ] Dokunmatik ekranlı bilgisayarda düğmeler çalışıyor.
+
+### Ağ
+
+- [ ] Tablet, QR'sız listede bilgisayarı görüyor ve 6 haneli kodla bağlanıyor (`DnsServiceRegister`). Adın sonunda nokta olan bilgisayarda da.
+- [ ] Hyper-V, WSL veya VPN bağdaştırıcısı varken QR doğru (Wi-Fi veya Ethernet) adresi taşıyor.
+- [ ] Bilgisayar uyku modundan dönünce alıcı yeniden bağlantı alıyor.
+- [ ] Windows kapatılırken yansıtma sürüyorsa tablet "alıcı kapandı" görüyor.
+
+Sonuçları ve `receiver.log` dosyasını bir GitHub issue'suna ekleyin.

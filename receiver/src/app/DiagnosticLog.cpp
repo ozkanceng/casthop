@@ -1,5 +1,7 @@
 #include "app/DiagnosticLog.h"
 
+#include "app/Platform.h"
+
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -53,12 +55,12 @@ void installDiagnosticLog() {
     previousHandler = qInstallMessageHandler(writeMessage);
 }
 
-QString pluginLoadError(const char* soName) {
-    QStringList dirs = qEnvironmentVariable("GST_PLUGIN_SYSTEM_PATH_1_0").split(QLatin1Char(':'), Qt::SkipEmptyParts);
+QString pluginLoadError(const QString& fileName) {
+    QStringList dirs = qEnvironmentVariable("GST_PLUGIN_SYSTEM_PATH_1_0").split(QDir::listSeparator(), Qt::SkipEmptyParts);
     if (dirs.isEmpty())
-        dirs = {QStringLiteral("/usr/lib/x86_64-linux-gnu/gstreamer-1.0"), QStringLiteral("/usr/lib/aarch64-linux-gnu/gstreamer-1.0")};
+        dirs = platform::defaultGstPluginDirs();
     for (const QString& dir : dirs) {
-        const QString path = dir + QLatin1Char('/') + QLatin1String(soName);
+        const QString path = dir + QLatin1Char('/') + fileName;
         if (!QFile::exists(path))
             continue;
         GError* error = nullptr;
@@ -71,7 +73,7 @@ QString pluginLoadError(const char* soName) {
         g_clear_error(&error);
         return message;
     }
-    return QStringLiteral("%1 bulunamadı: %2").arg(QLatin1String(soName), dirs.join(QLatin1Char(':')));
+    return QStringLiteral("%1 bulunamadı: %2").arg(fileName, dirs.join(QDir::listSeparator()));
 }
 
 } // namespace yansit

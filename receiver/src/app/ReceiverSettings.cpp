@@ -1,14 +1,9 @@
 #include "app/ReceiverSettings.h"
 
-#include <QCoreApplication>
-#include <QDir>
-#include <QFile>
-#include <QHostInfo>
-#include <QLoggingCategory>
-#include <QSaveFile>
-#include <QStandardPaths>
+#include "app/Platform.h"
 
-Q_LOGGING_CATEGORY(lcSettings, "yansit.settings")
+#include <QCoreApplication>
+#include <QHostInfo>
 
 namespace yansit {
 
@@ -66,40 +61,17 @@ void ReceiverSettings::setPort(int port) {
 bool ReceiverSettings::compatibleVideo() const { return m_settings.value(QStringLiteral("compatibleVideo"), false).toBool(); }
 void ReceiverSettings::setCompatibleVideo(bool on) { write(QStringLiteral("compatibleVideo"), on); }
 
-QString ReceiverSettings::autostartFile() {
-    return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) +
-           QStringLiteral("/autostart/io.github.ozkanceng.yansit.receiver.desktop");
-}
-
-bool ReceiverSettings::autostart() const { return QFile::exists(autostartFile()); }
+bool ReceiverSettings::autostart() const { return platform::autostartEnabled(); }
 
 void ReceiverSettings::setAutostart(bool on) {
     if (on == autostart())
         return;
-    const QString path = autostartFile();
-    if (on) {
-        QDir().mkpath(QFileInfo(path).absolutePath());
-        QSaveFile f(path);
-        if (!f.open(QIODevice::WriteOnly)) {
-            qCWarning(lcSettings) << "otomatik başlatma dosyası yazılamadı:" << path;
-            return;
-        }
-        // The portable binary cannot start without the environment its launcher sets up.
-        QByteArray exec = qgetenv("YANSIT_LAUNCHER");
-        if (exec.isEmpty())
-            exec = QCoreApplication::applicationFilePath().toUtf8();
-        f.write("[Desktop Entry]\nType=Application\nName=CastHop\nName[en]=CastHop\n"
-                "Icon=io.github.ozkanceng.yansit.receiver\nExec=\"" + exec + "\"\n"
-                "X-GNOME-Autostart-enabled=true\nNoDisplay=false\n");
-        if (!f.commit()) {
-            qCWarning(lcSettings) << "otomatik başlatma dosyası yazılamadı:" << path;
-            return;
-        }
-    } else if (!QFile::remove(path)) {
-        qCWarning(lcSettings) << "otomatik başlatma dosyası silinemedi:" << path;
-        return;
-    }
-    emit changed();
+    // The portable binary cannot start without the environment its launcher sets up.
+    QString command = qEnvironmentVariable("YANSIT_LAUNCHER");
+    if (command.isEmpty())
+        command = QCoreApplication::applicationFilePath();
+    if (platform::setAutostartEnabled(on, command))
+        emit changed();
 }
 
 } // namespace yansit

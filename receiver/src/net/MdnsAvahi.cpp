@@ -1,7 +1,5 @@
 #include "net/MdnsPublisher.h"
 
-#include "protocol/Qr.h"
-
 #include <avahi-client/client.h>
 #include <avahi-client/publish.h>
 #include <avahi-common/alternative.h>
@@ -16,39 +14,46 @@ Q_LOGGING_CATEGORY(lcMdns, "yansit.mdns")
 
 namespace yansit::net {
 
-std::vector<std::string> mdnsTxt(const std::string& name, const protocol::Key32& fingerprint) {
-    const protocol::ByteView prefix(fingerprint.data(), 16);
-    return {"v=1", "name=" + name, "fp=" + protocol::base64UrlNoPad(prefix)};
-}
+class MdnsPublisher::Impl {
+public:
+    ~Impl() { stop(); }
 
-std::string mdnsInstanceName(const std::string& name) {
-    constexpr std::size_t kMax = 63;
-    if (name.size() <= kMax)
-        return name.empty() ? std::string("CastHop") : name;
-    std::size_t cut = kMax;
-    // UTF-8 devam baytlarında (10xxxxxx) kesme: karakter başına geri git.
-    while (cut > 0 && (static_cast<unsigned char>(name[cut]) & 0xC0) == 0x80)
-        --cut;
-    return name.substr(0, cut);
-}
+    void publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint);
+    void stop();
 
-namespace {
+private:
+    static void clientCallback(AvahiClient* c, AvahiClientState state, void* self) {
+        static_cast<Impl*>(self)->onClientState(c, int(state));
+    }
+    static void groupCallback(AvahiEntryGroup* g, AvahiEntryGroupState state, void* self) {
+        static_cast<Impl*>(self)->onGroupState(g, int(state));
+    }
 
-void clientCallback(AvahiClient* c, AvahiClientState state, void* self) {
-    static_cast<MdnsPublisher*>(self)->onClientState(c, int(state));
-}
+    // Avahi geri çağrıları (Avahi iş parçacığında, kilit altında çağrılır).
+    void onClientState(AvahiClient* client, int state);
+    void onGroupState(AvahiEntryGroup* group, int state);
+    void registerService(AvahiClient* client);
 
-void groupCallback(AvahiEntryGroup* g, AvahiEntryGroupState state, void* self) {
-    static_cast<MdnsPublisher*>(self)->onGroupState(g, int(state));
-}
+    AvahiThreadedPoll* m_poll = nullptr;
+    AvahiClient* m_client = nullptr;
+    AvahiEntryGroup* m_group = nullptr;
+    std::string m_instance;
+    std::uint16_t m_port = 0;
+    std::vector<std::string> m_txt;
+    bool m_wanted = false;
+};
 
-} // namespace
+MdnsPublisher::MdnsPublisher() : m_impl(std::make_unique<Impl>()) {}
 
-MdnsPublisher::MdnsPublisher() = default;
-
-MdnsPublisher::~MdnsPublisher() { stop(); }
+MdnsPublisher::~MdnsPublisher() = default;
 
 void MdnsPublisher::publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint) {
+    m_impl->publish(name, port, fingerprint);
+}
+
+void MdnsPublisher::stop() { m_impl->stop(); }
+
+void MdnsPublisher::Impl::publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint) {
     if (!m_poll) {
         m_poll = avahi_threaded_poll_new();
         if (!m_poll) {
@@ -84,7 +89,7 @@ void MdnsPublisher::publish(const std::string& name, std::uint16_t port, const p
     avahi_threaded_poll_unlock(m_poll);
 }
 
-void MdnsPublisher::stop() {
+void MdnsPublisher::Impl::stop() {
     if (!m_poll)
         return;
     avahi_threaded_poll_stop(m_poll);
@@ -99,7 +104,7 @@ void MdnsPublisher::stop() {
     m_poll = nullptr;
 }
 
-void MdnsPublisher::registerService(AvahiClient* client) {
+void MdnsPublisher::Impl::registerService(AvahiClient* client) {
     if (!m_wanted)
         return;
     if (!m_group) {
@@ -135,7 +140,7 @@ void MdnsPublisher::registerService(AvahiClient* client) {
         qCWarning(lcMdns) << "yayın başlatılamadı:" << avahi_strerror(rc);
 }
 
-void MdnsPublisher::onClientState(AvahiClient* client, int state) {
+void MdnsPublisher::Impl::onClientState(AvahiClient* client, int state) {
     switch (AvahiClientState(state)) {
     case AVAHI_CLIENT_S_RUNNING:
         registerService(client);
@@ -153,7 +158,7 @@ void MdnsPublisher::onClientState(AvahiClient* client, int state) {
     }
 }
 
-void MdnsPublisher::onGroupState(AvahiEntryGroup* group, int state) {
+void MdnsPublisher::Impl::onGroupState(AvahiEntryGroup* group, int state) {
     switch (AvahiEntryGroupState(state)) {
     case AVAHI_ENTRY_GROUP_ESTABLISHED:
         qCInfo(lcMdns) << "mDNS yayını:" << QString::fromStdString(m_instance) << kMdnsServiceType << m_port;

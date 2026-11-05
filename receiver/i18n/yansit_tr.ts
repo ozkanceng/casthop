@@ -203,6 +203,10 @@
         <translation>Güvenlik sertifikası oluşturulamadı: %1</translation>
     </message>
     <message>
+        <source>No H.264 video decoder found. Reinstall CastHop.</source>
+        <translation>H.264 görüntü çözücü bulunamadı. CastHop'u yeniden kurun.</translation>
+    </message>
+    <message>
         <source>No H.264 video decoder found. Install the gstreamer1.0-libav package.</source>
         <translation>H.264 video çözücü bulunamadı. gstreamer1.0-libav paketini kurun.</translation>
     </message>

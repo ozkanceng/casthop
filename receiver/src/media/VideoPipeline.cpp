@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <string_view>
 
 Q_LOGGING_CATEGORY(lcVideo, "yansit.video")
 
@@ -30,8 +31,6 @@ bool factoryExists(const char* name) {
     gst_object_unref(f);
     return true;
 }
-
-bool isHardwareFactory(const std::string& name) { return name.rfind("va", 0) == 0; }
 
 bool hasProperty(GstElement* e, const char* prop) {
     return g_object_class_find_property(G_OBJECT_GET_CLASS(e), prop) != nullptr;
@@ -73,6 +72,23 @@ int centreLuma(const std::uint8_t* plane, int width, int height, int stride) {
 
 constexpr std::uint32_t kLumaSampleInterval = 15; // frames
 
+struct KnownDecoder {
+    const char* factory;
+    bool hardware;
+};
+
+// In order of preference. vah264dec: GStreamer 1.22 VA plugin (registered only with a working VA driver).
+// vaapih264dec: older gstreamer-vaapi. d3d11h264dec: Windows, registered only if the GPU can decode the codec.
+// avdec_h264: FFmpeg software decoder, always the fallback.
+constexpr std::array<KnownDecoder, 4> kH264{{{"vah264dec", true},
+                                             {"vaapih264dec", true},
+                                             {"d3d11h264dec", true},
+                                             {"avdec_h264", false}}};
+constexpr std::array<KnownDecoder, 4> kH265{{{"vah265dec", true},
+                                             {"vaapih265dec", true},
+                                             {"d3d11h265dec", true},
+                                             {"avdec_h265", false}}};
+
 constexpr std::size_t kMaxE2eSamples = 3600; // ≈ 1 dk @ 60 fps
 
 constexpr std::uint64_t kKeyframeRequestIntervalUs = 200'000;
@@ -80,24 +96,33 @@ constexpr std::uint64_t kMinRebuildIntervalUs = 1'000'000;
 
 } // namespace
 
+bool isHardwareDecoder(const std::string& factory) {
+    for (const auto* table : {&kH264, &kH265})
+        for (const KnownDecoder& known : *table)
+            if (factory == known.factory)
+                return known.hardware;
+    GstElementFactory* f = gst_element_factory_find(factory.c_str());
+    if (!f)
+        return false;
+    const char* klass = gst_element_factory_get_metadata(f, GST_ELEMENT_METADATA_KLASS);
+    const bool hardware = klass && std::string_view(klass).find("Hardware") != std::string_view::npos;
+    gst_object_unref(f);
+    return hardware;
+}
+
 std::vector<DecoderChoice> availableDecoders(std::uint8_t codec) {
     std::vector<DecoderChoice> out;
     const bool hevc = codec == Codec::H265;
     if (const char* forced = std::getenv(hevc ? "YANSIT_DECODER_H265" : "YANSIT_DECODER"); forced && *forced) {
         if (factoryExists(forced))
-            out.push_back({forced, isHardwareFactory(forced)});
+            out.push_back({forced, isHardwareDecoder(forced)});
         else
             qCWarning(lcVideo) << "YANSIT_DECODER bulunamadı:" << forced;
         return out;
     }
-    // vah264dec: GStreamer 1.22 VA eklentisi (yalnız çalışan bir VA sürücüsü varsa kayıtlı olur).
-    // vaapih264dec: eski gstreamer-vaapi. avdec_h264: FFmpeg yazılım çözücü (her zaman yedek).
-    static constexpr std::array<const char*, 3> kH264{"vah264dec", "vaapih264dec", "avdec_h264"};
-    static constexpr std::array<const char*, 3> kH265{"vah265dec", "vaapih265dec", "avdec_h265"};
-    const auto& names = hevc ? kH265 : kH264;
-    for (const char* name : names)
-        if (factoryExists(name))
-            out.push_back({name, isHardwareFactory(name)});
+    for (const KnownDecoder& known : hevc ? kH265 : kH264)
+        if (factoryExists(known.factory))
+            out.push_back({known.factory, known.hardware});
     return out;
 }
 

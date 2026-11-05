@@ -4,9 +4,8 @@
 #include <QSslCertificate>
 #include <QSslKey>
 #include <QSslSocket>
+#include <QTcpSocket>
 #include <QTimer>
-
-#include <unistd.h>
 
 #include <memory>
 #include <stdexcept>
@@ -16,7 +15,8 @@ Q_DECLARE_LOGGING_CATEGORY(lcConn)
 namespace yansit::net {
 
 Server::Server(const Identity& identity, QObject* parent) : QTcpServer(parent) {
-    if (!QSslSocket::supportsSsl())
+    // Windows would silently pick Schannel when the OpenSSL libraries are missing; this code needs OpenSSL.
+    if (!QSslSocket::supportsSsl() || QSslSocket::activeBackend() != QLatin1String("openssl"))
         throw std::runtime_error("Qt TLS desteği yok (OpenSSL arka ucu yüklenemedi)");
 
     const QSslCertificate cert(QByteArray::fromStdString(identity.certificatePem), QSsl::Pem);
@@ -34,7 +34,9 @@ Server::Server(const Identity& identity, QObject* parent) : QTcpServer(parent) {
 
 void Server::incomingConnection(qintptr socketDescriptor) {
     if (m_handshaking >= kMaxHandshaking) {
-        ::close(int(socketDescriptor));
+        QTcpSocket refused; // closes the descriptor the same way on every platform
+        if (refused.setSocketDescriptor(socketDescriptor))
+            refused.abort();
         return;
     }
     auto* socket = new QSslSocket(this);

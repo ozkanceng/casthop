@@ -3,12 +3,9 @@
 #include "protocol/Bytes.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
-
-struct AvahiThreadedPoll;
-struct AvahiClient;
-struct AvahiEntryGroup;
 
 namespace yansit::net {
 
@@ -21,9 +18,9 @@ std::vector<std::string> mdnsTxt(const std::string& name, const protocol::Key32&
 std::string mdnsInstanceName(const std::string& name);
 
 /**
- * `_yansit._tcp` hizmetini Avahi ile yayınlar (yalnız bulma kolaylığı; kimlik doğrulama yine PIN/eşleştirmedir).
- * Avahi kendi iş parçacığında çalışır; daemon yoksa sessizce bekler ve gelince yayınlar. Ad çakışmasında
- * Avahi'nin önerdiği alternatif ad kullanılır. Yayın başarısız olsa da QR akışı etkilenmez.
+ * `_yansit._tcp` hizmetini yayınlar (yalnız bulma kolaylığı; kimlik doğrulama yine PIN/eşleştirmedir). Linux'ta Avahi
+ * (`MdnsAvahi.cpp`): daemon yoksa sessizce bekler, ad çakışmasında önerilen alternatif adı kullanır. Windows'ta
+ * `DnsServiceRegister` (`MdnsWindows.cpp`). Yayın başarısız olsa da QR akışı etkilenmez.
  */
 class MdnsPublisher {
 public:
@@ -36,20 +33,9 @@ public:
     void publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint);
     void stop();
 
-    // Avahi geri çağrıları (iç kullanım; Avahi iş parçacığında, kilit altında çağrılır).
-    void onClientState(AvahiClient* client, int state);
-    void onGroupState(AvahiEntryGroup* group, int state);
-
 private:
-    void registerService(AvahiClient* client);
-
-    AvahiThreadedPoll* m_poll = nullptr;
-    AvahiClient* m_client = nullptr;
-    AvahiEntryGroup* m_group = nullptr;
-    std::string m_instance;
-    std::uint16_t m_port = 0;
-    std::vector<std::string> m_txt;
-    bool m_wanted = false;
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
 };
 
 } // namespace yansit::net

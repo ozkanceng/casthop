@@ -12,6 +12,6 @@ void installDiagnosticLog();
 QString diagnosticLogPath();
 
 /// Loads a GStreamer plugin file directly to report why it fails (missing library and so on).
-QString pluginLoadError(const char* soName);
+QString pluginLoadError(const QString& fileName);
 
 } // namespace yansit

@@ -30,6 +30,23 @@ Karşılık gelen kaynak kodu: paketteki `share/bundled-packages.txt` her gömü
 listeler; kaynakları `apt-get source <paket>=<sürüm>` veya <https://snapshot.debian.org/> üzerinden alınabilir. CastHop
 projesi istek üzerine bu kaynakları da sağlar (GitHub Issues).
 
+### Windows kurucusu (`casthop-setup-x86_64.exe`)
+
+Linux'tan farklı olarak bağımlılıklar kurucunun içinde dağıtılır. Lisans metinleri `licenses\` klasörüne kopyalanır.
+x264 gibi GPL eklentiler pakete alınmaz: `receiver/ci/windows/package.ps1` yalnız adı yazılı eklentileri kopyalar.
+
+| Bileşen | Kaynak | Kullanım | Lisans | Bağlantı biçimi |
+|---|---|---|---|---|
+| Qt 6.8 (Core, Gui, Network, Qml, Quick, Controls) | Qt çevrim içi deposu | arayüz, ağ, TLS | LGPL-3.0 | DLL |
+| GStreamer 1.26 MSVC ikilileri | gstreamer.freedesktop.org | video/ses çözme | LGPL-2.1+ | DLL / eklenti |
+| FFmpeg (`gstlibav` içinde) | GStreamer ikilileri | yazılım H.264/H.265/AAC çözme | LGPL-2.1+ | DLL |
+| OpenSSL 3 | vcpkg | HMAC-SHA256, sertifika, TLS | Apache-2.0 | DLL |
+| libqrencode | vcpkg | QR kodu | LGPL-2.1+ | DLL |
+| Microsoft Visual C++ çalışma zamanı | Visual Studio | C++ çalışma zamanı | Microsoft yazılım lisansı (dağıtılabilir) | DLL |
+
+Kurucu [Inno Setup](https://jrsoftware.org/isinfo.php) ile üretilir; yalnız derleme aracıdır, lisansı kurucunun
+dağıtımına izin verir. GoogleTest ve nlohmann-json Windows'ta da yalnız testlerde kullanılır (vcpkg).
+
 ## Tablet uygulaması (`android/`)
 
 | Bileşen | Kullanım | Lisans |

@@ -33,6 +33,7 @@ tools/**/.gradle/
 
 # --- Receiver (C++/CMake) ---
 receiver/build*/
+/out/
 receiver/cmake-build-*/
 receiver/debian/.debhelper/
 receiver/debian/casthop/

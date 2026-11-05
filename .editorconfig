@@ -11,6 +11,10 @@ indent_size = 4
 [*.{yml,yaml,json,toml,qml}]
 indent_size = 2
 
+# Inno Setup reads a script as UTF-8 only with a byte order mark.
+[*.iss]
+charset = utf-8-bom
+
 [*.md]
 trim_trailing_whitespace = false
 

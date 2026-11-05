@@ -4,6 +4,7 @@
 #include "common/Clock.h"
 #include "net/Connection.h"
 #include "net/MdnsPublisher.h"
+#include "net/SecureFile.h"
 #include "net/Server.h"
 #include "protocol/Qr.h"
 
@@ -13,9 +14,9 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLoggingCategory>
-#include <QSaveFile>
 #include <QSslSocket>
 
+#include <filesystem>
 #include <type_traits>
 
 Q_LOGGING_CATEGORY(lcRecv, "yansit.receiver")
@@ -49,14 +50,17 @@ std::optional<std::array<std::uint8_t, N>> arrayFromHex(const QString& s) {
     }
 }
 
-bool writeJsonFile(const QString& path, const QByteArray& data, bool privateFile) {
-    QSaveFile f(path);
-    if (!f.open(QIODevice::WriteOnly))
+/// UTF-16 keeps user names outside the ANSI code page intact on Windows.
+std::filesystem::path toPath(const QString& path) { return std::filesystem::path(path.toStdU16String()); }
+
+/// These files hold the pairing token and keys. QFile permissions would do nothing on Windows.
+bool writePrivateJson(const QString& path, const QByteArray& data) {
+    try {
+        net::writeFileAtomic(toPath(path), data.toStdString(), net::FileAccess::Private);
+        return true;
+    } catch (const std::exception&) {
         return false;
-    if (privateFile)
-        f.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    f.write(data);
-    return f.commit();
+    }
 }
 
 } // namespace
@@ -127,7 +131,7 @@ session::ReceiverInfo ReceiverService::receiverInfo() const {
 bool ReceiverService::start() {
     const QString identityDir = QDir(m_options.dataDir).filePath(QStringLiteral("identity"));
     try {
-        m_identity = net::loadOrCreateIdentity(identityDir.toStdString(), m_options.name.toStdString());
+        m_identity = net::loadOrCreateIdentity(toPath(identityDir), m_options.name.toStdString());
     } catch (const std::exception& e) {
         setError(tr("Security certificate could not be created: %1").arg(QString::fromUtf8(e.what())));
         return false;
@@ -144,7 +148,11 @@ bool ReceiverService::start() {
 
     const session::ReceiverInfo info = receiverInfo();
     if (info.videoDecoders.empty()) {
+#ifdef Q_OS_WIN
+        setError(tr("No H.264 video decoder found. Reinstall CastHop."));
+#else
         setError(tr("No H.264 video decoder found. Install the gstreamer1.0-libav package."));
+#endif
         return false;
     }
     m_sessions = std::make_unique<SessionManager>(*m_pairing, info,
@@ -568,7 +576,7 @@ void ReceiverService::writePairingFile() {
     o.insert(QStringLiteral("port"), m_options.port);
     o.insert(QStringLiteral("fingerprint"), hex(m_identity.fingerprint));
     o.insert(QStringLiteral("token"), QString::fromStdString(base64UrlNoPad(m_pairing->qrToken())));
-    if (!writeJsonFile(m_options.pairingFile, QJsonDocument(o).toJson(QJsonDocument::Compact), true))
+    if (!writePrivateJson(m_options.pairingFile, QJsonDocument(o).toJson(QJsonDocument::Compact)))
         qCWarning(lcRecv) << "eşleştirme dosyası yazılamadı:" << m_options.pairingFile;
 }
 
@@ -601,8 +609,7 @@ void ReceiverService::saveTrusted() {
         arr.append(o);
     }
     QDir().mkpath(m_options.dataDir);
-    if (!writeJsonFile(QDir(m_options.dataDir).filePath(QStringLiteral("trusted.json")), QJsonDocument(arr).toJson(),
-                       true))
+    if (!writePrivateJson(QDir(m_options.dataDir).filePath(QStringLiteral("trusted.json")), QJsonDocument(arr).toJson()))
         qCWarning(lcRecv) << "eşleştirmeler kaydedilemedi";
 }
 

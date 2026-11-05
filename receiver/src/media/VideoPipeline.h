@@ -32,6 +32,9 @@ struct DecoderChoice {
 /// `YANSIT_DECODER` (H.264) / `YANSIT_DECODER_H265` ortam değişkenleri listeyi tek bir fabrikaya indirir.
 std::vector<DecoderChoice> availableDecoders(std::uint8_t codec);
 
+/// Known decoders come from a table; anything else (`YANSIT_DECODER`) by the "Hardware" element class.
+bool isHardwareDecoder(const std::string& factory);
+
 /**
  * appsrc → h264parse|h265parse → çözücü → (GL: glupload → glcolorconvert → qml6glsink |
  * CPU: videoconvert → appsink | başsız: fakesink).

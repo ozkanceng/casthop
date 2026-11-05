@@ -1,4 +1,4 @@
-# LeakSanitizer bastırmaları — yalnız app_smoke testi için, yalnız üçüncü taraf kod.
+# LeakSanitizer bastırmaları — yalnız üçüncü taraf kod (app_smoke ve GLib kullanan birim testleri).
 #
 # GLib iş parçacığı başına verisi: QML görüntü okuyucu ve sahne grafiği iş parçacıkları çıkışta birleştirilmez.
 leak:libglib-2.0.so

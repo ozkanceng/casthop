@@ -172,7 +172,8 @@ bool AudioPipeline::build(std::uint8_t codec, const Bytes& config) {
         return false;
     }
 
-    // Zaman tabanı: sistem monotonik saati ve sıfır temel zaman → çalışma zamanı = CLOCK_MONOTONIC (ns).
+    // Zaman tabanı: sistem monotonik saati ve sıfır temel zaman → çalışma zamanı = monotonicUs() (ns). Saatlerin aynı
+    // başlangıcı paylaştığını common/Clock.h açıklar, test_media.cpp her platformda denetler.
     // Böylece paket zaman damgası doğrudan "çalınacağı an" olur; ses aygıtının kendi saati bu saate kölelenir.
     GstClock* clock = gst_system_clock_obtain();
     g_object_set(clock, "clock-type", GST_CLOCK_TYPE_MONOTONIC, nullptr);
