@@ -330,3 +330,53 @@ işletim sisteminde ekran kartı, ses aygıtı ve Wi-Fi olmadığı için aşağ
 - [ ] Windows kapatılırken yansıtma sürüyorsa tablet "alıcı kapandı" görüyor.
 
 Sonuçları ve `receiver.log` dosyasını bir GitHub issue'suna ekleyin.
+
+---
+
+## Apple — iPad/iPhone gönderici, Mac/Apple TV/iPad alıcı
+
+Simülatörde ReplayKit yayını çalışmaz. Paket testleri, uyum testi (`tools/conformance/run.py`) ve `casthop-sender` ile
+`casthop-receiver` uçtan uca Mac'te koşar; `BroadcastEngine` da aynı komutla (`--broadcast-store`) denenir. Aşağıdakiler
+yalnız **gerçek cihazda ve imzalı derlemede** denetlenebilir. Takım kimliği depoda yoktur: Xcode'da yerel olarak seçilir.
+
+### Hazırlık
+
+```
+cd apple && xcodegen generate && open CastHop.xcodeproj
+```
+
+`SenderApp` ve `BroadcastExtension` hedeflerine aynı takımı ve `group.io.github.ozkanceng.casthop` App Group'unu verin.
+
+### Gönderici
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Uygulamayı ilk kez açın | Yerel Ağ izni istenir; reddedilince ekranda ne yapılacağı yazar | ☐ |
+| 2 | Alıcının QR'ını kamerayla okutun | Kamera izni istenir, eşleşme biter, "Hazır" ekranı açılır | ☐ |
+| 3 | Bul ekranından alıcıyı seçip PIN girin | Bonjour alıcıyı listeler; eşleşme biter | ☐ |
+| 4 | Uygulamayı kapatıp açın | Hatırlanan alıcı duruyor; uzantı ile durum paylaşılıyor (App Group) | ☐ |
+| 5 | Yayın düğmesi → **Yayını Başlat** | Sistem seçicisinde yalnız CastHop seçili; alıcıda görüntü gelir | ☐ |
+| 6 | Cihazı dört yöne döndürün | Görüntü her yönde doğru açıda; `RPVideoSampleOrientationKey` eşlemesi ters değil | ☐ |
+| 7 | Video oynatan bir uygulama açın | Uygulama sesi alıcıda duyulur, hızlı veya cızırtılı değil (ReplayKit sesi büyük uçlu gelebilir) | ☐ |
+| 8 | Alıcı istatistiklerine bakın | Gecikme zamanla artmıyor; zaman damgaları ana saatle tutarlı | ☐ |
+| 9 | 30 dk en iyi kalitede yayın; Xcode → Debug Navigator ile uzantı belleği | Uzantı 50 MB altında kalır, sistem kapatmaz: en yüksek ____ MB | ☐ |
+| 10 | Yayın sırasında Wi-Fi'ı 5 sn kesin | 10 sn içinde RESUME ile görüntü döner | ☐ |
+| 11 | Wi-Fi'ı 20 sn kesin | Yayın anlaşılır hatayla biter; uygulamada neden yazar | ☐ |
+| 12 | Yayını Denetim Merkezi'nden durdurun | Alıcı bekleme ekranına döner; uygulama "Hazır" durumuna geçer | ☐ |
+| 13 | Tıkalı ağda yayın (Network Link Conditioner ile 3 Mbps) | Gecikme birikmez; Network.framework gönderim tamponu kuyruğu büyütmüyor | ☐ |
+
+### Alıcı
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Mac: uygulamayı açın, pencereye bakın | Bekleme ekranı QR ve PIN ile 3 m'den okunur; Tam ekran çalışır | ☐ |
+| 2 | Mac: ilk açılış | Yerel Ağ ve Güvenlik Duvarı sorusu çıkar, izin sonrası bağlantı gelir | ☐ |
+| 3 | Mac: Android ve iPad ile yansıtma | Donanım çözücü açık (`hardware`), kare düşmüyor | ☐ |
+| 4 | Apple TV: uzaktan kumandayla Ayarlar'a girip çıkın | Odak halkası görünür, tüm öğelere ulaşılır | ☐ |
+| 5 | Apple TV: yansıtma sırasında kumandaya basın | Denetimler açılır, odak **Yansıtmayı durdur** üzerinde; Menu kapatır | ☐ |
+| 6 | Apple TV: ikinci gönderici bağlansın | Onay penceresi çıkar, odak **İzin ver** üzerinde, kumandayla seçilir | ☐ |
+| 7 | iPad: yatay/dikey döndürün | QR ve kod ekrana sığar; video kesilmez | ☐ |
+| 8 | Apple TV ve iPad: uygulamayı yeniden başlatın | Parmak izi aynı kalır; eşleşmiş gönderici yeniden QR istemez | ☐ |
+| 9 | Opus gönderen Android ile ses | AudioToolbox çözer; cihaz çözemezse AAC seçilir | ☐ |
+
+**Sonuç bildirimi:** cihaz modeli, sistem sürümü, ağ, ölçülen bellek ve gecikme değerleri.

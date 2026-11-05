@@ -9,6 +9,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 - Ağda bulma listesi alıcının türünü (tahta, TV, bilgisayar, tablet) simgeyle gösteriyor.
 - Android TV alıcısı: televizyon, Android tahta veya tablet artık CastHop ile yansıtma alabiliyor. QR veya kodla bağlanılır; kumandayla da dokunmayla da kullanılır. Ses, eşleşme ve ağda bulma tahtadaki gibi çalışıyor.
 - Windows alıcısı: `casthop-setup-x86_64.exe` kurucusu Qt ve GStreamer'ı içinde getiriyor, güvenlik duvarı kuralını ekliyor ve Başlat menüsüne giriyor. Görüntü varsa Direct3D 11 donanım çözücüsüyle çözülüyor, işlemciyle çiziliyor. Ağda bulma `DnsServiceRegister` ile çalışıyor; anahtar dosyası yalnız geçerli kullanıcıya açık.
+- Apple desteği: Mac, Apple TV ve iPad alıcı olarak çalışıyor; iPhone ve iPad ekranı ReplayKit yayınıyla gönderiliyor. Aynı protokol kullanılıyor, Android ve tahta ile birlikte çalışıyor. Gerçek cihaz denetimi henüz yapılmadı (`docs/TESTING.md`).
 - Ağ uzun süre yetersizse tablet çözünürlüğü ve kare hızını kendiliğinden düşürüyor, ağ düzelince geri yükseltiyor; öğretmen Ayarlar'a girmek zorunda değil.
 
 ### Düzeltildi / Fixed

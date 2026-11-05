@@ -1,0 +1,73 @@
+name: Apple
+
+on:
+  push:
+    branches: [main]
+    paths: ["apple/**", "protocol/vectors/**", ".github/workflows/apple.yml"]
+  pull_request:
+    paths: ["apple/**", "protocol/vectors/**", ".github/workflows/apple.yml"]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Package tests
+        working-directory: apple/CastHopKit
+        run: swift test
+
+  apps:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            scheme: ReceiverApp
+            destination: generic/platform=macOS
+          - name: macOS sender tool
+            scheme: casthop-sender
+            destination: generic/platform=macOS
+          - name: macOS receiver tool
+            scheme: casthop-receiver
+            destination: generic/platform=macOS
+          - name: iOS receiver
+            scheme: ReceiverApp
+            destination: generic/platform=iOS Simulator
+          - name: iOS sender
+            scheme: SenderApp
+            destination: generic/platform=iOS Simulator
+          - name: tvOS receiver
+            scheme: ReceiverApp
+            destination: generic/platform=tvOS Simulator
+            platform: tvOS
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Download the simulator platform
+        if: matrix.platform != ''
+        run: xcodebuild -downloadPlatform ${{ matrix.platform }}
+
+      - name: Generate the project
+        working-directory: apple
+        run: xcodegen generate
+
+      - name: Build without signing
+        working-directory: apple
+        run: >
+          xcodebuild build
+          -project CastHop.xcodeproj
+          -scheme "${{ matrix.scheme }}"
+          -destination "${{ matrix.destination }}"
+          CODE_SIGNING_ALLOWED=NO
