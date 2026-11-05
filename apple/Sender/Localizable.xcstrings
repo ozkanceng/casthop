@@ -1,0 +1,2403 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "\"Pause\" keeps the last picture on the board while you do something else on the tablet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"Pause\" keeps the last picture on the board while you do something else on the tablet."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"Duraklat\": tahtada son görüntü kalır, tabletinizde başka bir şey yapabilirsiniz."
+          }
+        }
+      }
+    },
+    "1080p, 60 fps. 5 GHz Wi-Fi recommended.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1080p, 60 fps. 5 GHz Wi-Fi recommended."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1080p, 60 fps. 5 GHz Wi-Fi önerilir."
+          }
+        }
+      }
+    },
+    "720p, 30 fps for crowded or 2.4 GHz networks.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "720p, 30 fps for crowded or 2.4 GHz networks."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kalabalık veya 2,4 GHz ağlar için 720p, 30 fps."
+          }
+        }
+      }
+    },
+    "A board you have connected to appears under \"Remembered boards\" on the home screen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A board you have connected to appears under \"Remembered boards\" on the home screen."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlandığınız tahta ana ekranda \"Hatırlanan tahtalar\" altında listelenir."
+          }
+        }
+      }
+    },
+    "A few permissions are needed first": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A few permissions are needed first"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlamadan önce birkaç izin gerekiyor"
+          }
+        }
+      }
+    },
+    "Advanced": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Advanced"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gelişmiş"
+          }
+        }
+      }
+    },
+    "Another tablet is mirroring and the switch was not allowed.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another tablet is mirroring and the switch was not allowed."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtada başka bir yansıtma sürüyor ve geçişe izin verilmedi."
+          }
+        }
+      }
+    },
+    "Another tablet took over": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another tablet took over"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başka bir tablet devraldı"
+          }
+        }
+      }
+    },
+    "Auto": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otomatik"
+          }
+        }
+      }
+    },
+    "Balanced": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balanced"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dengeli"
+          }
+        }
+      }
+    },
+    "Before you start": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Before you start"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Başlamadan önce"
+          }
+        }
+      }
+    },
+    "Best quality": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Best quality"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En iyi kalite"
+          }
+        }
+      }
+    },
+    "Board not listed? Is CastHop open on the board and the tablet on the same network? School networks may block discovery; the QR code always works.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Board not listed? Is CastHop open on the board and the tablet on the same network? School networks may block discovery; the QR code always works."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahta listede yoksa: tahtada CastHop açık ve tablet aynı ağda mı? Okul ağları aramayı engelleyebilir; QR kodu her zaman çalışır."
+          }
+        }
+      }
+    },
+    "Boards on this network": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Boards on this network"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ağdaki tahtalar"
+          }
+        }
+      }
+    },
+    "Camera": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Camera"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamera"
+          }
+        }
+      }
+    },
+    "Cancel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vazgeç"
+          }
+        }
+      }
+    },
+    "Cannot reach the board": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cannot reach the board"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtaya ulaşılamadı"
+          }
+        }
+      }
+    },
+    "CastHop is not running on the board": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CastHop is not running on the board"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtada CastHop açık değil"
+          }
+        }
+      }
+    },
+    "CastHop was closed on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CastHop was closed on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtada CastHop kapatıldı."
+          }
+        }
+      }
+    },
+    "Check that \"Play sound on the board\" is on in Settings. Some apps do not allow their audio to be shared.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check that \"Play sound on the board\" is on in Settings. Some apps do not allow their audio to be shared."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarlar'da \"Sesi tahtaya aktar\" açık mı bakın. Bazı uygulamalar sesini paylaşmaya izin vermez."
+          }
+        }
+      }
+    },
+    "Check the Wi-Fi connection and connect again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check the Wi-Fi connection and connect again."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wi-Fi bağlantısını kontrol edip tekrar bağlanın."
+          }
+        }
+      }
+    },
+    "Choose \"Balanced\" or \"Weak network\" in Settings and try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose \"Balanced\" or \"Weak network\" in Settings and try again."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarlardan \"Dengeli\" veya \"Zayıf ağ\" kalitesini seçip tekrar deneyin."
+          }
+        }
+      }
+    },
+    "Choose a board first": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a board first"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Önce bir tahta seçin"
+          }
+        }
+      }
+    },
+    "Code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kod"
+          }
+        }
+      }
+    },
+    "Common problems": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Common problems"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sık sorunlar"
+          }
+        }
+      }
+    },
+    "Connect in 3 steps": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect in 3 steps"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "3 adımda bağlanın"
+          }
+        }
+      }
+    },
+    "Connect to board": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect to board"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtaya Bağlan"
+          }
+        }
+      }
+    },
+    "Connect with code (no QR)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect with code (no QR)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kodla bağlan (QR olmadan)"
+          }
+        }
+      }
+    },
+    "Connect with one tap to boards you have scanned once.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect with one tap to boards you have scanned once."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bir kez QR ile bağlandığınız tahtaya buradan tek dokunuşla bağlanırsınız."
+          }
+        }
+      }
+    },
+    "Connect with the QR code (recommended)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect with the QR code (recommended)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR koduyla bağlanın (önerilen)"
+          }
+        }
+      }
+    },
+    "Connect with the code (no camera)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect with the code (no camera)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kodla bağlanın (kamerasız)"
+          }
+        }
+      }
+    },
+    "Connecting to %@…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connecting to %@…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ tahtasına bağlanılıyor…"
+          }
+        }
+      }
+    },
+    "Connection lost": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection lost"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı koptu"
+          }
+        }
+      }
+    },
+    "Connection: fair": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection: fair"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı: orta"
+          }
+        }
+      }
+    },
+    "Connection: good": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection: good"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı: iyi"
+          }
+        }
+      }
+    },
+    "Connection: poor": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection: poor"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı: zayıf"
+          }
+        }
+      }
+    },
+    "Continue": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devam"
+          }
+        }
+      }
+    },
+    "Data rate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data rate"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veri hızı"
+          }
+        }
+      }
+    },
+    "Each QR code works only once. Scan the new QR code on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Each QR code works only once. Scan the new QR code on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Her QR kodu bir kez kullanılabilir. Tahtadaki yeni QR kodunu okutun."
+          }
+        }
+      }
+    },
+    "Enter the 6-digit code shown on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter the 6-digit code shown on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtanın ekranındaki 6 haneli kodu girin."
+          }
+        }
+      }
+    },
+    "Enter the current 6-digit code shown on the board. After 5 wrong attempts the code changes and you must wait 30 seconds.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter the current 6-digit code shown on the board. After 5 wrong attempts the code changes and you must wait 30 seconds."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtanın ekranındaki güncel 6 haneli kodu girin. 5 hatalı denemeden sonra kod değişir ve 30 saniye beklemek gerekir."
+          }
+        }
+      }
+    },
+    "Forget": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forget"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unut"
+          }
+        }
+      }
+    },
+    "Forget %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forget %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ tahtasını unut"
+          }
+        }
+      }
+    },
+    "Frame rate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frame rate"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kare hızı"
+          }
+        }
+      }
+    },
+    "Frames/s": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frames/s"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kare/sn"
+          }
+        }
+      }
+    },
+    "How do I connect?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How do I connect?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nasıl bağlanırım?"
+          }
+        }
+      }
+    },
+    "If Wi-Fi drops briefly, mirroring recovers by itself.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If Wi-Fi drops briefly, mirroring recovers by itself."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wi-Fi kısa süre koparsa yansıtma kendiliğinden sürer."
+          }
+        }
+      }
+    },
+    "If the board can decode it in hardware, the same quality needs less data. Otherwise H.264 is used.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If the board can decode it in hardware, the same quality needs less data. Otherwise H.264 is used."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahta donanımla çözebiliyorsa aynı kalitede daha az veri gönderilir. Tahta desteklemiyorsa H.264 kullanılır."
+          }
+        }
+      }
+    },
+    "If the school network blocks it: use the tablet's hotspot": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If the school network blocks it: use the tablet's hotspot"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Okul ağı engelliyorsa: tabletin hotspot'u"
+          }
+        }
+      }
+    },
+    "In Settings, set picture quality to \"Balanced\" or \"Weak network\". Prefer 5 GHz Wi-Fi.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In Settings, set picture quality to \"Balanced\" or \"Weak network\". Prefer 5 GHz Wi-Fi."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarlar'dan görüntü kalitesini \"Dengeli\" ya da \"Zayıf ağ\" yapın. Mümkünse 5 GHz Wi-Fi kullanın."
+          }
+        }
+      }
+    },
+    "In later lessons": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In later lessons"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonraki derslerde"
+          }
+        }
+      }
+    },
+    "Incompatible versions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incompatible versions"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürümler uyumsuz"
+          }
+        }
+      }
+    },
+    "Keep the tablet and the board on the same Wi-Fi network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep the tablet and the board on the same Wi-Fi network."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablet ile tahta aynı Wi-Fi ağında olsun."
+          }
+        }
+      }
+    },
+    "Latency": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Latency"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gecikme"
+          }
+        }
+      }
+    },
+    "Local network": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Local network"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerel ağ"
+          }
+        }
+      }
+    },
+    "Lower bitrate, smooth motion.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lower bitrate, smooth motion."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Daha düşük bit hızı, akıcı görüntü."
+          }
+        }
+      }
+    },
+    "Maximum bitrate": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maximum bitrate"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En yüksek bit hızı"
+          }
+        }
+      }
+    },
+    "Maximum resolution": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Maximum resolution"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En büyük çözünürlük"
+          }
+        }
+      }
+    },
+    "Mirror your tablet screen to the classroom whiteboard, wirelessly.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mirror your tablet screen to the classroom whiteboard, wirelessly."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablet ekranını sınıftaki akıllı tahtaya kablosuz yansıtın."
+          }
+        }
+      }
+    },
+    "Mirroring ended": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mirroring ended"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yansıtma durdu"
+          }
+        }
+      }
+    },
+    "Mirroring ends when the screen locks or it is stopped by the system. You can connect again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mirroring ends when the screen locks or it is stopped by the system. You can connect again."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran kilitlendiğinde veya sistemden durdurulduğunda yansıtma biter. Yeniden bağlanabilirsiniz."
+          }
+        }
+      }
+    },
+    "Mirroring stopped.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mirroring stopped."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yansıtma durduruldu."
+          }
+        }
+      }
+    },
+    "Mirroring stops when the screen locks": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mirroring stops when the screen locks"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ekran kilitlenince yansıtma duruyor"
+          }
+        }
+      }
+    },
+    "Mirroring to %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mirroring to %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ tahtasına yansıtılıyor"
+          }
+        }
+      }
+    },
+    "Mirroring was stopped on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mirroring was stopped on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yansıtma tahtadan durduruldu."
+          }
+        }
+      }
+    },
+    "New board with QR": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New board with QR"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR ile yeni tahta"
+          }
+        }
+      }
+    },
+    "No answer from the board": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No answer from the board"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtadan yanıt gelmedi"
+          }
+        }
+      }
+    },
+    "No suitable video encoder was found on this tablet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No suitable video encoder was found on this tablet."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablette uygun bir video kodlayıcı bulunamadı."
+          }
+        }
+      }
+    },
+    "OK": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamam"
+          }
+        }
+      }
+    },
+    "On the board, join the tablet's network from the network icon.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On the board, join the tablet's network from the network icon."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtada ağ simgesinden tabletin ağına bağlanın."
+          }
+        }
+      }
+    },
+    "On the first connection the app shows which permissions it needs and why.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On the first connection the app shows which permissions it needs and why."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "İlk bağlantıda uygulama gereken izinleri ve nedenlerini gösterir."
+          }
+        }
+      }
+    },
+    "On the tablet, open Settings → Personal Hotspot and turn on Allow Others to Join.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On the tablet, open Settings → Personal Hotspot and turn on Allow Others to Join."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablette Ayarlar → Kişisel Erişim Noktası'nı açın ve Başkalarının Katılmasına İzin Ver'i etkinleştirin."
+          }
+        }
+      }
+    },
+    "On the tablet, tap \"Connect to board\" (\"New board with QR\" if you already have remembered boards).": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On the tablet, tap \"Connect to board\" (\"New board with QR\" if you already have remembered boards)."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablette \"Tahtaya Bağlan\"a dokunun (kayıtlı tahta varsa \"QR ile yeni tahta\"ya)."
+          }
+        }
+      }
+    },
+    "Only values supported by this tablet are shown. The board and network may still lower them.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only values supported by this tablet are shown. The board and network may still lower them."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yalnız bu tabletin desteklediği değerler gösterilir. Tahta ve ağ yine de değerleri düşürebilir."
+          }
+        }
+      }
+    },
+    "Open CastHop and pick a board before starting the broadcast.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open CastHop and pick a board before starting the broadcast."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yayını başlatmadan önce CastHop'u açıp bir tahta seçin."
+          }
+        }
+      }
+    },
+    "Open CastHop on the board. A QR code and a 6-digit code appear.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open CastHop on the board. A QR code and a 6-digit code appear."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtada CastHop'u açın. Ekranda QR kod ve 6 haneli kod görünür."
+          }
+        }
+      }
+    },
+    "Open settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open settings"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarları aç"
+          }
+        }
+      }
+    },
+    "Open the CastHop app on the board and scan the new QR code.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open the CastHop app on the board and scan the new QR code."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtada CastHop uygulamasını açın ve yeni QR kodunu okutun."
+          }
+        }
+      }
+    },
+    "Pause": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duraklat"
+          }
+        }
+      }
+    },
+    "Paused. The board keeps the last picture; your screen is not shared until you resume.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paused. The board keeps the last picture; your screen is not shared until you resume."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duraklatıldı. Tahtada son görüntü kalır; devam edene kadar ekranınız paylaşılmaz."
+          }
+        }
+      }
+    },
+    "Pick your board from the boards on the same network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick your board from the boards on the same network."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aynı ağda bulunan tahtalardan sizinkini seçin."
+          }
+        }
+      }
+    },
+    "Picture quality": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Picture quality"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görüntü kalitesi"
+          }
+        }
+      }
+    },
+    "Play sound on the board": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Play sound on the board"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesi tahtaya aktar"
+          }
+        }
+      }
+    },
+    "Point the camera at the QR code on the board": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Point the camera at the QR code on the board"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtadaki QR kodunu çerçeveye alın"
+          }
+        }
+      }
+    },
+    "Point the camera at the QR code on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Point the camera at the QR code on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamerayı tahtadaki QR koda tutun."
+          }
+        }
+      }
+    },
+    "Reconnecting…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconnecting…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı yeniden kuruluyor…"
+          }
+        }
+      }
+    },
+    "Remembered boards": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remembered boards"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hatırlanan tahtalar"
+          }
+        }
+      }
+    },
+    "Resolution": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resolution"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çözünürlük"
+          }
+        }
+      }
+    },
+    "Resume": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resume"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Devam et"
+          }
+        }
+      }
+    },
+    "Scan the QR code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan the QR code"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR kodunu okut"
+          }
+        }
+      }
+    },
+    "Scan the new QR code that appears on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan the new QR code that appears on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtada beliren yeni QR kodunu okutun."
+          }
+        }
+      }
+    },
+    "Searching for boards on the same network…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Searching for boards on the same network…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aynı ağdaki tahtalar aranıyor…"
+          }
+        }
+      }
+    },
+    "Security check failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Security check failed"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenlik denetimi başarısız"
+          }
+        }
+      }
+    },
+    "Settings": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayarlar"
+          }
+        }
+      }
+    },
+    "Some permissions were not granted. You can enable them in Settings.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Some permissions were not granted. You can enable them in Settings."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bazı izinler verilmedi. Ayarlardan açabilirsiniz."
+          }
+        }
+      }
+    },
+    "Something went wrong. Please try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Something went wrong. Please try again."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beklenmeyen bir hata oluştu. Tekrar deneyin."
+          }
+        }
+      }
+    },
+    "Sound cannot be shared between this tablet and board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound cannot be shared between this tablet and board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu tablet ile tahta arasında ses aktarılamıyor."
+          }
+        }
+      }
+    },
+    "Sound could not be shared; video continues.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound could not be shared; video continues."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses aktarılamadı; görüntü sürüyor."
+          }
+        }
+      }
+    },
+    "Sound is off (Settings).": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound is off (Settings)."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses kapalı (Ayarlar)."
+          }
+        }
+      }
+    },
+    "Sound is off on the board; it plays on the tablet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound is off on the board; it plays on the tablet."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtada ses kapalı; ses tabletten çalar."
+          }
+        }
+      }
+    },
+    "Sound is playing on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound is playing on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses tahtadan çalıyor."
+          }
+        }
+      }
+    },
+    "Start mirroring": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start mirroring"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yansıtmayı Başlat"
+          }
+        }
+      }
+    },
+    "Starting…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starting…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yansıtma başlıyor…"
+          }
+        }
+      }
+    },
+    "Step-by-step guide and common problems": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step-by-step guide and common problems"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adım adım rehber ve sık sorunlar"
+          }
+        }
+      }
+    },
+    "Stop mirroring": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop mirroring"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yansıtmayı Durdur"
+          }
+        }
+      }
+    },
+    "Tap \"Connect with code\".": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap \"Connect with code\"."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"Kodla bağlan\"a dokunun."
+          }
+        }
+      }
+    },
+    "Tap \"Start mirroring\", then \"Start Broadcast\" in the system window.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap \"Start mirroring\", then \"Start Broadcast\" in the system window."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\"Yansıtmayı Başlat\"a, sonra sistem penceresinde \"Yayını Başlat\"a dokunun."
+          }
+        }
+      }
+    },
+    "Tap its name, then \"Start mirroring\". CastHop must be open on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap its name, then \"Start mirroring\". CastHop must be open on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtanın adına, sonra \"Yansıtmayı Başlat\"a dokunmanız yeter; tahtada CastHop açık olmalıdır."
+          }
+        }
+      }
+    },
+    "Tap the button, then choose Start Broadcast in the system window.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap the button, then choose Start Broadcast in the system window."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Düğmeye dokunun, sonra sistem penceresinde Yayını Başlat'ı seçin."
+          }
+        }
+      }
+    },
+    "Temporarily locked": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temporarily locked"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçici olarak kilitlendi"
+          }
+        }
+      }
+    },
+    "The QR code is no longer valid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The QR code is no longer valid"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "QR kodu artık geçerli değil"
+          }
+        }
+      }
+    },
+    "The approval prompt on the board was not answered in time. Try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The approval prompt on the board was not answered in time. Try again."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtadaki onay penceresi zamanında yanıtlanmadı. Tekrar deneyin."
+          }
+        }
+      }
+    },
+    "The board allowed another tablet to mirror.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The board allowed another tablet to mirror."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahta, başka bir tabletin yansıtmasına izin verdi."
+          }
+        }
+      }
+    },
+    "The board declined": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The board declined"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahta isteği reddetti"
+          }
+        }
+      }
+    },
+    "The board no longer knows this tablet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The board no longer knows this tablet"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahta bu tableti tanımıyor"
+          }
+        }
+      }
+    },
+    "The camera could not be opened.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The camera could not be opened."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kamera açılamadı."
+          }
+        }
+      }
+    },
+    "The pairing may have been removed on the board. Scan the QR code on the board again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The pairing may have been removed on the board. Scan the QR code on the board again."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtadaki eşleştirme silinmiş olabilir. Tahtadaki QR kodunu yeniden okutun."
+          }
+        }
+      }
+    },
+    "The picture stutters or looks blurry": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The picture stutters or looks blurry"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görüntü takılıyor veya bulanık"
+          }
+        }
+      }
+    },
+    "The tablet and the board must be on the same Wi-Fi network. The school network may block devices from seeing each other: try turning on the tablet's hotspot and connecting the board to it.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The tablet and the board must be on the same Wi-Fi network. The school network may block devices from seeing each other: try turning on the tablet's hotspot and connecting the board to it."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablet ve tahta aynı Wi-Fi ağında olmalı. Okul ağı cihazların birbirini görmesini engelliyor olabilir: tabletin hotspot'unu açıp tahtayı ona bağlamayı deneyin."
+          }
+        }
+      }
+    },
+    "There is no sound": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no sound"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ses gelmiyor"
+          }
+        }
+      }
+    },
+    "This QR code belongs to another board or a device on the network is intercepting the connection. Scan the current QR code on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This QR code belongs to another board or a device on the network is intercepting the connection. Scan the current QR code on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu QR kodu başka bir tahtaya ait ya da ağda araya giren bir cihaz var. Tahtadaki güncel QR kodunu okutun."
+          }
+        }
+      }
+    },
+    "This is not a CastHop code. Scan the QR code on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is not a CastHop code. Scan the QR code on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu bir CastHop kodu değil. Tahtadaki QR kodunu okutun."
+          }
+        }
+      }
+    },
+    "This tablet is not supported": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This tablet is not supported"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu tablet desteklenmiyor"
+          }
+        }
+      }
+    },
+    "To connect to the board on the same network.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To connect to the board on the same network."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aynı ağdaki tahtaya bağlanmak için."
+          }
+        }
+      }
+    },
+    "To read the QR code on the board. Nothing is recorded.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To read the QR code on the board. Nothing is recorded."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtadaki QR kodunu okumak için. Görüntü kaydedilmez."
+          }
+        }
+      }
+    },
+    "To stop, tap \"Stop mirroring\" or the red indicator in the status bar.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To stop, tap \"Stop mirroring\" or the red indicator in the status bar."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durdurmak için \"Yansıtmayı Durdur\"a ya da durum çubuğundaki kırmızı göstergeye dokunun."
+          }
+        }
+      }
+    },
+    "Too many attempts": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many attempts"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çok fazla deneme"
+          }
+        }
+      }
+    },
+    "Too many wrong codes. Wait 30 seconds and use the new code on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many wrong codes. Wait 30 seconds and use the new code on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çok sayıda hatalı kod denendi. 30 saniye bekleyip tahtadaki yeni kodu kullanın."
+          }
+        }
+      }
+    },
+    "Update the tablet app and CastHop on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update the tablet app and CastHop on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tablet uygulamasını ve tahtadaki CastHop'u güncelleyin."
+          }
+        }
+      }
+    },
+    "Use H.265 (experimental)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use H.265 (experimental)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "H.265 kullan (deneysel)"
+          }
+        }
+      }
+    },
+    "Version %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version %@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sürüm %@"
+          }
+        }
+      }
+    },
+    "Video and app sounds play from the board's speakers. Some apps (e.g. calls, some video apps) do not allow their sound to be shared.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video and app sounds play from the board's speakers. Some apps (e.g. calls, some video apps) do not allow their sound to be shared."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video ve uygulama sesleri tahtanın hoparlöründen çalar. Bazı uygulamalar (ör. telefon görüşmeleri, bazı video uygulamaları) sesini paylaşmaya izin vermez."
+          }
+        }
+      }
+    },
+    "Video encoding failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video encoding failed"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Görüntü kodlanamadı"
+          }
+        }
+      }
+    },
+    "Wait a few seconds and try again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wait a few seconds and try again."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Birkaç saniye bekleyip tekrar deneyin."
+          }
+        }
+      }
+    },
+    "Waiting for approval on %@…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for approval on %@…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ tahtasında onay bekleniyor…"
+          }
+        }
+      }
+    },
+    "Weak network": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weak network"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zayıf ağ"
+          }
+        }
+      }
+    },
+    "Weak network: quality lowered automatically": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weak network: quality lowered automatically"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ağ zayıf: kalite otomatik düşürüldü"
+          }
+        }
+      }
+    },
+    "While mirroring": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "While mirroring"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yansıtma sırasında"
+          }
+        }
+      }
+    },
+    "Wrong code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wrong code"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kod yanlış"
+          }
+        }
+      }
+    },
+    "You can stop from the status bar or this screen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can stop from the status bar or this screen."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durum çubuğundan veya bu ekrandan durdurabilirsiniz."
+          }
+        }
+      }
+    },
+    "iOS ends a broadcast when the device locks. Increase the Auto-Lock time.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS ends a broadcast when the device locks. Increase the Auto-Lock time."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iOS, cihaz kilitlenince yayını bitirir. Otomatik Kilit süresini uzatın."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

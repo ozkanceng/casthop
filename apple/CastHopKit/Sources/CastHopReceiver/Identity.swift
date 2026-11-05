@@ -207,13 +207,17 @@ public enum IdentityStore {
             return existing
         }
         removeAll()
+        // Only the private key is stored: an identity query could otherwise pair the certificate with the public key,
+        // and TLS then fails when it signs.
         let attributes: [String: Any] = [
             kSecAttrKeyType as String: kSecAttrKeyTypeECSECPrimeRandom,
             kSecAttrKeySizeInBits as String: 256,
-            kSecAttrIsPermanent as String: true,
-            kSecAttrApplicationTag as String: keyTag,
-            kSecAttrLabel as String: subject,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            kSecPrivateKeyAttrs as String: [
+                kSecAttrIsPermanent as String: true,
+                kSecAttrApplicationTag as String: keyTag,
+                kSecAttrLabel as String: subject,
+                kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            ] as [String: Any],
         ]
         var error: Unmanaged<CFError>?
         guard let key = SecKeyCreateRandomKey(attributes as CFDictionary, &error) else { throw IdentityError.keyGeneration }
@@ -233,6 +237,9 @@ public enum IdentityStore {
                                           kSecMatchLimit as String: kSecMatchLimitOne] as CFDictionary, &result)
         guard status == errSecSuccess, let result else { throw IdentityError.keychain(status) }
         let identity = result as! SecIdentity
+        var key: SecKey?
+        guard SecIdentityCopyPrivateKey(identity, &key) == errSecSuccess, let key,
+              SecKeyIsAlgorithmSupported(key, .sign, .ecdsaSignatureMessageX962SHA256) else { throw IdentityError.incomplete }
         var certificate: SecCertificate?
         let copied = SecIdentityCopyCertificate(identity, &certificate)
         guard copied == errSecSuccess, let certificate else { throw IdentityError.keychain(copied) }

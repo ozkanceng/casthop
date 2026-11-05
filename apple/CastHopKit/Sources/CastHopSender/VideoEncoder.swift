@@ -25,7 +25,10 @@ public final class VideoToolboxCaps: VideoEncoderCaps {
 
     private static func probe(_ type: CMVideoCodecType, width: Int, height: Int, hardware: Bool) -> Bool {
         var spec: [String: Any] = [:]
-        if hardware { spec[kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder as String] = true }
+        // Before iOS 17.4 the key is not public, and iOS devices only have hardware encoders.
+        if hardware, #available(iOS 17.4, *) {
+            spec[kVTVideoEncoderSpecification_RequireHardwareAcceleratedVideoEncoder as String] = true
+        }
         var encoderId: CFString?
         var properties: CFDictionary?
         return VTCopySupportedPropertyDictionaryForEncoder(width: Int32(width), height: Int32(height), codecType: type,
@@ -114,8 +117,12 @@ public final class VideoToolboxEncoder: VideoSource, @unchecked Sendable {
     public func start(plan: StreamPlan, sink: @escaping (EncodedFrame) -> Void, onError: @escaping (Error) -> Void) throws {
         let created = try Self.makeSession(plan: plan)
         var hardware: CFTypeRef?
-        VTSessionCopyProperty(created, key: kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder, allocator: nil,
-                              valueOut: &hardware)
+        if #available(iOS 17.4, *) {
+            VTSessionCopyProperty(created, key: kVTCompressionPropertyKey_UsingHardwareAcceleratedVideoEncoder, allocator: nil,
+                                  valueOut: &hardware)
+        } else {
+            hardware = kCFBooleanTrue
+        }
         lock.lock()
         session = created
         self.plan = plan
