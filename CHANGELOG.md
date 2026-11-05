@@ -5,6 +5,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 ## [Yayımlanmamış / Unreleased]
 
 ### Eklendi / Added
+- Apple desteği: Mac, Apple TV ve iPad alıcı olarak çalışıyor; iPhone ve iPad ekranı ReplayKit yayınıyla gönderiliyor. Aynı protokol kullanılıyor, Android ve tahta ile birlikte çalışıyor. Gerçek cihaz denetimi henüz yapılmadı (`docs/TESTING.md`).
 - Ağ uzun süre yetersizse tablet çözünürlüğü ve kare hızını kendiliğinden düşürüyor, ağ düzelince geri yükseltiyor; öğretmen Ayarlar'a girmek zorunda değil.
 
 ### Düzeltildi / Fixed
