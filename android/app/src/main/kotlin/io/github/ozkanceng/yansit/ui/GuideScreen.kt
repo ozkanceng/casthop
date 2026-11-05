@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.ReportProblem
 import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.WifiTethering
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
@@ -52,6 +54,42 @@ object GuideSteps {
 private val prepareItems = listOf(R.string.guide_prepare_1, R.string.guide_prepare_2, R.string.guide_prepare_3)
 private val duringItems = listOf(R.string.guide_during_1, R.string.guide_during_2, R.string.guide_during_3)
 
+/** How to install CastHop on one kind of receiver. */
+private class SetupGuide(@StringRes val title: Int, val steps: List<Int>, @StringRes val note: Int)
+
+private val setupGuides = listOf(
+    SetupGuide(
+        R.string.guide_setup_pardus,
+        listOf(
+            R.string.guide_setup_pardus_1,
+            R.string.guide_setup_pardus_2,
+            R.string.guide_setup_pardus_3,
+            R.string.guide_setup_pardus_4,
+        ),
+        R.string.guide_setup_pardus_note,
+    ),
+    SetupGuide(
+        R.string.guide_setup_tv,
+        listOf(R.string.guide_setup_tv_1, R.string.guide_setup_tv_2, R.string.guide_setup_tv_3),
+        R.string.guide_setup_tv_note,
+    ),
+    SetupGuide(
+        R.string.guide_setup_android,
+        listOf(R.string.guide_setup_android_1, R.string.guide_setup_android_2, R.string.guide_setup_android_3),
+        R.string.guide_setup_android_note,
+    ),
+    SetupGuide(
+        R.string.guide_setup_windows,
+        listOf(R.string.guide_setup_windows_1, R.string.guide_setup_windows_2, R.string.guide_setup_windows_3),
+        R.string.guide_setup_windows_note,
+    ),
+    SetupGuide(
+        R.string.guide_setup_mac,
+        listOf(R.string.guide_setup_mac_1, R.string.guide_setup_mac_2, R.string.guide_setup_mac_3),
+        R.string.guide_setup_mac_note,
+    ),
+)
+
 /** Sık sorun: soru → çözüm. */
 private val faqItems = listOf(
     R.string.err_unreachable to R.string.err_unreachable_body,
@@ -70,6 +108,9 @@ fun GuideScreen(onScan: () -> Unit, onCode: () -> Unit, onBack: () -> Unit) {
             val first: @Composable () -> Unit = {
                 SectionCard(stringResource(R.string.guide_prepare_title), Modifier.fillMaxWidth(), Icons.Rounded.Checklist) {
                     CheckList(prepareItems)
+                }
+                SectionCard(stringResource(R.string.guide_setup_title), Modifier.fillMaxWidth(), Icons.Rounded.Download) {
+                    SetupGuides()
                 }
                 SectionCard(stringResource(R.string.guide_qr_title), Modifier.fillMaxWidth(), Icons.Rounded.QrCodeScanner) {
                     StepList(GuideSteps.qr)
@@ -119,7 +160,38 @@ fun GuideScreen(onScan: () -> Unit, onCode: () -> Unit, onBack: () -> Unit) {
 }
 
 @Composable
+private fun SetupGuides() {
+    Text(stringResource(R.string.guide_setup_intro), style = MaterialTheme.typography.bodyLarge)
+    Column {
+        setupGuides.forEachIndexed { index, guide ->
+            if (index > 0) HorizontalDivider()
+            ExpandableItem(guide.title) {
+                StepList(guide.steps)
+                GuideNote(guide.note)
+                GuideNote(R.string.guide_setup_done)
+            }
+        }
+    }
+    GuideNote(R.string.guide_setup_apple)
+}
+
+@Composable
+private fun GuideNote(@StringRes text: Int, modifier: Modifier = Modifier) {
+    Text(
+        stringResource(text),
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
+}
+
+@Composable
 private fun FaqItem(@StringRes question: Int, @StringRes answer: Int) {
+    ExpandableItem(question) { GuideNote(answer) }
+}
+
+@Composable
+private fun ExpandableItem(@StringRes title: Int, content: @Composable ColumnScope.() -> Unit) {
     var open by rememberSaveable { mutableStateOf(false) }
     val state = stringResource(if (open) R.string.state_expanded else R.string.state_collapsed)
     Column(Modifier.fillMaxWidth().animateContentSize()) {
@@ -131,15 +203,14 @@ private fun FaqItem(@StringRes question: Int, @StringRes answer: Int) {
                 .semantics { stateDescription = state },
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(stringResource(question), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+            Text(stringResource(title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             Icon(if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null)
         }
         if (open) {
-            Text(
-                stringResource(answer),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 12.dp),
+            Column(
+                Modifier.padding(bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                content = content,
             )
         }
     }
