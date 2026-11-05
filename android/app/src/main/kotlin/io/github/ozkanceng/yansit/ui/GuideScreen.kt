@@ -1,7 +1,10 @@
 package io.github.ozkanceng.yansit.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -11,9 +14,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Gavel
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Pin
 import androidx.compose.material.icons.rounded.PlayCircle
@@ -35,9 +40,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.ozkanceng.yansit.R
@@ -53,9 +61,22 @@ object GuideSteps {
 
 private val prepareItems = listOf(R.string.guide_prepare_1, R.string.guide_prepare_2, R.string.guide_prepare_3)
 private val duringItems = listOf(R.string.guide_during_1, R.string.guide_during_2, R.string.guide_during_3)
+private val disclaimerItems = listOf(R.string.guide_disclaimer_1, R.string.guide_disclaimer_2, R.string.guide_disclaimer_3)
+
+private const val DOWNLOAD_BASE = "https://github.com/ozkanceng/casthop/releases/latest/download"
+
+/** Installs for the current user only, so it needs no administrator password. Same command as on the site. */
+private const val PARDUS_COMMAND =
+    "wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/casthop/kur | sh"
 
 /** How to install CastHop on one kind of receiver. */
-private class SetupGuide(@StringRes val title: Int, val steps: List<Int>, @StringRes val note: Int)
+private class SetupGuide(
+    @StringRes val title: Int,
+    val steps: List<Int>,
+    @StringRes val note: Int,
+    val url: String,
+    val command: String? = null,
+)
 
 private val setupGuides = listOf(
     SetupGuide(
@@ -67,26 +88,32 @@ private val setupGuides = listOf(
             R.string.guide_setup_pardus_4,
         ),
         R.string.guide_setup_pardus_note,
+        "$DOWNLOAD_BASE/casthop_amd64.deb",
+        PARDUS_COMMAND,
     ),
     SetupGuide(
         R.string.guide_setup_tv,
         listOf(R.string.guide_setup_tv_1, R.string.guide_setup_tv_2, R.string.guide_setup_tv_3),
         R.string.guide_setup_tv_note,
+        "$DOWNLOAD_BASE/casthop-tv.apk",
     ),
     SetupGuide(
         R.string.guide_setup_android,
         listOf(R.string.guide_setup_android_1, R.string.guide_setup_android_2, R.string.guide_setup_android_3),
         R.string.guide_setup_android_note,
+        "$DOWNLOAD_BASE/casthop-tv.apk",
     ),
     SetupGuide(
         R.string.guide_setup_windows,
         listOf(R.string.guide_setup_windows_1, R.string.guide_setup_windows_2, R.string.guide_setup_windows_3),
         R.string.guide_setup_windows_note,
+        "$DOWNLOAD_BASE/casthop-setup-x86_64.exe",
     ),
     SetupGuide(
         R.string.guide_setup_mac,
         listOf(R.string.guide_setup_mac_1, R.string.guide_setup_mac_2, R.string.guide_setup_mac_3),
         R.string.guide_setup_mac_note,
+        "$DOWNLOAD_BASE/casthop-mac.dmg",
     ),
 )
 
@@ -143,6 +170,9 @@ fun GuideScreen(onScan: () -> Unit, onCode: () -> Unit, onBack: () -> Unit) {
                         }
                     }
                 }
+                SectionCard(stringResource(R.string.guide_disclaimer_title), Modifier.fillMaxWidth(), Icons.Rounded.Gavel) {
+                    disclaimerItems.forEach { GuideNote(it) }
+                }
             }
             if (maxWidth >= WideLayoutWidth) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -166,13 +196,74 @@ private fun SetupGuides() {
         setupGuides.forEachIndexed { index, guide ->
             if (index > 0) HorizontalDivider()
             ExpandableItem(guide.title) {
+                guide.command?.let { CommandInstall(it) }
+                if (guide.command != null) {
+                    Text(
+                        stringResource(R.string.guide_setup_package_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
                 StepList(guide.steps)
+                DownloadLink(guide.url)
                 GuideNote(guide.note)
                 GuideNote(R.string.guide_setup_done)
             }
         }
     }
     GuideNote(R.string.guide_setup_apple)
+}
+
+@Composable
+private fun CommandInstall(command: String) {
+    Text(stringResource(R.string.guide_setup_command_title), style = MaterialTheme.typography.titleMedium)
+    GuideNote(R.string.guide_setup_command_body)
+    SelectableValue(command, FontFamily.Monospace)
+    CopyButton(command, R.string.guide_copy_command, Modifier.fillMaxWidth())
+}
+
+@Composable
+private fun DownloadLink(url: String) {
+    val uriHandler = LocalUriHandler.current
+    Text(stringResource(R.string.guide_download_title), style = MaterialTheme.typography.titleMedium)
+    SelectableValue(url)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Button(
+            // A device without a browser throws; the address stays on screen to copy.
+            onClick = { runCatching { uriHandler.openUri(url) } },
+            modifier = Modifier.weight(1f).heightIn(min = 56.dp),
+        ) {
+            Text(stringResource(R.string.guide_download_open))
+        }
+        CopyButton(url, R.string.guide_copy_link, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun SelectableValue(value: String, fontFamily: FontFamily? = null) {
+    SelectionContainer(
+        Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
+            .padding(12.dp),
+    ) {
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontFamily = fontFamily)
+    }
+}
+
+@Composable
+private fun CopyButton(value: String, @StringRes label: Int, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var copied by rememberSaveable(value) { mutableStateOf(false) }
+    OutlinedButton(
+        onClick = {
+            context.getSystemService(ClipboardManager::class.java)
+                .setPrimaryClip(ClipData.newPlainText("CastHop", value))
+            copied = true
+        },
+        modifier = modifier.heightIn(min = 56.dp),
+    ) {
+        Text(stringResource(if (copied) R.string.guide_copied else label))
+    }
 }
 
 @Composable

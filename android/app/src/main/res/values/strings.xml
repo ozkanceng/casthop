@@ -141,7 +141,7 @@
     <string name="guide_setup_pardus_2">İndirilenler klasöründe casthop_amd64.deb dosyasına çift tıklayın.</string>
     <string name="guide_setup_pardus_3">Paket kurucuda \"Yükle\"ye basıp yönetici şifresini girin.</string>
     <string name="guide_setup_pardus_4">Menüden CastHop\'u açın. Ekranda QR kod ve 6 haneli kod görünür.</string>
-    <string name="guide_setup_pardus_note">Yönetici şifreniz yoksa veya paket kurucu açılmazsa aynı sayfadaki komutları kullanın.</string>
+    <string name="guide_setup_pardus_note">Paket kurucu açılmazsa yukarıdaki tek komutu kullanın.</string>
     <string name="guide_setup_tv">Android TV, Google TV, Fire TV</string>
     <string name="guide_setup_tv_1">TV\'nin tarayıcısıyla ya da USB bellekle casthop-tv.apk dosyasını TV\'ye aktarın.</string>
     <string name="guide_setup_tv_2">Dosyayı açın; TV bilinmeyen kaynak uyarısı verirse bu kurulum için izin verin.</string>
@@ -163,6 +163,18 @@
     <string name="guide_setup_mac_3">Uyarı çıkarsa Sistem Ayarları → Gizlilik ve Güvenlik\'ten \"Yine de Aç\"ı seçin.</string>
     <string name="guide_setup_mac_note">macOS 14 ve üstü gerekir.</string>
     <string name="guide_setup_apple">iPad ve Apple TV sürümleri App Store\'a eklenince burada olacak.</string>
+    <string name="guide_setup_command_title">Tek komutla kurulum (önerilen)</string>
+    <string name="guide_setup_command_body">Yönetici şifresi gerekmez, CastHop yalnız kendi hesabınıza kurulur. Tahtada Terminal\'i açın, komutu yazın ve Enter\'a basın.</string>
+    <string name="guide_setup_package_title">Paketle kurulum (yönetici şifresi gerekir)</string>
+    <string name="guide_copy_command">Komutu kopyala</string>
+    <string name="guide_copy_link">Bağlantıyı kopyala</string>
+    <string name="guide_copied">Kopyalandı</string>
+    <string name="guide_download_title">İndirme bağlantısı</string>
+    <string name="guide_download_open">Bağlantıyı aç</string>
+    <string name="guide_disclaimer_title">Kullanım sorumluluğu</string>
+    <string name="guide_disclaimer_1">CastHop ücretsiz ve açık kaynaklıdır. Apache 2.0 lisansıyla \"olduğu gibi\", hiçbir garanti verilmeden sunulur.</string>
+    <string name="guide_disclaimer_2">Uygulamayı kurmak ve kullanmak sizin sorumluluğunuzdadır. Yansıttığınız içerikten, veri kaybından, kesintilerden ve cihaz sorunlarından geliştiriciler sorumlu tutulamaz.</string>
+    <string name="guide_disclaimer_3">Yansıtmadan önce ekranda kişisel veya gizli bilgi olmadığını kontrol edin. Okul ya da kurum cihazına kurmadan önce gerekli izni alın.</string>
     <string name="guide_qr_title">QR koduyla bağlanın (önerilen)</string>
     <string name="guide_qr_1">Tablette \"Ekrana Bağlan\"a dokunun (kayıtlı ekran varsa \"QR ile yeni ekran\"a).</string>
     <string name="guide_qr_2">Kamerayı ekrandaki QR koda tutun.</string>

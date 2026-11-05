@@ -140,7 +140,7 @@
     <string name="guide_setup_pardus_2">In the Downloads folder, double-click casthop_amd64.deb.</string>
     <string name="guide_setup_pardus_3">In the package installer, press \"Install\" and enter the administrator password.</string>
     <string name="guide_setup_pardus_4">Open CastHop from the menu. The screen shows a QR code and a 6-digit code.</string>
-    <string name="guide_setup_pardus_note">Without an administrator password, or if the package installer does not open, use the commands on the same page.</string>
+    <string name="guide_setup_pardus_note">If the package installer does not open, use the single command above.</string>
     <string name="guide_setup_tv">Android TV, Google TV, Fire TV</string>
     <string name="guide_setup_tv_1">Copy casthop-tv.apk to the TV with its browser or a USB stick.</string>
     <string name="guide_setup_tv_2">Open the file. If the TV warns about unknown sources, allow it for this install.</string>
@@ -162,6 +162,18 @@
     <string name="guide_setup_mac_3">If a warning appears, choose \"Open Anyway\" in System Settings → Privacy &amp; Security.</string>
     <string name="guide_setup_mac_note">Needs macOS 14 or later.</string>
     <string name="guide_setup_apple">iPad and Apple TV versions will appear here once they are on the App Store.</string>
+    <string name="guide_setup_command_title">Install with one command (recommended)</string>
+    <string name="guide_setup_command_body">No administrator password needed: CastHop is installed for your account only. On the board, open Terminal, type the command and press Enter.</string>
+    <string name="guide_setup_package_title">Install the package (needs an administrator password)</string>
+    <string name="guide_copy_command">Copy command</string>
+    <string name="guide_copy_link">Copy link</string>
+    <string name="guide_copied">Copied</string>
+    <string name="guide_download_title">Download link</string>
+    <string name="guide_download_open">Open link</string>
+    <string name="guide_disclaimer_title">Responsibility for use</string>
+    <string name="guide_disclaimer_1">CastHop is free and open source. It is provided \"as is\" under the Apache 2.0 license, without any warranty.</string>
+    <string name="guide_disclaimer_2">Installing and using the app is your own responsibility. The developers cannot be held liable for the content you mirror, data loss, interruptions or device problems.</string>
+    <string name="guide_disclaimer_3">Before mirroring, check that no personal or confidential information is on screen. Get the required permission before installing on a school or institution device.</string>
     <string name="guide_qr_title">Connect with the QR code (recommended)</string>
     <string name="guide_qr_1">On the tablet, tap \"Connect to screen\" (\"New screen with QR\" if you already have remembered screens).</string>
     <string name="guide_qr_2">Point the camera at the QR code on the screen.</string>
