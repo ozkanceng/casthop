@@ -453,9 +453,12 @@ void ReceiverService::tick() {
     if (!m_sessions)
         return;
     m_pairing->tick(steadyNow());
+    const bool hadSession = m_sessions->session().has_value();
     const Actions a = m_sessions->tick(steadyNow());
     if (!a.empty())
         apply(a);
+    else if (hadSession && !m_sessions->session())
+        refreshState(); // the RESUME window ran out with no connection left to close
 }
 
 void ReceiverService::sendReport() {

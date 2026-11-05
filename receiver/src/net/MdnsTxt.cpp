@@ -6,7 +6,12 @@ namespace yansit::net {
 
 std::vector<std::string> mdnsTxt(const std::string& name, const protocol::Key32& fingerprint) {
     const protocol::ByteView prefix(fingerprint.data(), 16);
-    return {"v=1", "name=" + name, "fp=" + protocol::base64UrlNoPad(prefix)};
+#ifdef _WIN32
+    constexpr const char* kKind = "kind=pc";
+#else
+    constexpr const char* kKind = "kind=board";
+#endif
+    return {"v=1", "name=" + name, "fp=" + protocol::base64UrlNoPad(prefix), kKind};
 }
 
 std::string mdnsInstanceName(const std::string& name) {

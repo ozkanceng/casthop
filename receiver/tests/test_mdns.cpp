@@ -10,7 +10,7 @@ TEST(Mdns, TxtRecordCarriesVersionNameAndFingerprintPrefix) {
     for (std::size_t i = 0; i < fp.size(); ++i)
         fp[i] = std::uint8_t(i);
     const auto txt = mdnsTxt("7-A Sınıfı", fp);
-    ASSERT_EQ(txt.size(), 3u);
+    ASSERT_EQ(txt.size(), 4u);
     EXPECT_EQ(txt[0], "v=1");
     EXPECT_EQ(txt[1], "name=7-A Sınıfı");
     // İlk 16 bayt, base64url dolgusuz: 22 karakter.
