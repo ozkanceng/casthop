@@ -10,7 +10,7 @@
 |---|---|
 | Proje adı | **Yansıt** (`yansit`) |
 | Depo | `github.com/ozkanceng/casthop` (public, Apache-2.0) |
-| Android paket adı | `io.github.ozkanceng.yansit` |
+| Android paket adı | `com.sorumatik.casthop` (Play kimliği; Kotlin paketi `io.github.ozkanceng.yansit`) |
 | Alıcı ikili / .deb | `yansit-receiver` (menüde "Yansıt Alıcı") |
 | Varsayılan TCP portu | `47800` (ayarlanabilir) |
 | mDNS servis tipi | `_yansit._tcp` |

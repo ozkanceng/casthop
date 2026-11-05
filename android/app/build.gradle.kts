@@ -31,7 +31,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.ozkanceng.yansit"
+        // Google Play id (permanent). The Kotlin package and the namespace stay io.github.ozkanceng.yansit.
+        applicationId = "com.sorumatik.casthop"
         minSdk = 29
         targetSdk = 37
         versionCode = appVersionCode
