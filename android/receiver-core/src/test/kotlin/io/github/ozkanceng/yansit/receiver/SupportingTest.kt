@@ -60,14 +60,23 @@ class SupportingTest {
     fun instanceNameIsCutOnACharacterBoundary() {
         val name = "ş".repeat(40) // 80 bytes
         val cut = Discovery.instanceName(name)
-        assertEquals("ş".repeat(31), cut)
+        assertEquals("ş".repeat(26) + " (CastHop)", cut)
         assertTrue(cut.toByteArray().size <= 63)
     }
 
     @Test
     fun emptyInstanceNameFallsBack() {
         assertEquals("CastHop", Discovery.instanceName(""))
-        assertEquals("Sınıf", Discovery.instanceName("Sınıf"))
+    }
+
+    @Test
+    fun instanceNameDiffersFromTheDeviceName() {
+        assertEquals("Özkan TV (CastHop)", Discovery.instanceName("Özkan TV"))
+    }
+
+    @Test
+    fun txtNameStaysTheDeviceName() {
+        assertEquals("Özkan TV", Discovery.txt("Özkan TV", Auth.sha256("cert".toByteArray()))["name"])
     }
 
     @Test
