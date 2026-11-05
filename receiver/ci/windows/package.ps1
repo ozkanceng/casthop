@@ -37,7 +37,7 @@ Invoke-Native cmake @('--install', $BuildDir, '--prefix', $stage)
 $env:PATH = "$qt\bin;$env:PATH"
 Invoke-Native "$qt\bin\windeployqt.exe" @(
     '--release', '--qmldir', (Join-Path $repo 'receiver\src\qml'), '--no-translations', '--no-compiler-runtime',
-    '--no-opengl-sw', (Join-Path $bin 'casthop.exe'))
+    '--no-opengl-sw', '--force-openssl', (Join-Path $bin 'casthop.exe'))
 
 # GStreamer plugins. qml6 stays out on purpose: it is tied to the Qt it was built with, and the CPU path is the one
 # CastHop supports on Windows. It is still used when a compatible plugin is present (see docs/TESTING.md).
