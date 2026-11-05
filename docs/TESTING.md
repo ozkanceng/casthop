@@ -428,3 +428,12 @@ cd apple && xcodegen generate && open CastHop.xcodeproj
 |---|---|---|---|
 | 1 | Siteyi tahtanın tarayıcısında (Türkçe) ve tablette (dili İngilizce) açın | Türkçe sistemde Türkçe, İngilizce sistemde İngilizce açılır; üstteki düğme dili değiştirir, yenileyince seçim kalır | ☐ |
 | 2 | Tahtada `kur` komutunu `LANG=en_US.UTF-8` ile ve varsayılan dille çalıştırın | Mesajlar sırasıyla İngilizce ve Türkçe; kurulum ikisinde de tamamlanır | ☐ |
+
+## Google Play sürümü (gerçek cihaz)
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Play'den `com.sorumatik.casthop` kurulu (GitHub APK'sı kurulu değil) bir tablette uygulamayı açın | Açılır, sürüm 0.3.3 veya üstü, simge yeni logo | ☐ |
+| 2 | Pardus tahtayı QR ile eşleştirip yansıtın | Görüntü ve ses gelir; bildirimde «Durdur» var | ☐ |
+| 3 | Kamera yansıtmayı açıp bir ekrana bağlanın | Kamera görüntüsü gelir, uygulama arka plana alınınca sürer | ☐ |
+| 4 | Eski paket adıyla (`io.github.ozkanceng.yansit`) kurulu bir tabletle aynı tahtaya bağlanın | İkisi de çalışır (protokol aynı) | ☐ |

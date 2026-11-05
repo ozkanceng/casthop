@@ -54,3 +54,6 @@ __pycache__/
 
 # Entegrasyon testi çalışma dizini
 it-work/
+
+# Google Play review videos show device names; keep them out of the public repo
+play/video-review/
