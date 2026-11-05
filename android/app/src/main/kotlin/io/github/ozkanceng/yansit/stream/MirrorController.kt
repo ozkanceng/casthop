@@ -451,9 +451,11 @@ object MirrorController {
         val caps = encodersFor(AppSettings(service), s.welcome).first { it.name == plan.encoderName }
         val encoder = ScreenEncoder(caps)
         try {
+            // The surface is attached only once the encoder runs. Frames drawn into a persistent surface with no
+            // running encoder are lost, and the session then starts black until the surface is attached again.
             val display = projection.createVirtualDisplay(
                 "CastHop", plan.width, plan.height, service.resources.displayMetrics.densityDpi,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, encoder.inputSurface, null, main,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, null, null, main,
             )
             synchronized(lock) {
                 capture?.display = display
@@ -461,6 +463,7 @@ object MirrorController {
                 capture?.plan = plan
             }
             s.startVideo(plan, encoder)
+            display?.surface = encoder.inputSurface
             watchRotation(service)
             _state.value = MirrorState.Mirroring(board, null, audio = startAudio(service, projection, s))
             Log.i(TAG, "yansıtma: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName})")

@@ -15,6 +15,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 - Ağ uzun süre yetersizse tablet çözünürlüğü ve kare hızını kendiliğinden düşürüyor, ağ düzelince geri yükseltiyor; öğretmen Ayarlar'a girmek zorunda değil.
 
 ### Düzeltildi / Fixed
+- Yansıtma başında görüntünün siyah kalıp ancak duraklatıp devam edince gelmesi için Android'de ekran, kodlayıcı çalışmaya başladıktan sonra bağlanıyor.
+- Tahtada GL siyah çizince CPU çizime geçiş artık kalıcı: sonraki oturumlar siyah başlamıyor. Görüntü ölçülemezse denetim bırakılmıyor, yineleniyor.
 - Tablette "Yansıtmayı Durdur"a basınca uygulama çöküyordu; aynı hata duraklatma ve devam düğmelerinde de olabilirdi.
 - `kur` komutuyla kurulan tahtada "Tahta açılınca başlat" uygulamayı açamıyordu; eski kayıt da güncelleniyor.
 

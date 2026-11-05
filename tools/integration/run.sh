@@ -318,6 +318,7 @@ if [ "${YANSIT_IT_GUI:-0}" = 1 ]; then
     gui_scenario fallback "$WORK/pairing-fb.json" "$WORK/stats-fb.jsonl" "$WORK/s6c.json" YANSIT_TEST_BLACK_GL=1
     grep -q "CPU çizime geçiliyor" "$WORK/receiver.log" || fail "6c: CPU çiziciye geçilmedi"
     grep -q "görüntü çiziliyor" "$WORK/receiver.log" || fail "6c: geçişten sonra görüntü yok"
+    grep -rqs "compatibleVideo=true" "$WORK/home-fallback" || fail "6c: CPU çizim kalıcı olmadı"
 fi
 
 log "Sonuçlar denetleniyor"

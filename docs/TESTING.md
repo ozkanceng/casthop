@@ -86,6 +86,13 @@ Yansıtma sürüp görüntü gelmiyorsa `~/.cache/yansit/receiver.log` dosyasın
 | `çözülen kareler siyah` | Tablet siyah görüntü gönderiyor olabilir |
 | `görüntü çiziliyor` ama ekran siyah | Pencere içeriği doğru, sorun masaüstü bileşicisinde olabilir: **Ayarlar → Uyumlu görüntü modu** |
 
+Yansıtma başı (gerçek tablet ve tahta):
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Alıcıyı yeniden başlatın, tabletten yansıtmayı başlatın, hiçbir şeye dokunmayın | Görüntü duraklatıp devam etmeden 5 sn içinde gelir | |
+| 2 | Günlükte `CPU çizime geçiliyor` varsa alıcıyı kapatıp açın ve yeniden yansıtın | **Ayarlar → Uyumlu görüntü modu** açık, görüntü siyah başlamaz | |
+
 ## Gecikme karşılaştırması (gerçek tahta ve tablet)
 
 | # | Adım | Beklenen | ✓ |

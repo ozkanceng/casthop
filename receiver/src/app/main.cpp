@@ -287,6 +287,11 @@ int runGui(int argc, char* argv[]) {
         if (settings.compatibleVideo())
             service.switchToCpuRenderer(QStringLiteral("uyumlu görüntü modu açıldı"));
     });
+    // A board whose GL draws black stays on the CPU renderer, so later sessions do not start black.
+    QObject::connect(&service, &yansit::ReceiverService::rendererChanged, &settings, [&] {
+        if (service.renderer() == QLatin1String("cpu"))
+            settings.setCompatibleVideo(true);
+    });
     yansit::ScreenshotTool screenshots;
 
     qmlRegisterType<yansit::media::CpuVideoItem>("Yansit.Video", 1, 0, "CpuVideoItem");

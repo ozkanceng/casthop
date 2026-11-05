@@ -64,7 +64,8 @@ void RenderCheck::run() {
                     << "çizici" << m_service.renderer() << "çözücü" << video.decoderName();
 
     if (decoded < 0) {
-        qCInfo(lcCheck) << "çözülen kare okunamadı, denetim yapılamadı";
+        qCInfo(lcCheck) << "çözülen kare okunamadı, denetim yinelenecek";
+        m_timer.start(); // without a measurement a black window would stay undetected
     } else if (decoded < media::VideoPipeline::kBlackLuma) {
         if (video.retryWithNextDecoder(QStringLiteral("donanım çözücü siyah kare üretiyor"))) {
             m_timer.start();
