@@ -1,10 +1,17 @@
 # CastHop
 
-**Android tabletin ekranını ve sesini Pardus ETAP akıllı tahtaya kablosuz yansıtın.**
+**Tablet ve telefon ekranını akıllı tahtaya, televizyona ve bilgisayara kablosuz yansıtın.**
 Kurulumu kolay, açık kaynak, düşük gecikmeli, şifreli.
 
 [English](README.en.md) · [Kurulum](#kurulum) · [Kullanım](#kullanım) · [Sorun giderme](#sorun-giderme) ·
 [Mimari](docs/ARCHITECTURE.md) · [Protokol](docs/PROTOCOL.md) · [Değişiklikler](CHANGELOG.md)
+
+| Gönderen ↓ / Alan → | Pardus tahta | Android TV, Google TV, Fire TV | Apple TV | Windows | Mac | iPad, Android tablet |
+|---|---|---|---|---|---|---|
+| Android tablet ve telefon | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| iPhone ve iPad | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+Her iki uçta da CastHop gerekir. AirPlay, Miracast ve Chromecast desteklenmez.
 
 ## Ne işe yarar?
 
@@ -18,6 +25,7 @@ yeter.
   araya girmek isterse tahtada **onay** istenir.
 - **Kolay**: ilk seferde QR okutun, sonra tahtanın adına tek dokunuş. Wi-Fi kısa süre koparsa yansıtma kendiliğinden
   sürer; tablet döndürülünce görüntü de döner.
+- **Kamera**: ekran yerine kamerayı gönderir; kitap, defter ve belge göstermek için tek düğme.
 
 ## Kurulum
 
@@ -58,6 +66,21 @@ Uygulama `~/.local/opt/yansit` altına kurulur ve menüye eklenir.
 
 [Sürümler](https://github.com/ozkanceng/tablet-mirror/releases) sayfasından `casthop-*.apk` dosyasını tablete indirip açın.
 İlk kurulumda Android "bilinmeyen kaynaklardan yüklemeye" izin isteyebilir.
+
+### Televizyon, Windows ve Mac
+
+| Cihaz | Dosya | Not |
+|---|---|---|
+| Android TV, Google TV, Fire TV, Android tablet | `casthop-tv.apk` | TV'de dosya yöneticisiyle veya `adb install` ile kurulur. |
+| Windows 10 ve 11 (64 bit) | `casthop-setup-x86_64.exe` | İmzalı değilse SmartScreen uyarır: "Ek bilgi" → "Yine de çalıştır". |
+| Mac (macOS 14 ve üstü) | `casthop-mac.dmg` | Apple onayı olmadan ilk açılışta uyarır: Sistem Ayarları → Gizlilik ve Güvenlik → "Yine de Aç". |
+
+Hepsi [Sürümler](https://github.com/ozkanceng/tablet-mirror/releases) sayfasındadır.
+
+### iPhone, iPad ve Apple TV
+
+App Store'a eklenince kurulabilecek. Geliştirici olarak derlemek için [`apple/`](apple/) klasöründe `xcodegen` çalıştırıp
+`CastHop.xcodeproj`'u açın.
 
 ## Kullanım
 
@@ -106,10 +129,11 @@ Otomatik testler (her değişiklikte, CI) ve uzun süre testi (her gece 30 dk) s
 
 | Dizin | İçerik |
 |---|---|
-| [`android/`](android/) | Tablet uygulaması (Kotlin, Jetpack Compose), Android 10+ |
-| [`receiver/`](receiver/) | Tahta alıcısı (C++20, Qt 6, GStreamer), Pardus ETAP 23 / Debian 12 |
+| [`android/`](android/) | Gönderici (`app`) ve TV ile tablet alıcısı (`tv`, `receiver-core`): Kotlin, Jetpack Compose, Android 10+ |
+| [`apple/`](apple/) | iPhone ve iPad göndericisi; Mac, Apple TV ve iPad alıcısı: Swift, iOS 17, tvOS 17, macOS 14 |
+| [`receiver/`](receiver/) | Tahta ve Windows alıcısı (C++20, Qt 6, GStreamer), Pardus ETAP 23 / Debian 12, Windows 10+ |
 | [`protocol/`](protocol/) | Protokol test vektörleri ve bağımsız referans üreteci |
-| [`tools/`](tools/) | Sahte gönderici, uçtan uca testler, ağ benzetimi, gecikme ölçümü, uzun süre testi |
+| [`tools/`](tools/) | Sahte gönderici ve alıcı, alıcı uyum testi, uçtan uca testler, ağ benzetimi, gecikme ölçümü, uzun süre testi |
 | [`web-receiver/`](web-receiver/) | (Sonraki aşama) kurulumsuz tarayıcı alıcısı |
 | [`docs/`](docs/) | Plan, mimari, protokol, riskler, gerçek cihaz test listeleri |
 

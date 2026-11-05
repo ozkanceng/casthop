@@ -133,12 +133,30 @@ Zaman damgası eşleme: `pts_alıcı = pts_gönderici + saat_ofseti + D`. `D` = 
 
 **Paketleme:** `debian/` (debhelper-compat 13). Çalışma bağımlılıkları: `${shlibs:Depends}`, `gstreamer1.0-plugins-base`, `-good`, `-bad`, `gstreamer1.0-qt6`, `gstreamer1.0-gl`, `qml6-module-qtquick`, `qml6-module-qtquick-controls`, `qml6-module-qtquick-layouts`, `qml6-module-qtquick-window`; Recommends: `gstreamer1.0-libav`, `intel-media-va-driver | i965-va-driver | mesa-va-drivers`, `avahi-daemon`. Masaüstü dosyası, hicolor ikonları, isteğe bağlı otomatik başlatma (`~/.config/autostart/` kullanıcı ayarıyla yazılır/silinir).
 
+### 2.2a Windows alıcısı (`/receiver`)
+Pardus alıcısıyla aynı C++ kod. Platforma bağlı parçalar ayrılmıştır: mDNS Windows'ta `DnsServiceRegister`, otomatik başlatma kayıt defteri `Run` anahtarı, anahtar dosyası kullanıcı ACL'si. Çözücü `d3d11h264dec` ve `d3d11h265dec`, görüntü işlemci çizim yolundan geçer. Kurucu Inno Setup ile Qt ve GStreamer'ı içinde getirir, 47800 için güvenlik duvarı kuralı ekler (`.github/workflows/windows.yml`).
+
+### 2.2b Android TV ve tablet alıcısı (`/android/receiver-core`, `/android/tv`)
+`receiver-core` saf Kotlin/JVM'dir: `PairingManager`, `SessionManager`, `Connection`, rapor ve saat senkronu. `tools/fake-receiver` bu çekirdeği cihazsız çalıştırır. `tv` uygulaması TLS sunucusunu (`AndroidKeyStore`, `SSLServerSocket`), `MediaCodec` + `SurfaceView` görüntüyü, `AudioTrack` sesini ve `NsdManager` yayınını ekler. Kumanda ve dokunmatikle kullanılır.
+
+### 2.2c Apple (`/apple`)
+`CastHopKit` Swift paketi protokol, gönderici ve alıcı kodunu tutar; TLS `Network.framework` ile, parmak izi sabitlemelidir. Xcode projesi `project.yml`'den XcodeGen ile üretilir, commit edilmez.
+
+- **Alıcı (macOS, tvOS, iPadOS):** `AVSampleBufferDisplayLayer` + VideoToolbox. `casthop-receiver` aynı kodu başsız çalıştırır.
+- **Ekran gönderici (iOS, iPadOS):** uygulama eşleşmeyi App Group'a yazar, `RPSystemBroadcastPickerView` Broadcast Upload Extension'ı başlatır. Uzantı 50 MB bellek sınırına göre yazılmıştır: tek kodlayıcı, kare kopyası yok, kuyruk sınırlı. Durum Darwin bildirimleriyle uygulamaya gider.
+- **Kamera gönderici (iOS, iPadOS):** uzantı kamerayı kullanamaz; `AVCaptureSession` uygulama içinde `BroadcastEngine`'e kare verir. Uygulama arka plana geçince iOS kamerayı aldığı için oturum biter.
+- `casthop-sender` macOS CLI'si aynı oturum ve kodlayıcı kodunu dosyadan besler.
+
+### 2.2d Alıcıların ortak kuralı
+Üç alıcı (C++, Kotlin, Swift) `docs/PROTOCOL.md` §11'e uyar ve aynı `--headless --port --pairing-file --stats-file` sözleşmesini sağlar; `tools/conformance/run.py` hepsine aynı senaryoları çalıştırır. Ortak kod yerine üç uygulama seçildi: TLS sunucusu ve kimlik her platformda yeniden yazılacağı için paylaşılabilen yalnız oturum mantığı kalıyor, OpenSSL'i iki mobil platforma taşımaya değmiyor.
+
 ### 2.3 `/protocol`
 `PROTOCOL.md`'nin makine-okur karşılıkları: `vectors/*.hex` (ham baytlar) + `vectors.json` (beklenen alanlar / beklenen hata). Her iki uygulamanın test paketi bu dizini okur.
 
 ### 2.4 `/tools`
 - `fake-sender` (Kotlin/JVM): Annex-B H.264/H.265 + isteğe bağlı Opus (Ogg) dosyasından gerçek zamanlı akış; netem senaryoları için hız/çerçeve kontrolü.
-- `fake-receiver` (Kotlin/JVM): Android göndericiyi tahtasız test etmek için; çerçeveleri doğrular, `.h264` dosyasına döker, istatistik basar.
+- `fake-receiver` (Kotlin/JVM): `receiver-core` çekirdeğinin CLI'si; Android göndericiyi tahtasız test eder, çerçeveleri doğrular, istatistik basar.
+- `conformance/`: alıcıdan bağımsız uyum testi (§2.2d).
 - `latency/`: test deseni + ölçüm (§6).
 - `soak/`: uzun süre testi betikleri.
 

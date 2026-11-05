@@ -5,6 +5,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 ## [Yayımlanmamış / Unreleased]
 
 ### Eklendi / Added
+- iPhone ve iPad'de kamerayı yansıtma: bağlanma ekranındaki "Kamerayı yansıt" düğmesi ReplayKit olmadan uygulama içinden gönderir; uygulamadan çıkınca durur.
+- Mac alıcısı `casthop-mac.dmg` olarak indirilebiliyor.
 - Kamerayı yansıtma: ana ekrandaki anahtarla ekran yerine kamera gönderilir; kitap, defter ve belge göstermek için. Önizleme tablette görünür, ön ve arka kamera arasında geçilir.
 - Ağda bulma listesi alıcının türünü (tahta, TV, bilgisayar, tablet) simgeyle gösteriyor.
 - Android TV alıcısı: televizyon, Android tahta veya tablet artık CastHop ile yansıtma alabiliyor. QR veya kodla bağlanılır; kumandayla da dokunmayla da kullanılır. Ses, eşleşme ve ağda bulma tahtadaki gibi çalışıyor.
@@ -16,7 +18,7 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 - `kur` komutuyla kurulan tahtada "Tahta açılınca başlat" uygulamayı açamıyordu; eski kayıt da güncelleniyor.
 
 ### Değiştirildi / Changed
-- Tablet uygulamasının metinleri artık yalnız tahtadan değil, her alıcıdan söz ediyor ("Ekrana Bağlan").
+- Android ve iOS uygulamalarının metinleri artık yalnız tahtadan değil, her alıcıdan söz ediyor ("Ekrana Bağlan").
 - Ürünün yeni adı **CastHop**. Paket, indirme dosyaları ve menü adı değişti; `.deb` eski `yansit-receiver` paketinin yerini alıyor. Eşleşmeler, ayarlar ve tablet uygulaması güncellemesi korunuyor; eski tablet ve yeni tahta birlikte çalışıyor.
 - Tıkalı ağda anahtar kareler üst üste binmiyor; önceki kare yazılırken gelen istekler tek isteğe indiriliyor.
 - Daha düşük gecikme: yansıtma sırasında Wi-Fi güç tasarrufu kapatılıyor, tahtadaki donanım çözücü kare bekletmiyor, periyodik anahtar kare aralığı 2 sn'den 10 sn'ye çıktı.

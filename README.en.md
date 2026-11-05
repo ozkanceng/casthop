@@ -1,10 +1,17 @@
 # CastHop
 
-**Mirror an Android tablet's screen and sound wirelessly to Pardus ETAP interactive whiteboards.**
+**Mirror a tablet or phone wirelessly to smart boards, TVs and computers.**
 Easy to set up, open source, low latency, encrypted.
 
 [Türkçe](README.md) · [Install](#install) · [Use](#use) · [Troubleshooting](#troubleshooting) ·
 [Architecture](docs/ARCHITECTURE.md) · [Protocol](docs/PROTOCOL.md) · [Changelog](CHANGELOG.md)
+
+| Sender ↓ / Receiver → | Pardus board | Android TV, Google TV, Fire TV | Apple TV | Windows | Mac | iPad, Android tablet |
+|---|---|---|---|---|---|---|
+| Android tablet and phone | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| iPhone and iPad | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+
+Both ends need CastHop. AirPlay, Miracast and Chromecast are not supported.
 
 ## What it does
 
@@ -18,6 +25,7 @@ network.
   wants to take over, the board asks for **approval**.
 - **Easy**: scan the QR once, then one tap on the board's name. Short Wi-Fi drops recover automatically; rotating the
   tablet rotates the picture.
+- **Camera**: sends the camera instead of the screen, one button for showing books, notebooks and papers.
 
 ## Install
 
@@ -57,6 +65,21 @@ It installs into `~/.local/opt/yansit` and adds a menu entry.
 
 Download `casthop-*.apk` from [Releases](https://github.com/ozkanceng/tablet-mirror/releases) on the tablet and open it.
 Android may ask to allow installing from unknown sources the first time.
+
+### TV, Windows and Mac
+
+| Device | File | Note |
+|---|---|---|
+| Android TV, Google TV, Fire TV, Android tablet | `casthop-tv.apk` | On a TV, install it with a file manager or `adb install`. |
+| Windows 10 and 11 (64-bit) | `casthop-setup-x86_64.exe` | Unsigned builds trigger SmartScreen: "More info" → "Run anyway". |
+| Mac (macOS 14 or later) | `casthop-mac.dmg` | Without Apple's approval it warns on first launch: System Settings → Privacy & Security → "Open Anyway". |
+
+All are on the [Releases](https://github.com/ozkanceng/tablet-mirror/releases) page.
+
+### iPhone, iPad and Apple TV
+
+Available once listed on the App Store. To build as a developer, run `xcodegen` in [`apple/`](apple/) and open
+`CastHop.xcodeproj`.
 
 ## Use
 
@@ -105,10 +128,11 @@ the checklists in [docs/TESTING.md](docs/TESTING.md).
 
 | Directory | Content |
 |---|---|
-| [`android/`](android/) | Tablet app (Kotlin, Jetpack Compose), Android 10+ |
-| [`receiver/`](receiver/) | Board receiver (C++20, Qt 6, GStreamer), Pardus ETAP 23 / Debian 12 |
+| [`android/`](android/) | Sender (`app`) and TV and tablet receiver (`tv`, `receiver-core`): Kotlin, Jetpack Compose, Android 10+ |
+| [`apple/`](apple/) | iPhone and iPad sender; Mac, Apple TV and iPad receiver: Swift, iOS 17, tvOS 17, macOS 14 |
+| [`receiver/`](receiver/) | Board and Windows receiver (C++20, Qt 6, GStreamer), Pardus ETAP 23 / Debian 12, Windows 10+ |
 | [`protocol/`](protocol/) | Protocol test vectors and an independent reference generator |
-| [`tools/`](tools/) | Fake sender, end-to-end tests, network simulation, latency measurement, soak test |
+| [`tools/`](tools/) | Fake sender and receiver, receiver conformance test, end-to-end tests, network simulation, latency measurement, soak test |
 | [`web-receiver/`](web-receiver/) | (Next phase) browser receiver, no install |
 | [`docs/`](docs/) | Plan, architecture, protocol, risks, on-device test checklists |
 

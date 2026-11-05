@@ -176,6 +176,29 @@ günlüğü; 1 ve 3. adımlarda ölçülen süreler.
 
 ---
 
+## Kamera yansıtma (gerçek iPhone ve iPad)
+
+Simülatörde kamera yoktur; bu liste gerçek cihaz ister.
+
+| # | Adım | Beklenen | Sonuç |
+|---|---|---|---|
+| 1 | Bir alıcı seçip "Kamerayı yansıt"a dokunun | Sistem yayın penceresi çıkmaz; önizleme ve alıcıda görüntü gelir | ☐ |
+| 2 | Cihazı dikey ve yatay çevirin | İki uçta da görüntü dik kalır, oran bozulmaz | ☐ |
+| 3 | "Kamerayı değiştir" | Ön kamera gelir, görüntü dik ve yayın kopmaz | ☐ |
+| 4 | Duraklat, sonra Devam | Alıcıda son görüntü kalır, devamda canlı görüntü döner | ☐ |
+| 5 | iPad'de Split View'da başka uygulama açın | Kamera duraklar, tam ekrana dönünce sürer | ☐ |
+| 6 | Uygulamadan çıkın | Yayın biter, geri dönünce "Kamera yansıtma durdu" görünür | ☐ |
+| 7 | Kamera iznini kapatıp deneyin | "Kamera izni kapalı" ve Ayarlar yönergesi görünür | ☐ |
+| 8 | 10 dk yansıtın | Ekran kararmaz, cihaz aşırı ısınmaz, gecikme birikmez | ☐ |
+
+## Mac `.dmg`
+
+| # | Adım | Beklenen | Sonuç |
+|---|---|---|---|
+| 1 | `casthop-mac.dmg`'yi başka bir Mac'e indirip uygulamayı Applications'a sürükleyin | Uyarı çıkar, Gizlilik ve Güvenlik → "Yine de Aç" ile açılır | ☐ |
+| 2 | Intel Mac'te açın | Evrensel paket açılır, görüntü gelir | ☐ |
+| 3 | Yerel ağ izni sorusuna izin verin | Tablet aynı ağda alıcıyı listeler | ☐ |
+
 ## Kamera yansıtma (gerçek tablet)
 
 | # | Adım | Beklenen | ✓ |

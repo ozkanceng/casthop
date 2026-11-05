@@ -63,6 +63,8 @@ gh secret set CASTHOP_ASC_ISSUER_ID --repo ozkanceng/tablet-mirror
 
 App Store Connect'te `io.github.ozkanceng.casthop` altındaki uygulamaları ve App Group'u oluşturun. Yayın adımı `apple.yml`'e üyelik açıldığında eklenir.
 
+Üyelik açılana dek `release.yml` Mac alıcısını `apple/ci/build-dmg.sh` ile geçici imzalı (`-`) `casthop-mac.dmg` olarak yayımlar. Secret gerekmez; Gatekeeper ilk açılışta uyarır. iPhone, iPad ve Apple TV sürümleri üyelik olmadan dağıtılamaz.
+
 ## 3. Yerelde imzalı derleme (isteğe bağlı)
 
 `android/keystore.properties` (commit edilmez):
