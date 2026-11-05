@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- Google Play feature graphic, 1024x500. ?lang=tr or ?lang=en. Rendered by play/README.md steps. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1024px; height: 500px; overflow: hidden; }
+  body {
+    position: relative; color: #fff;
+    background: linear-gradient(135deg, #0b5cad 0%, #083c96 100%);
+    font-family: "Noto Sans", Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .logo { position: absolute; left: 64px; top: 56px; width: 340px; height: auto; }
+  h1 { position: absolute; left: 64px; top: 190px; width: 480px; margin: 0; font-size: 46px; line-height: 1.18; font-weight: 700; letter-spacing: -0.5px; }
+  p { position: absolute; left: 64px; top: 396px; margin: 0; width: 470px; font-size: 22px; line-height: 1.35; color: rgba(255,255,255,.88); }
+  .shot {
+    position: absolute; left: 556px; top: 112px; width: 446px; border-radius: 20px;
+    border: 6px solid #0b1b33; box-shadow: 0 18px 40px rgba(0,0,0,.35);
+  }
+</style>
+</head>
+<body>
+  <img class="logo" src="../../brand/casthop-logo-on-dark.svg" alt="CastHop">
+  <h1 id="tagline"></h1>
+  <p id="targets"></p>
+  <img class="shot" id="shot" alt="">
+<script>
+const lang = new URLSearchParams(location.search).get("lang") === "en" ? "en" : "tr";
+const text = {
+  tr: { tagline: "Tabletinizi akıllı tahtaya kablosuz yansıtın", targets: "Pardus ETAP · Android TV · Windows · Mac", shot: "tr-TR/tablet10-1-home.png" },
+  en: { tagline: "Mirror your tablet to a smart board, wirelessly", targets: "Pardus ETAP · Android TV · Windows · Mac", shot: "en-US/tablet10-1-home.png" },
+}[lang];
+document.documentElement.lang = lang;
+document.getElementById("tagline").textContent = text.tagline;
+document.getElementById("targets").textContent = text.targets;
+document.getElementById("shot").src = text.shot;
+</script>
+</body>
+</html>

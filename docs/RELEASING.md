@@ -37,6 +37,13 @@ gh secret set YANSIT_KEY_PASSWORD --repo ozkanceng/casthop
 
 Tablet uygulamasıyla aynı Secret'ları kullanır, ek ayar gerekmez. Sürümde `casthop-tv.apk` çıkar. Google Play'de TV için yayımlamak ayrı başvuru ister: Play Console'da uygulamayı oluşturup "Android TV" biçimini ekleyin.
 
+## 2a-bis. Google Play (tablet uygulaması)
+
+- Play kimliği **`com.sorumatik.casthop`** (kalıcı). Mağaza metinleri `play/listings/`, görev istemi `docs/PLAY_STORE_PROMPT.md`.
+- Her `v*` etiketi, aynı Secret'larla imzalı bir **AAB** üretir: Actions çıktısı `play-aab` (`casthop-<sürüm>.aab`, 30 gün). Genel sürüm varlıklarına konmaz.
+- Play'e yükleme Play Console'dan yapılır; her yükleme yeni `versionCode` ister, yani yeni etiket. Uygulama imzalama anahtarını Play yönetir, bizim anahtar yükleme anahtarıdır; bu yüzden Play'den ve GitHub'dan kurulan APK'lar farklı imzalıdır (kaynak değiştirirken önce kaldırın).
+- Gizlilik politikası: `https://ozkanceng.github.io/casthop/privacy.html` (`site/privacy.html`).
+
 ## 2b. Windows imzası (isteğe bağlı)
 
 İmzasız kurucu çalışır, ama Windows SmartScreen uyarı gösterir. Kod imzalama sertifikası alırsanız `.pfx` dosyasını depoya eklemeyin; GitHub Secrets'a koyun:

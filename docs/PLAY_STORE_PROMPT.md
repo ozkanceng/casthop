@@ -26,7 +26,7 @@ Sen CastHop'un Google Play yayınını hazırlayıp yürüten mühendissin. Depo
 
 ### Hedef
 
-Android uygulamasını (`io.github.ozkanceng.yansit`) Google Play'de **Türkçe (varsayılan) ve İngilizce** listelemeyle yayınlamak. Kapsam: tablet/telefon uygulaması. TV uygulaması (`io.github.ozkanceng.casthop.tv`) ayrı bir liste olur; bu görevde yalnız Faz 6'daki sorudur.
+Android uygulamasını (`com.sorumatik.casthop`) Google Play'de **Türkçe (varsayılan) ve İngilizce** listelemeyle yayınlamak. Kapsam: tablet/telefon uygulaması. TV uygulaması (`io.github.ozkanceng.casthop.tv`) ayrı bir liste olur; bu görevde yalnız Faz 6'daki sorudur.
 
 ### Değişmez kurallar
 
@@ -41,7 +41,7 @@ Android uygulamasını (`io.github.ozkanceng.yansit`) Google Play'de **Türkçe 
 
 | | |
 |---|---|
-| Uygulama kimliği | `io.github.ozkanceng.yansit` (hata ayıklama sürümü `.debug` ekli, Play'e gitmez) |
+| Uygulama kimliği | `com.sorumatik.casthop` (hata ayıklama sürümü `.debug` ekli, Play'e gitmez). Kotlin paketi ve `namespace` `io.github.ozkanceng.yansit` kalır |
 | Sürüm | etiketten gelir (`-PyansitVersionName`); `versionCode = MMmmpp` (0.3.2 → 302). Her Play yüklemesi benzersiz ve artan `versionCode` ister, yani yeni etiket gerekir |
 | SDK | minSdk 29 (Android 10), targetSdk 37 |
 | İzinler | `INTERNET` (yalnız yerel ağ yuvaları), `ACCESS_NETWORK_STATE`, `ACCESS_LOCAL_NETWORK`, `CAMERA`, `RECORD_AUDIO`, `POST_NOTIFICATIONS`, `WAKE_LOCK`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PROJECTION`, `FOREGROUND_SERVICE_CAMERA`; hizmet türü `mediaProjection|camera` |
