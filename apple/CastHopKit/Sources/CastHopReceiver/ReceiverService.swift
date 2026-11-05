@@ -199,6 +199,8 @@ public final class ReceiverService: @unchecked Sendable {
         timers.append(timer)
     }
 
+    private var listening = false
+
     private func startListener() -> Bool {
         guard let identity, let port = NWEndpoint.Port(rawValue: options.port) else {
             fail(.listener)
@@ -209,12 +211,18 @@ public final class ReceiverService: @unchecked Sendable {
             l.newConnectionHandler = { [weak self] c in self?.accept(c) }
             l.stateUpdateHandler = { [weak self] state in
                 guard let self else { return }
-                if case .failed(let error) = state {
+                switch state {
+                case .ready:
+                    self.listening = true
+                    self.updateCredentials()
+                case .failed(let error):
                     if case .posix(let code) = error, code == .EADDRINUSE {
                         self.fail(.portInUse(self.options.port))
                     } else {
                         self.fail(.listener)
                     }
+                default:
+                    break
                 }
             }
             l.service = service()
@@ -506,7 +514,8 @@ public final class ReceiverService: @unchecked Sendable {
     }
 
     private func writePairingFile() {
-        guard let file = options.pairingFile, let pairing, let identity else { return }
+        // A test reads this file and connects at once, so it must not appear before the port is bound.
+        guard listening, let file = options.pairingFile, let pairing, let identity else { return }
         let record: [String: Any] = ["uri": snapshot.qrUri, "pin": pairing.pin, "port": Int(options.port),
                                      "fingerprint": identity.fingerprint.hex, "token": Base64Url.encode(pairing.qrToken)]
         guard let data = try? JSONSerialization.data(withJSONObject: record, options: [.sortedKeys]) else { return }

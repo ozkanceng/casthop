@@ -94,6 +94,11 @@ struct ApprovalView: View {
             .background(theme.surface, in: RoundedRectangle(cornerRadius: theme.radius))
             .padding(theme.space4)
         }
-        .onAppear { allowFocused = true }
+        .defaultFocus($allowFocused, true)
+        .task {
+            // The focus system sees the button one pass after it appears, so an assignment in onAppear is lost.
+            try? await Task.sleep(for: .milliseconds(100))
+            allowFocused = true
+        }
     }
 }

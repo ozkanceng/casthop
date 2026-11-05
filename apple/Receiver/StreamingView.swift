@@ -158,6 +158,11 @@ struct StreamingView: View {
         .padding(theme.space3)
         .background(theme.scrim, in: RoundedRectangle(cornerRadius: theme.radius))
         .padding(theme.space3)
-        .onAppear { stopFocused = true } // the button must exist before it can take focus
+        .defaultFocus($stopFocused, true)
+        .task {
+            // The focus system sees the button one pass after it appears, so an assignment in onAppear is lost.
+            try? await Task.sleep(for: .milliseconds(100))
+            stopFocused = true
+        }
     }
 }
