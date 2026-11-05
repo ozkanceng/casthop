@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+### Değiştirildi / Changed
+- Tek komutlu kurulum indirme sırasında tek satırda dosya adı ve yüzde gösteriyor; geçici klasör yolu ve sağlama dosyası satırı görünmüyor.
+
 ## [0.3.0] - 2026-11-05
 
 ### Eklendi / Added

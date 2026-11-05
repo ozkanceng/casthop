@@ -13,13 +13,22 @@ fail() {
     exit 1
 }
 
+# Dosyalar çalışma klasörüne göreli adla indirilir: wget ilerleme satırının başına verilen yolu yazar.
 fetch() {
     if command -v wget >/dev/null 2>&1; then
-        wget -q --show-progress --tries=10 --retry-connrefused --waitretry=5 -O "$2" "$1"
+        wget -q --show-progress --progress=bar:noscroll --tries=10 --retry-connrefused --waitretry=5 -O "$2" "$1"
     elif command -v curl >/dev/null 2>&1; then
         curl -fL --retry 10 --retry-connrefused --retry-delay 5 --progress-bar -o "$2" "$1"
     else
         fail "wget veya curl bulunamadı."
+    fi
+}
+
+fetch_quiet() {
+    if command -v wget >/dev/null 2>&1; then
+        wget -q --tries=10 --retry-connrefused --waitretry=5 -O "$2" "$1"
+    else
+        curl -fsSL --retry 10 --retry-connrefused --retry-delay 5 -o "$2" "$1"
     fi
 }
 
@@ -29,21 +38,22 @@ main() {
     work="$(mktemp -d)"
     trap 'rm -rf "$work"' EXIT
 
+    cd "$work"
     echo "CastHop indiriliyor (yaklaşık 115 MB)..."
-    fetch "$BASE/$ARCHIVE" "$work/$ARCHIVE" || fail "İndirilemedi. Tahtanın internet bağlantısını kontrol edin."
-    fetch "$BASE/SHA256SUMS" "$work/SHA256SUMS" || fail "Sağlama dosyası indirilemedi."
+    fetch "$BASE/$ARCHIVE" "$ARCHIVE" || fail "İndirilemedi. Tahtanın internet bağlantısını kontrol edin."
+    fetch_quiet "$BASE/SHA256SUMS" SHA256SUMS || fail "Sağlama dosyası indirilemedi."
 
     echo "Dosya doğrulanıyor..."
-    (cd "$work" && grep "  $ARCHIVE\$" SHA256SUMS | sha256sum -c --quiet -) \
+    grep "  $ARCHIVE\$" SHA256SUMS | sha256sum -c --quiet - \
         || fail "İndirilen dosya bozuk. Komutu yeniden çalıştırın."
 
     # Güncellemede eski sürüm açıksa dosyaları değişmeden önce kapanmalı.
     pkill -f "$DEST/bin/casthop" 2>/dev/null || true
     pkill -f "$DEST/bin/yansit-receiver" 2>/dev/null || true
 
-    mkdir "$work/package"
-    tar -xzf "$work/$ARCHIVE" -C "$work/package" --strip-components=1
-    sh "$work/package/install-user.sh" >/dev/null
+    mkdir package
+    tar -xzf "$ARCHIVE" -C package --strip-components=1
+    sh package/install-user.sh >/dev/null
 
     echo
     echo "Kurulum tamamlandı. Menüde 'CastHop' görünür."
