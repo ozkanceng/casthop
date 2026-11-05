@@ -54,6 +54,7 @@ jobs:
           ./gradlew --stacktrace lint test assembleRelease -PyansitVersionName="$VERSION"
           mkdir -p "$GITHUB_WORKSPACE/dist"
           cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/casthop-$VERSION.apk"
+          cp tv/build/outputs/apk/release/tv-release.apk "$GITHUB_WORKSPACE/dist/casthop-tv-$VERSION.apk"
 
       - name: Remove keystore
         if: always()
@@ -107,9 +108,12 @@ jobs:
       - name: Test on a clean system
         run: receiver/ci/test-portable.sh dist/casthop-*.tar.gz
 
+  windows:
+    uses: ./.github/workflows/windows.yml
+
   publish:
     runs-on: ubuntu-latest
-    needs: [android, receiver, portable-test]
+    needs: [android, receiver, portable-test, windows]
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -117,11 +121,17 @@ jobs:
           merge-multiple: true
           path: dist
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: receiver-windows
+          path: dist
+
       # releases/latest/download/<ad> bağlantıları (site/, site/kur) sürümden bağımsız adlar ister.
       - name: Stable download names
         run: |
           cd dist
           cp casthop-[0-9]*.apk casthop.apk
+          cp casthop-tv-[0-9]*.apk casthop-tv.apk
           cp casthop_*_amd64.deb casthop_amd64.deb
           cp casthop-*-x86_64.tar.gz casthop-x86_64.tar.gz
 

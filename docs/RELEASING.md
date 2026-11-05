@@ -33,6 +33,36 @@ gh secret set YANSIT_KEY_PASSWORD --repo ozkanceng/tablet-mirror
 
 `release.yml` keystore'u çalıştırıcının geçici dizinine yazar ve iş sonunda siler.
 
+## 2a. Android TV uygulaması
+
+Tablet uygulamasıyla aynı Secret'ları kullanır, ek ayar gerekmez. Sürümde `casthop-tv.apk` çıkar. Google Play'de TV için yayımlamak ayrı başvuru ister: Play Console'da uygulamayı oluşturup "Android TV" biçimini ekleyin.
+
+## 2b. Windows imzası (isteğe bağlı)
+
+İmzasız kurucu çalışır, ama Windows SmartScreen uyarı gösterir. Kod imzalama sertifikası alırsanız `.pfx` dosyasını depoya eklemeyin; GitHub Secrets'a koyun:
+
+```bash
+base64 -i casthop-codesign.pfx | gh secret set CASTHOP_WINDOWS_PFX_BASE64 --repo ozkanceng/tablet-mirror
+gh secret set CASTHOP_WINDOWS_PFX_PASSWORD --repo ozkanceng/tablet-mirror
+```
+
+İmzalama adımı `windows.yml`'e sertifika alındığında eklenir.
+
+## 2c. Apple
+
+iPhone, iPad, Apple TV ve Mac dağıtımı için ücretli Apple Developer Program üyeliği gerekir. Sertifika ve API anahtarları da yalnız GitHub Secrets'ta durur:
+
+```bash
+base64 -i casthop-distribution.p12 | gh secret set CASTHOP_APPLE_CERT_BASE64 --repo ozkanceng/tablet-mirror
+gh secret set CASTHOP_APPLE_CERT_PASSWORD --repo ozkanceng/tablet-mirror
+gh secret set CASTHOP_APPLE_TEAM_ID --repo ozkanceng/tablet-mirror
+base64 -i AuthKey_XXXX.p8 | gh secret set CASTHOP_ASC_KEY_BASE64 --repo ozkanceng/tablet-mirror
+gh secret set CASTHOP_ASC_KEY_ID --repo ozkanceng/tablet-mirror
+gh secret set CASTHOP_ASC_ISSUER_ID --repo ozkanceng/tablet-mirror
+```
+
+App Store Connect'te `io.github.ozkanceng.casthop` altındaki uygulamaları ve App Group'u oluşturun. Yayın adımı `apple.yml`'e üyelik açıldığında eklenir.
+
 ## 3. Yerelde imzalı derleme (isteğe bağlı)
 
 `android/keystore.properties` (commit edilmez):
