@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: casthop
-Upstream-Contact: https://github.com/ozkanceng/tablet-mirror/issues
-Source: https://github.com/ozkanceng/tablet-mirror
+Upstream-Contact: https://github.com/ozkanceng/casthop/issues
+Source: https://github.com/ozkanceng/casthop
 
 Files: *
 Copyright: 2026 The CastHop Authors

@@ -1,10 +1,10 @@
 #!/bin/sh
 # CastHop'u tahtaya yönetici şifresi olmadan kurar ve başlatır; yeniden çalıştırmak son sürüme günceller.
-#   wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/tablet-mirror/kur | sh
+#   wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/casthop/kur | sh
 # Betiğin tamamı indirilmeden hiçbir şey çalışmasın diye her şey main içindedir.
 set -eu
 
-BASE="${YANSIT_RELEASE_URL:-https://github.com/ozkanceng/tablet-mirror/releases/latest/download}"
+BASE="${YANSIT_RELEASE_URL:-https://github.com/ozkanceng/casthop/releases/latest/download}"
 ARCHIVE="casthop-x86_64.tar.gz"
 DEST="$HOME/.local/opt/yansit"
 

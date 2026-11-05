@@ -9,7 +9,7 @@
 | Öğe | Değer |
 |---|---|
 | Proje adı | **Yansıt** (`yansit`) |
-| Depo | `github.com/ozkanceng/tablet-mirror` (public, Apache-2.0) |
+| Depo | `github.com/ozkanceng/casthop` (public, Apache-2.0) |
 | Android paket adı | `io.github.ozkanceng.yansit` |
 | Alıcı ikili / .deb | `yansit-receiver` (menüde "Yansıt Alıcı") |
 | Varsayılan TCP portu | `47800` (ayarlanabilir) |
@@ -39,7 +39,7 @@ Tahmin değil, kaynaktan kontrol edildi. Ayrıntı ve kaynaklar: [ARCHITECTURE.m
 Her taş sonunda: derle → test → kabul kriterlerini kontrol et → commit + push. Bir taş bitmeden sonrakine geçilmez. 🔧 = gerçek cihaz testi gerekir; kontrol listesi verilip sonucun beklenir.
 
 ### M0 — Depo iskeleti ve CI tabanı
-- `gh repo create ozkanceng/tablet-mirror --public`, Apache-2.0 `LICENSE`, `NOTICE`, `.gitignore`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, issue/PR şablonları, `CHANGELOG.md`, TR/EN README iskeleti.
+- `gh repo create ozkanceng/casthop --public`, Apache-2.0 `LICENSE`, `NOTICE`, `.gitignore`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, issue/PR şablonları, `CHANGELOG.md`, TR/EN README iskeleti.
 - Monorepo: `/android`, `/receiver`, `/web-receiver` (yalnız README), `/protocol`, `/tools`, `/docs`.
 - Android: Gradle (sürümler M0'da Google Maven'den kararlı olanlara sabitlenir, version catalog), Compose uygulama kabuğu, `:protocol` saf-JVM modülü.
 - Receiver: CMake + Qt6 QML kabuğu, `debian:12` konteynerinde derlenir.

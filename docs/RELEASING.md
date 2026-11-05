@@ -16,10 +16,10 @@ keytool -genkeypair -v -keystore yansit-release.jks -alias yansit \
 Depo → **Settings → Secrets and variables → Actions → New repository secret**, ya da `gh` ile:
 
 ```bash
-base64 -i yansit-release.jks | gh secret set YANSIT_KEYSTORE_BASE64 --repo ozkanceng/tablet-mirror
-gh secret set YANSIT_KEYSTORE_PASSWORD --repo ozkanceng/tablet-mirror
-gh secret set YANSIT_KEY_ALIAS --repo ozkanceng/tablet-mirror --body yansit
-gh secret set YANSIT_KEY_PASSWORD --repo ozkanceng/tablet-mirror
+base64 -i yansit-release.jks | gh secret set YANSIT_KEYSTORE_BASE64 --repo ozkanceng/casthop
+gh secret set YANSIT_KEYSTORE_PASSWORD --repo ozkanceng/casthop
+gh secret set YANSIT_KEY_ALIAS --repo ozkanceng/casthop --body yansit
+gh secret set YANSIT_KEY_PASSWORD --repo ozkanceng/casthop
 ```
 
 (`gh secret set` şifreyi gizli olarak sorar; komut geçmişine yazılmaz.)
@@ -42,8 +42,8 @@ Tablet uygulamasıyla aynı Secret'ları kullanır, ek ayar gerekmez. Sürümde 
 İmzasız kurucu çalışır, ama Windows SmartScreen uyarı gösterir. Kod imzalama sertifikası alırsanız `.pfx` dosyasını depoya eklemeyin; GitHub Secrets'a koyun:
 
 ```bash
-base64 -i casthop-codesign.pfx | gh secret set CASTHOP_WINDOWS_PFX_BASE64 --repo ozkanceng/tablet-mirror
-gh secret set CASTHOP_WINDOWS_PFX_PASSWORD --repo ozkanceng/tablet-mirror
+base64 -i casthop-codesign.pfx | gh secret set CASTHOP_WINDOWS_PFX_BASE64 --repo ozkanceng/casthop
+gh secret set CASTHOP_WINDOWS_PFX_PASSWORD --repo ozkanceng/casthop
 ```
 
 İmzalama adımı `windows.yml`'e sertifika alındığında eklenir.
@@ -53,12 +53,12 @@ gh secret set CASTHOP_WINDOWS_PFX_PASSWORD --repo ozkanceng/tablet-mirror
 iPhone, iPad, Apple TV ve Mac dağıtımı için ücretli Apple Developer Program üyeliği gerekir. Sertifika ve API anahtarları da yalnız GitHub Secrets'ta durur:
 
 ```bash
-base64 -i casthop-distribution.p12 | gh secret set CASTHOP_APPLE_CERT_BASE64 --repo ozkanceng/tablet-mirror
-gh secret set CASTHOP_APPLE_CERT_PASSWORD --repo ozkanceng/tablet-mirror
-gh secret set CASTHOP_APPLE_TEAM_ID --repo ozkanceng/tablet-mirror
-base64 -i AuthKey_XXXX.p8 | gh secret set CASTHOP_ASC_KEY_BASE64 --repo ozkanceng/tablet-mirror
-gh secret set CASTHOP_ASC_KEY_ID --repo ozkanceng/tablet-mirror
-gh secret set CASTHOP_ASC_ISSUER_ID --repo ozkanceng/tablet-mirror
+base64 -i casthop-distribution.p12 | gh secret set CASTHOP_APPLE_CERT_BASE64 --repo ozkanceng/casthop
+gh secret set CASTHOP_APPLE_CERT_PASSWORD --repo ozkanceng/casthop
+gh secret set CASTHOP_APPLE_TEAM_ID --repo ozkanceng/casthop
+base64 -i AuthKey_XXXX.p8 | gh secret set CASTHOP_ASC_KEY_BASE64 --repo ozkanceng/casthop
+gh secret set CASTHOP_ASC_KEY_ID --repo ozkanceng/casthop
+gh secret set CASTHOP_ASC_ISSUER_ID --repo ozkanceng/casthop
 ```
 
 App Store Connect'te `io.github.ozkanceng.casthop` altındaki uygulamaları ve App Group'u oluşturun. Yayın adımı `apple.yml`'e üyelik açıldığında eklenir.

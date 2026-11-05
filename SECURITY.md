@@ -3,11 +3,11 @@
 ## Açık bildirme / Reporting a vulnerability
 
 Lütfen güvenlik açıklarını **herkese açık issue olarak açmayın**. GitHub'ın
-[özel güvenlik bildirimi](https://github.com/ozkanceng/tablet-mirror/security/advisories/new)
+[özel güvenlik bildirimi](https://github.com/ozkanceng/casthop/security/advisories/new)
 özelliğini kullanın. 7 gün içinde yanıt vermeyi hedefliyoruz.
 
 Please **do not open public issues** for security vulnerabilities. Use GitHub
-[private vulnerability reporting](https://github.com/ozkanceng/tablet-mirror/security/advisories/new).
+[private vulnerability reporting](https://github.com/ozkanceng/casthop/security/advisories/new).
 We aim to respond within 7 days.
 
 ## Kapsam / Scope

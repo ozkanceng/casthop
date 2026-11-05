@@ -31,15 +31,15 @@ yeter.
 
 ### Tahta (Pardus ETAP 23 / Debian 12)
 
-**En kolayı:** tahtada ve tablette [ozkanceng.github.io/tablet-mirror](https://ozkanceng.github.io/tablet-mirror/) adresini açıp adımları izleyin. Tahtada indirilen `.deb` dosyasına çift tıklayıp yönetici şifresiyle kurarsınız.
+**En kolayı:** tahtada ve tablette [ozkanceng.github.io/casthop](https://ozkanceng.github.io/casthop/) adresini açıp adımları izleyin. Tahtada indirilen `.deb` dosyasına çift tıklayıp yönetici şifresiyle kurarsınız.
 
 Yönetici şifreniz yoksa yalnız kendi hesabınıza kurmak için:
 
 ```bash
-wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/tablet-mirror/kur | sh
+wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/casthop/kur | sh
 ```
 
-Dosyaları elle indirmek isterseniz [Sürümler](https://github.com/ozkanceng/tablet-mirror/releases) sayfasından iki seçenekten birini kullanın:
+Dosyaları elle indirmek isterseniz [Sürümler](https://github.com/ozkanceng/casthop/releases) sayfasından iki seçenekten birini kullanın:
 
 **A. Paket (önerilen, yönetici şifresi gerekir)**
 
@@ -64,7 +64,7 @@ Uygulama `~/.local/opt/yansit` altına kurulur ve menüye eklenir.
 
 ### Tablet (Android 10 ve üstü)
 
-[Sürümler](https://github.com/ozkanceng/tablet-mirror/releases) sayfasından `casthop-*.apk` dosyasını tablete indirip açın.
+[Sürümler](https://github.com/ozkanceng/casthop/releases) sayfasından `casthop-*.apk` dosyasını tablete indirip açın.
 İlk kurulumda Android "bilinmeyen kaynaklardan yüklemeye" izin isteyebilir.
 
 ### Televizyon, Windows ve Mac
@@ -75,7 +75,7 @@ Uygulama `~/.local/opt/yansit` altına kurulur ve menüye eklenir.
 | Windows 10 ve 11 (64 bit) | `casthop-setup-x86_64.exe` | İmzalı değilse SmartScreen uyarır: "Ek bilgi" → "Yine de çalıştır". |
 | Mac (macOS 14 ve üstü) | `casthop-mac.dmg` | Apple onayı olmadan ilk açılışta uyarır: Sistem Ayarları → Gizlilik ve Güvenlik → "Yine de Aç". |
 
-Hepsi [Sürümler](https://github.com/ozkanceng/tablet-mirror/releases) sayfasındadır.
+Hepsi [Sürümler](https://github.com/ozkanceng/casthop/releases) sayfasındadır.
 
 ### iPhone, iPad ve Apple TV
 
@@ -106,7 +106,7 @@ yeter. Kamera kullanmak istemezseniz **Kodla bağlan** ile aynı ağdaki tahtay�
 | Ses gelmiyor | Tablette ses izni verildi mi ve **Ayarlar → Sesi tahtaya aktar** açık mı? Bazı uygulamalar (ör. bazı video uygulamaları, telefon görüşmeleri) sesini paylaşmaya izin vermez. |
 | Ekran kilitlenince yansıtma duruyor | Android 15 ve üstünde bu bir güvenlik kuralıdır; ekran zaman aşımını uzatın. |
 
-Daha fazla yardım ve hata bildirimi için: [Issues](https://github.com/ozkanceng/tablet-mirror/issues). Hata bildirirken
+Daha fazla yardım ve hata bildirimi için: [Issues](https://github.com/ozkanceng/casthop/issues). Hata bildirirken
 tahtada `casthop --verbose` çıktısını ve tablet modelini ekleyin.
 
 ## Ölçülen performans

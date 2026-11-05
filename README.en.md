@@ -31,15 +31,15 @@ network.
 
 ### Board (Pardus ETAP 23 / Debian 12)
 
-**Easiest:** open [ozkanceng.github.io/tablet-mirror](https://ozkanceng.github.io/tablet-mirror/) on the board and the tablet and follow the steps. On the board, double-click the downloaded `.deb` and install it with the administrator password.
+**Easiest:** open [ozkanceng.github.io/casthop](https://ozkanceng.github.io/casthop/) on the board and the tablet and follow the steps. On the board, double-click the downloaded `.deb` and install it with the administrator password.
 
 Without an administrator password, install for your own account only:
 
 ```bash
-wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/tablet-mirror/kur | sh
+wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/casthop/kur | sh
 ```
 
-To download files by hand, use one of these from [Releases](https://github.com/ozkanceng/tablet-mirror/releases):
+To download files by hand, use one of these from [Releases](https://github.com/ozkanceng/casthop/releases):
 
 **A. Package (recommended, needs the administrator password)**
 
@@ -63,7 +63,7 @@ It installs into `~/.local/opt/yansit` and adds a menu entry.
 
 ### Tablet (Android 10 or later)
 
-Download `casthop-*.apk` from [Releases](https://github.com/ozkanceng/tablet-mirror/releases) on the tablet and open it.
+Download `casthop-*.apk` from [Releases](https://github.com/ozkanceng/casthop/releases) on the tablet and open it.
 Android may ask to allow installing from unknown sources the first time.
 
 ### TV, Windows and Mac
@@ -74,7 +74,7 @@ Android may ask to allow installing from unknown sources the first time.
 | Windows 10 and 11 (64-bit) | `casthop-setup-x86_64.exe` | Unsigned builds trigger SmartScreen: "More info" → "Run anyway". |
 | Mac (macOS 14 or later) | `casthop-mac.dmg` | Without Apple's approval it warns on first launch: System Settings → Privacy & Security → "Open Anyway". |
 
-All are on the [Releases](https://github.com/ozkanceng/tablet-mirror/releases) page.
+All are on the [Releases](https://github.com/ozkanceng/casthop/releases) page.
 
 ### iPhone, iPad and Apple TV
 
@@ -105,7 +105,7 @@ use **Connect with code** to pick the board on the network and enter its 6-digit
 | No sound | Was the sound permission granted, and is **Settings → Play sound on the board** on? Some apps do not allow their audio to be shared. |
 | Mirroring stops when the screen locks | A security rule on Android 15+; increase the screen timeout. |
 
-Help and bug reports: [Issues](https://github.com/ozkanceng/tablet-mirror/issues) — include `casthop --verbose`
+Help and bug reports: [Issues](https://github.com/ozkanceng/casthop/issues) — include `casthop --verbose`
 output and the tablet model.
 
 ## Measured performance

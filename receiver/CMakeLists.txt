@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.25)
 project(casthop
     VERSION 0.3.0
     DESCRIPTION "CastHop — Pardus ETAP akıllı tahta alıcısı"
-    HOMEPAGE_URL "https://github.com/ozkanceng/tablet-mirror"
+    HOMEPAGE_URL "https://github.com/ozkanceng/casthop"
     LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
