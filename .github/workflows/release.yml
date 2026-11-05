@@ -55,6 +55,10 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/dist"
           cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/casthop-$VERSION.apk"
           cp tv/build/outputs/apk/release/tv-release.apk "$GITHUB_WORKSPACE/dist/casthop-tv-$VERSION.apk"
+          # Google Play takes an app bundle; it goes to a separate artifact, not to the public release.
+          ./gradlew --stacktrace :app:bundleRelease -PyansitVersionName="$VERSION"
+          mkdir -p "$GITHUB_WORKSPACE/play"
+          cp app/build/outputs/bundle/release/app-release.aab "$GITHUB_WORKSPACE/play/casthop-$VERSION.aab"
 
       - name: Remove keystore
         if: always()
@@ -64,6 +68,12 @@ jobs:
         with:
           name: dist-android
           path: dist/
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: play-aab
+          path: play/
+          retention-days: 30
 
   receiver:
     needs: integration
