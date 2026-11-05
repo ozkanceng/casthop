@@ -4,6 +4,11 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+## [0.3.2] - 2026-11-05
+
+### Düzeltildi / Fixed
+- Android TV alıcısı ağda görünmüyordu: yayın adı TV'nin kendi adıyla aynı olunca Android yayını hiç tamamlamıyordu. Yayın adına artık `(CastHop)` ekleniyor; listelerde TV'nin adı değişmeden görünüyor.
+
 ## [0.3.1] - 2026-11-05
 
 ### Değiştirildi / Changed

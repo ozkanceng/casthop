@@ -1,4 +1,4 @@
-casthop (0.3.1) unstable; urgency=medium
+casthop (0.3.2) unstable; urgency=medium
 
   * Add the Windows build; advertise the receiver kind over mDNS.
 
