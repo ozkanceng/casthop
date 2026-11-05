@@ -233,7 +233,7 @@ func broadcast(directory: String) async throws {
         }
     }
 
-    let engine = BroadcastEngine(store: store, device: .init(name: options.deviceName, appVersion: "1.0"))
+    let engine = BroadcastEngine(store: store, device: .init(name: options.deviceName, appVersion: "1.0"), sendsAudio: options.audio)
     let done = DispatchSemaphore(value: 0)
     engine.onFinished = { failure in
         print("broadcast ended: \(failure.map { "\($0)" } ?? "stopped")")

@@ -32,9 +32,9 @@
     <string>_yansit._tcp</string>
   </array>
   <key>NSCameraUsageDescription</key>
-  <string>To read the QR code on the board. Nothing is recorded.</string>
+  <string>To read the QR code on the screen and to mirror the camera. Nothing is recorded.</string>
   <key>NSLocalNetworkUsageDescription</key>
-  <string>To connect to the board on the same network.</string>
+  <string>To connect to the screen on the same network.</string>
   <key>UIApplicationSceneManifest</key>
   <dict>
     <key>UIApplicationSupportsMultipleScenes</key>

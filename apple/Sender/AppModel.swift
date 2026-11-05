@@ -34,6 +34,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var phase = AppPhase.idle
     @Published private(set) var receivers: [RememberedReceiver] = []
     @Published private(set) var discovered: [DiscoveredReceiver] = []
+    /// Set while the camera is mirrored. The screen goes through the extension instead.
+    @Published private(set) var camera: CameraCapture?
     @Published var settings: SenderSettings {
         didSet { store?.settings = settings }
     }
@@ -43,6 +45,9 @@ final class AppModel: ObservableObject {
     private var pairing: Task<Void, Never>?
     private var statusObservation: DarwinNotifier.Observation?
     private var returnToScanner = false
+    private var cameraEngine: BroadcastEngine?
+    /// By the teacher, as opposed to an interruption that ends by itself.
+    private var cameraPaused = false
 
     var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "" }
     var storeAvailable: Bool { store != nil }
@@ -167,9 +172,80 @@ final class AppModel: ObservableObject {
 
     // MARK: Broadcast
 
-    func stop() { DarwinNotifier.post(.stop) }
-    func pause() { DarwinNotifier.post(.pause) }
-    func unpause() { DarwinNotifier.post(.unpause) }
+    func stop() {
+        if let cameraEngine {
+            cameraEngine.stop()
+        } else {
+            DarwinNotifier.post(.stop)
+        }
+    }
+
+    func pause() {
+        if let cameraEngine {
+            cameraPaused = true
+            cameraEngine.pause()
+        } else {
+            DarwinNotifier.post(.pause)
+        }
+    }
+
+    func unpause() {
+        if let cameraEngine {
+            cameraPaused = false
+            cameraEngine.unpause()
+        } else {
+            DarwinNotifier.post(.unpause)
+        }
+    }
+
+    // MARK: Camera
+
+    /// A Broadcast Upload Extension cannot use the camera, so this session runs in the app, and only while it is open.
+    func startCamera() async {
+        guard let store, camera == nil else { return }
+        guard await AVCaptureDevice.requestAccess(for: .video) else {
+            phase = .ended(failure: .cameraDenied)
+            return
+        }
+        let capture = CameraCapture()
+        let engine = BroadcastEngine(store: store, device: .init(name: UIDevice.current.name, appVersion: version), sendsAudio: false)
+        capture.onFrame = { [weak engine] image, ptsUs in engine?.video(image, rotation: .none, ptsUs: ptsUs) }
+        capture.onInterruption = { [weak self] interrupted in
+            Task { @MainActor in self?.cameraInterrupted(interrupted) }
+        }
+        capture.onFailure = { [weak engine] in engine?.stop(reason: ByeReason.error, failure: .cameraFailed) }
+        engine.onFinished = { [weak self] _ in
+            Task { @MainActor in self?.cameraEnded() }
+        }
+        cameraPaused = false
+        cameraEngine = engine
+        camera = capture
+        UIApplication.shared.isIdleTimerDisabled = true
+        engine.start()
+        capture.start()
+    }
+
+    func switchCamera() { camera?.switchPosition() }
+
+    private func cameraInterrupted(_ interrupted: Bool) {
+        if interrupted {
+            cameraEngine?.pause()
+        } else if !cameraPaused {
+            cameraEngine?.unpause()
+        }
+    }
+
+    private func cameraEnded() {
+        camera?.stop()
+        camera = nil
+        cameraEngine = nil
+        UIApplication.shared.isIdleTimerDisabled = false
+    }
+
+    /// iOS takes the camera away from an app in the background and suspends it soon after.
+    func enteredBackground() {
+        cameraEngine?.stop(failure: .cameraLeft)
+    }
 
     private func statusChanged() {
         guard let status = store?.status else { return }
@@ -190,7 +266,7 @@ final class AppModel: ObservableObject {
         reload()
         guard let store else { return }
         let running: [BroadcastPhase] = [.connecting, .waitingApproval, .starting, .mirroring]
-        if running.contains(store.status.phase), !UIScreen.main.isCaptured {
+        if camera == nil, running.contains(store.status.phase), !UIScreen.main.isCaptured {
             store.status = BroadcastStatus()
             phase = .ended(failure: .broadcastEnded)
         } else {

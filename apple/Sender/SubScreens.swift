@@ -271,6 +271,15 @@ struct ScannerView: View {
 struct DiscoverView: View {
     @EnvironmentObject private var model: AppModel
 
+    private static func icon(_ kind: String?) -> String {
+        switch kind {
+        case "pc": return "desktopcomputer"
+        case "tablet": return "ipad.landscape"
+        case "board": return "rectangle.inset.filled.and.person.filled"
+        default: return "tv"
+        }
+    }
+
     var body: some View {
         SubScreen(title: "Boards on this network") {
             HStack(spacing: Tokens.space3) {
@@ -280,7 +289,7 @@ struct DiscoverView: View {
                     .foregroundStyle(Tokens.onSurface)
             }
             ForEach(model.discovered) { found in
-                NavigationCard(title: Text(verbatim: found.name), icon: "tv") { model.path.append(.pin(found.id)) }
+                NavigationCard(title: Text(verbatim: found.name), icon: Self.icon(found.kind)) { model.path.append(.pin(found.id)) }
             }
             Text("Board not listed? Is CastHop open on the board and the tablet on the same network? School networks may block discovery; the QR code always works.")
                 .font(.subheadline)

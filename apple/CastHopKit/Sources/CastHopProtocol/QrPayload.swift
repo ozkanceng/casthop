@@ -135,17 +135,32 @@ public enum Base64Url {
     }
 }
 
-/// `_yansit._tcp` TXT record (PROTOCOL.md §8): `v=1`, `name=<name>`, `fp=<first 16 fingerprint bytes>`.
+/// `_yansit._tcp` TXT record (PROTOCOL.md §8): `v=1`, `name=<name>`, `fp=<first 16 fingerprint bytes>`, optional `kind`.
 public struct DiscoveryTxt: Equatable, Sendable {
     public static let serviceType = "_yansit._tcp"
     public static let prefixSize = 16
+    public static let kinds: Set<String> = ["board", "tv", "pc", "tablet"]
+
+    /// What this build of the receiver runs on.
+    public static var localKind: String {
+#if os(tvOS)
+        "tv"
+#elseif os(macOS)
+        "pc"
+#else
+        "tablet"
+#endif
+    }
 
     public var name: String?
     public var fingerprintPrefix: Data
+    /// Nil if the receiver sends none or one this version does not know.
+    public var kind: String?
 
-    public init(name: String?, fingerprintPrefix: Data) {
+    public init(name: String?, fingerprintPrefix: Data, kind: String? = nil) {
         self.name = name
         self.fingerprintPrefix = fingerprintPrefix
+        self.kind = kind
     }
 
     /// Nil for another version or a bad fingerprint prefix.
@@ -153,11 +168,11 @@ public struct DiscoveryTxt: Equatable, Sendable {
         guard attributes["v"] == "1", let fp = attributes["fp"], let prefix = Base64Url.decode(fp),
               prefix.count == prefixSize else { return nil }
         let name = attributes["name"].flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
-        return DiscoveryTxt(name: name, fingerprintPrefix: prefix)
+        return DiscoveryTxt(name: name, fingerprintPrefix: prefix, kind: attributes["kind"].flatMap { kinds.contains($0) ? $0 : nil })
     }
 
-    public static func record(name: String, fingerprint: Data) -> [String: String] {
-        ["v": "1", "name": name, "fp": Base64Url.encode(fingerprint.prefix(prefixSize))]
+    public static func record(name: String, fingerprint: Data, kind: String = localKind) -> [String: String] {
+        ["v": "1", "name": name, "fp": Base64Url.encode(fingerprint.prefix(prefixSize)), "kind": kind]
     }
 
     /// Cuts a service name to 63 bytes without splitting a character; an empty name becomes `CastHop`.

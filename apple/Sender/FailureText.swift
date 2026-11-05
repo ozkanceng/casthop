@@ -24,6 +24,9 @@ extension MirrorFailure {
         case .receiverClosed: return String(localized: "CastHop was closed on the board.")
         case .takenOver: return String(localized: "Another tablet took over")
         case .broadcastEnded: return String(localized: "Mirroring ended")
+        case .cameraFailed: return String(localized: "Could not open the camera")
+        case .cameraDenied: return String(localized: "Camera access is off")
+        case .cameraLeft: return String(localized: "Camera mirroring stopped")
         case .noTarget: return String(localized: "Choose a board first")
         case .internalError: return String(localized: "Something went wrong. Please try again.")
         }
@@ -52,6 +55,9 @@ extension MirrorFailure {
         case .takenOver: return String(localized: "The board allowed another tablet to mirror.")
         case .broadcastEnded:
             return String(localized: "Mirroring ends when the screen locks or it is stopped by the system. You can connect again.")
+        case .cameraFailed: return String(localized: "Check that no other app is using the camera and try again.")
+        case .cameraDenied: return String(localized: "Allow the camera for CastHop in the Settings app, then try again.")
+        case .cameraLeft: return String(localized: "The camera works only while CastHop is on the screen. Connect again to continue.")
         case .noTarget: return String(localized: "Open CastHop and pick a board before starting the broadcast.")
         case .stoppedByReceiver, .receiverClosed, .internalError: return nil
         }

@@ -53,6 +53,19 @@ final class DiscoveryTxtTests: XCTestCase {
         XCTAssertEqual(DiscoveryTxt.parse(record)?.fingerprintPrefix, fp.prefix(16))
     }
 
+    func testKindIsOptionalAndUnknownValuesAreIgnored() {
+        let fp = Base64Url.encode(Data(count: 16))
+        XCTAssertEqual(DiscoveryTxt.parse(["v": "1", "fp": fp, "kind": "tv"])?.kind, "tv")
+        XCTAssertNil(DiscoveryTxt.parse(["v": "1", "fp": fp])?.kind)
+        XCTAssertNil(DiscoveryTxt.parse(["v": "1", "fp": fp, "kind": "toaster"])?.kind)
+    }
+
+    func testRecordCarriesTheKind() {
+        let record = DiscoveryTxt.record(name: "Tahta", fingerprint: Data(count: 32), kind: "pc")
+        XCTAssertEqual(DiscoveryTxt.parse(record)?.kind, "pc")
+        XCTAssertTrue(DiscoveryTxt.kinds.contains(DiscoveryTxt.localKind))
+    }
+
     func testInstanceNameNeverSplitsACharacter() {
         XCTAssertEqual(DiscoveryTxt.instanceName(""), "CastHop")
         XCTAssertEqual(DiscoveryTxt.instanceName("Tahta"), "Tahta")

@@ -7,13 +7,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "To read the QR code on the board. Nothing is recorded."
+            "value": "To read the QR code on the screen and to mirror the camera. Nothing is recorded."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tahtadaki QR kodunu okumak için. Görüntü kaydedilmez."
+            "value": "Ekrandaki QR kodunu okumak ve kamerayı yansıtmak için. Görüntü kaydedilmez."
           }
         }
       }
@@ -24,13 +24,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "To connect to the board on the same network."
+            "value": "To connect to the screen on the same network."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aynı ağdaki tahtaya bağlanmak için."
+            "value": "Aynı ağdaki ekrana bağlanmak için."
           }
         }
       }

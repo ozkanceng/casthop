@@ -3,10 +3,12 @@ import CoreMedia
 import CoreVideo
 import Foundation
 
-/// The Broadcast Upload Extension without ReplayKit: connects to the selected receiver with its pairing key, plans the
-/// stream from the first frame, follows rotation, reports status to the app. A thin `RPBroadcastSampleHandler` calls it,
-/// and `casthop-sender --broadcast-store` drives it on a Mac.
+/// One mirroring session without ReplayKit: connects to the selected receiver with its pairing key, plans the stream
+/// from the first frame, follows rotation, reports status to the app. A thin `RPBroadcastSampleHandler` calls it, the app
+/// calls it for the camera, and `casthop-sender --broadcast-store` drives it on a Mac.
 public final class BroadcastEngine: @unchecked Sendable {
+    private static let maxClockDriftUs: Int64 = 1_000_000
+
     public struct Device: Sendable {
         public var name: String
         public var appVersion: String
@@ -22,6 +24,7 @@ public final class BroadcastEngine: @unchecked Sendable {
 
     private let store: SharedStore
     private let device: Device
+    private let sendsAudio: Bool
     private let settings: SenderSettings
     private let encoder = VideoToolboxEncoder()
     private let pipeline: ScreenPipeline
@@ -42,10 +45,13 @@ public final class BroadcastEngine: @unchecked Sendable {
     private var finished = false
     private var status = BroadcastStatus()
     private var stopRequested: UInt8?
+    private var stopFailure: MirrorFailure?
 
-    public init(store: SharedStore, device: Device) {
+    /// `sendsAudio` is false for a source with no sound of its own.
+    public init(store: SharedStore, device: Device, sendsAudio: Bool = true) {
         self.store = store
         self.device = device
+        self.sendsAudio = sendsAudio
         settings = store.settings
         preset = settings.preset
         pipeline = ScreenPipeline(encoder: encoder)
@@ -192,7 +198,9 @@ public final class BroadcastEngine: @unchecked Sendable {
 
     private func chooseAudio(_ welcome: Welcome) -> AacEncoder? {
         let state: AudioStatus
-        if !settings.audioEnabled {
+        if !sendsAudio {
+            state = .offCamera
+        } else if !settings.audioEnabled {
             state = .offSetting
         } else if !welcome.audioEnabled {
             state = .offReceiver
@@ -252,10 +260,12 @@ public final class BroadcastEngine: @unchecked Sendable {
         }
     }
 
-    /// `reason` is a `ByeReason`. The answer comes through `onFinished`.
-    public func stop(reason: UInt8 = ByeReason.userStop) {
+    /// `reason` is a `ByeReason`, `failure` what the teacher is told instead of the usual result. The answer comes
+    /// through `onFinished`.
+    public func stop(reason: UInt8 = ByeReason.userStop, failure: MirrorFailure? = nil) {
         queue.async { [self] in
             guard !finished else { return }
+            stopFailure = failure
             if let mirror {
                 mirror.stop(byeReason: reason)
             } else {
@@ -264,9 +274,19 @@ public final class BroadcastEngine: @unchecked Sendable {
         }
     }
 
-    private func finish(_ failure: MirrorFailure?) {
+    /// A sample's time on the host clock, the base of `MonotonicClock`. If a release of iOS ever differs, now is close
+    /// enough: only latency figures and lip sync depend on it.
+    public static func captureTimeUs(_ sample: CMSampleBuffer) -> UInt64 {
+        let now = MonotonicClock.nowUs()
+        let pts = CMTimeConvertScale(CMSampleBufferGetPresentationTimeStamp(sample), timescale: 1_000_000, method: .default)
+        guard pts.isValid, abs(pts.value - Int64(now)) <= maxClockDriftUs else { return now }
+        return UInt64(pts.value)
+    }
+
+    private func finish(_ result: MirrorFailure?) {
         guard !finished else { return }
         finished = true
+        let failure = stopFailure ?? result
         lock.withLock { videoRunning = false }
         mirror = nil
         publish {

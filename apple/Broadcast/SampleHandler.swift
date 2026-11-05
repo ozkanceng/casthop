@@ -8,7 +8,6 @@ import UIKit
 /// Thin ReplayKit shell around `BroadcastEngine`. Extensions get about 50 MB: frames pass by reference from here to the
 /// single encoder, and every queue behind it is bounded.
 final class SampleHandler: RPBroadcastSampleHandler {
-    private static let maxClockDriftUs: Int64 = 1_000_000
     private static let farewellSeconds = 0.5
 
     private var engine: BroadcastEngine?
@@ -52,15 +51,6 @@ final class SampleHandler: RPBroadcastSampleHandler {
                                          userInfo: [NSLocalizedDescriptionKey: text]))
     }
 
-    /// Sample times are on the host clock, the base of `MonotonicClock`. If a release of iOS ever differs, now is close
-    /// enough: only latency figures and lip sync depend on it.
-    private func captureTimeUs(_ sample: CMSampleBuffer) -> UInt64 {
-        let now = MonotonicClock.nowUs()
-        let pts = CMTimeConvertScale(CMSampleBufferGetPresentationTimeStamp(sample), timescale: 1_000_000, method: .default)
-        guard pts.isValid, abs(pts.value - Int64(now)) <= Self.maxClockDriftUs else { return now }
-        return UInt64(pts.value)
-    }
-
     private func rotation(of sample: CMSampleBuffer) -> FrameRotation {
         let value = CMGetAttachment(sample, key: RPVideoSampleOrientationKey as CFString, attachmentModeOut: nil) as? NSNumber
         return FrameRotation(value.flatMap { CGImagePropertyOrientation(rawValue: $0.uint32Value) } ?? .up)
@@ -70,7 +60,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
         switch type {
         case .video:
             guard let image = CMSampleBufferGetImageBuffer(sample) else { return }
-            engine?.video(image, rotation: rotation(of: sample), ptsUs: captureTimeUs(sample))
+            engine?.video(image, rotation: rotation(of: sample), ptsUs: BroadcastEngine.captureTimeUs(sample))
         case .audioApp:
             engine?.audio(sample)
         case .audioMic:

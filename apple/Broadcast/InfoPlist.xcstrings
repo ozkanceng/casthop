@@ -7,13 +7,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "To connect to the board on the same network."
+            "value": "To connect to the screen on the same network."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aynı ağdaki tahtaya bağlanmak için."
+            "value": "Aynı ağdaki ekrana bağlanmak için."
           }
         }
       }

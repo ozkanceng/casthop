@@ -24,6 +24,7 @@ struct SenderApp: App {
             .environmentObject(model)
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { model.becameActive() }
+                if phase == .background { model.enteredBackground() }
             }
         }
     }

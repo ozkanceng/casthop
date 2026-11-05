@@ -9,13 +9,15 @@ public struct DiscoveredReceiver: Identifiable, Equatable, Sendable {
     public var name: String
     public var endpoint: NWEndpoint
     public var fingerprintPrefix: Data
+    public var kind: String?
 
     public var id: String { "\(endpoint)" }
 
-    public init(name: String, endpoint: NWEndpoint, fingerprintPrefix: Data) {
+    public init(name: String, endpoint: NWEndpoint, fingerprintPrefix: Data, kind: String? = nil) {
         self.name = name
         self.endpoint = endpoint
         self.fingerprintPrefix = fingerprintPrefix
+        self.kind = kind
     }
 }
 
@@ -46,7 +48,8 @@ public final class ReceiverBrowser: @unchecked Sendable {
     private static func parse(_ result: NWBrowser.Result) -> DiscoveredReceiver? {
         guard case .bonjour(let record) = result.metadata else { return nil }
         guard let txt = DiscoveryTxt.parse(record.dictionary) else { return nil }
-        return DiscoveredReceiver(name: txt.name ?? instanceName(result.endpoint), endpoint: result.endpoint, fingerprintPrefix: txt.fingerprintPrefix)
+        return DiscoveredReceiver(name: txt.name ?? instanceName(result.endpoint), endpoint: result.endpoint, fingerprintPrefix: txt.fingerprintPrefix,
+                                  kind: txt.kind)
     }
 
     private static func instanceName(_ endpoint: NWEndpoint) -> String {

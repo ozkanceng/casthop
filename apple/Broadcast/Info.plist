@@ -39,6 +39,6 @@
     <string>RPBroadcastProcessModeSampleBuffer</string>
   </dict>
   <key>NSLocalNetworkUsageDescription</key>
-  <string>To connect to the board on the same network.</string>
+  <string>To connect to the screen on the same network.</string>
 </dict>
 </plist>

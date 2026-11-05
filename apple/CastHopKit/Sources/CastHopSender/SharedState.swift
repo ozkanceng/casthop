@@ -55,6 +55,9 @@ public enum MirrorFailure: String, Error, Codable, CaseIterable, Sendable {
     case receiverClosed
     case takenOver
     case broadcastEnded
+    case cameraFailed
+    case cameraDenied
+    case cameraLeft
     case noTarget
     case internalError
 
@@ -108,6 +111,8 @@ public enum AudioStatus: String, Codable, Sendable {
     case offReceiver
     case unsupported
     case failed
+    /// The camera sends picture only.
+    case offCamera
 }
 
 public struct BroadcastStats: Codable, Equatable, Sendable {

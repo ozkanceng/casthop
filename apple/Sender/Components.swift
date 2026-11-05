@@ -33,6 +33,7 @@ enum Tokens {
     static let radius: CGFloat = 16
     /// Primary actions.
     static let targetLarge: CGFloat = 72
+    static let previewAspect: CGFloat = 16 / 9
     static let targetMedium: CGFloat = 64
     static let targetSmall: CGFloat = 48
     /// Widest column on a large screen.

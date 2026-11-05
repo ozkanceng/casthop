@@ -252,7 +252,21 @@ private struct SessionView: View {
             Progress(text: Text("Starting…"))
             stopButton
         default:
-            MirroringCard(status: status)
+            if let camera = model.camera {
+                CameraPreview(layer: camera.preview)
+                    .aspectRatio(Tokens.previewAspect, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: Tokens.radius))
+                    .accessibilityLabel(Text("Camera preview"))
+            }
+            MirroringCard(status: status, camera: model.camera != nil)
+            if let camera = model.camera, camera.canSwitch {
+                Button {
+                    model.switchCamera()
+                } label: {
+                    Label("Switch camera", systemImage: "arrow.triangle.2.circlepath.camera")
+                }
+                .buttonStyle(OutlineButtonStyle())
+            }
             if status.paused {
                 Button {
                     model.unpause()
@@ -339,6 +353,17 @@ private struct ReadyCard: View {
                     .frame(maxWidth: .infinity, minHeight: Tokens.targetLarge)
                     .accessibilityLabel(Text("Start mirroring"))
             }
+            Button {
+                Task { await model.startCamera() }
+            } label: {
+                Label("Mirror the camera", systemImage: "camera.fill")
+            }
+            .buttonStyle(OutlineButtonStyle())
+            .accessibilityHint(Text("Sends the camera instead of the screen, for showing books, notebooks and papers."))
+            Text("Sends the camera instead of the screen, for showing books, notebooks and papers.")
+                .font(.subheadline)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Tokens.onSurfaceVariant)
             Button("Cancel") { model.dismiss() }
                 .buttonStyle(OutlineButtonStyle())
         }
@@ -347,6 +372,7 @@ private struct ReadyCard: View {
 
 private struct MirroringCard: View {
     let status: BroadcastStatus
+    let camera: Bool
 
     private var audioText: LocalizedStringKey {
         switch status.audio {
@@ -355,6 +381,7 @@ private struct MirroringCard: View {
         case .offReceiver: return "Sound is off on the board; it plays on the tablet."
         case .unsupported: return "Sound cannot be shared between this tablet and board."
         case .failed: return "Sound could not be shared; video continues."
+        case .offCamera: return "Sound is not sent in camera mode."
         }
     }
 
@@ -377,7 +404,8 @@ private struct MirroringCard: View {
                         .foregroundStyle(Tokens.secondary)
                 }
             } else if status.paused {
-                Text("Paused. The board keeps the last picture; your screen is not shared until you resume.")
+                Text(camera ? "Paused. The board keeps the last picture; the camera is not shared until you resume."
+                            : "Paused. The board keeps the last picture; your screen is not shared until you resume.")
                     .font(.body)
                     .foregroundStyle(Tokens.secondary)
             } else if let stats = status.stats {
@@ -389,7 +417,7 @@ private struct MirroringCard: View {
                     .font(.subheadline)
                     .foregroundStyle(status.audio == .on ? Tokens.onSurfaceVariant : Tokens.secondary)
             }
-            Text("You can stop from the status bar or this screen.")
+            Text(camera ? "Keep CastHop open: the camera stops if you leave the app." : "You can stop from the status bar or this screen.")
                 .font(.subheadline)
                 .foregroundStyle(Tokens.onSurfaceVariant)
         }
