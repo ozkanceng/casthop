@@ -62,97 +62,184 @@ details p { margin: 8px 0 12px; color: var(--muted); }
 .connect ol { margin-bottom: 0; }
 footer { margin-top: 32px; text-align: center; color: var(--muted); font-size: 16px; }
 footer a { color: var(--primary); }
+.lang { width: fit-content; margin: 0 0 16px auto; padding: 8px 24px; }
 </style>
 </head>
 <body>
 <main>
   <header>
+    <button class="button secondary lang" type="button" id="lang" lang="en">English</button>
     <h1><picture><source media="(prefers-color-scheme: dark)" srcset="logo-on-dark.svg"><img src="logo.svg" width="322" height="70" alt="CastHop"></picture></h1>
-    <p>Tablet ekranını akıllı tahtaya, TV'ye ve bilgisayara kablosuz yansıtın.</p>
+    <p data-i18n="lede">Tablet ekranını akıllı tahtaya, TV'ye ve bilgisayara kablosuz yansıtın.</p>
   </header>
 
   <div class="cards">
     <section class="card" id="board">
-      <h2><span class="num">1</span>Tahtaya kurun</h2>
+      <h2><span class="num">1</span><span data-i18n="b_h">Tahtaya kurun</span></h2>
       <ol>
-        <li>Bu sayfayı tahtada açıp aşağıdaki düğmeye basın.</li>
-        <li><strong>İndirilenler</strong> klasöründe <strong>casthop_amd64.deb</strong> dosyasına çift tıklayın.</li>
-        <li>Açılan paket kurucuda <strong>Yükle</strong>'ye basıp yönetici şifresini girin.</li>
-        <li>Kurulum bitince menüden <strong>CastHop</strong>'u açın.</li>
+        <li data-i18n="b_1">Bu sayfayı tahtada açıp aşağıdaki düğmeye basın.</li>
+        <li data-i18n="b_2"><strong>İndirilenler</strong> klasöründe <strong>casthop_amd64.deb</strong> dosyasına çift tıklayın.</li>
+        <li data-i18n="b_3">Açılan paket kurucuda <strong>Yükle</strong>'ye basıp yönetici şifresini girin.</li>
+        <li data-i18n="b_4">Kurulum bitince menüden <strong>CastHop</strong>'u açın.</li>
       </ol>
-      <a class="button" href="https://github.com/ozkanceng/casthop/releases/latest/download/casthop_amd64.deb">Tahta paketini indir</a>
-      <p class="note">Yönetici şifresi ve internet bağlantısı gerekir.</p>
+      <a class="button" href="https://github.com/ozkanceng/casthop/releases/latest/download/casthop_amd64.deb" data-i18n="b_dl">Tahta paketini indir</a>
+      <p class="note" data-i18n="b_note">Yönetici şifresi ve internet bağlantısı gerekir.</p>
       <details>
-        <summary>Paket kurucu açılmazsa</summary>
-        <p>Dosya arşiv gibi açılıyorsa <strong>Terminal</strong>'i açın, komutu kopyalayın, <kbd>Ctrl + Shift + V</kbd> ile yapıştırıp <kbd>Enter</kbd>'a basın ve şifrenizi girin.</p>
+        <summary data-i18n="d1_s">Paket kurucu açılmazsa</summary>
+        <p data-i18n="d1_p">Dosya arşiv gibi açılıyorsa <strong>Terminal</strong>'i açın, komutu kopyalayın, <kbd>Ctrl + Shift + V</kbd> ile yapıştırıp <kbd>Enter</kbd>'a basın ve şifrenizi girin.</p>
         <p class="command" id="command-deb">cd "$(xdg-user-dir DOWNLOAD)" &amp;&amp; sudo apt install ./casthop_amd64.deb</p>
-        <button class="button secondary" type="button" data-copy="command-deb">Komutu kopyala</button>
+        <button class="button secondary" type="button" data-copy="command-deb" data-i18n="copy">Komutu kopyala</button>
         <p class="note" role="status"></p>
       </details>
       <details>
-        <summary>Yönetici şifreniz yoksa</summary>
-        <p>Bu komut CastHop'u yalnız kendi hesabınıza kurar. Terminal'e yapıştırıp <kbd>Enter</kbd>'a basın.</p>
+        <summary data-i18n="d2_s">Yönetici şifreniz yoksa</summary>
+        <p data-i18n="d2_p">Bu komut CastHop'u yalnız kendi hesabınıza kurar. Terminal'e yapıştırıp <kbd>Enter</kbd>'a basın.</p>
         <p class="command" id="command-user">wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/casthop/kur | sh</p>
-        <button class="button secondary" type="button" data-copy="command-user">Komutu kopyala</button>
+        <button class="button secondary" type="button" data-copy="command-user" data-i18n="copy">Komutu kopyala</button>
         <p class="note" role="status"></p>
       </details>
       <details>
-        <summary>Ekran siyah kalırsa</summary>
-        <p>CastHop'ta <strong>Ayarlar → Uyumlu görüntü modu</strong>'nu açın. Yine görüntü gelmezse <strong>.cache/yansit/receiver.log</strong> dosyasını (Ev klasörü, gizli dosyalar) sorun bildiriminize ekleyin.</p>
+        <summary data-i18n="d3_s">Ekran siyah kalırsa</summary>
+        <p data-i18n="d3_p">CastHop'ta <strong>Ayarlar → Uyumlu görüntü modu</strong>'nu açın. Yine görüntü gelmezse <strong>.cache/yansit/receiver.log</strong> dosyasını (Ev klasörü, gizli dosyalar) sorun bildiriminize ekleyin.</p>
       </details>
     </section>
 
     <section class="card" id="tablet">
-      <h2><span class="num">2</span>Tablete kurun</h2>
+      <h2><span class="num">2</span><span data-i18n="t_h">Tablete kurun</span></h2>
       <ol>
-        <li>Aşağıdaki QR kodu tabletin kamerasıyla okutun ya da bu sayfayı tablette açın.</li>
-        <li>İnen <strong>casthop.apk</strong> dosyasını açın.</li>
-        <li>Android izin isterse bu kaynağa izin verip <strong>Yükle</strong>'ye dokunun.</li>
+        <li data-i18n="t_1">Aşağıdaki QR kodu tabletin kamerasıyla okutun ya da bu sayfayı tablette açın.</li>
+        <li data-i18n="t_2">İnen <strong>casthop.apk</strong> dosyasını açın.</li>
+        <li data-i18n="t_3">Android izin isterse bu kaynağa izin verip <strong>Yükle</strong>'ye dokunun.</li>
       </ol>
-      <a class="button" href="https://github.com/ozkanceng/casthop/releases/latest/download/casthop.apk">Tablet uygulamasını indir</a>
+      <a class="button" href="https://github.com/ozkanceng/casthop/releases/latest/download/casthop.apk" data-i18n="t_dl">Tablet uygulamasını indir</a>
       <div class="qr">
-        <img src="qr-tablet.svg" width="144" height="144" alt="Tablet uygulamasının indirme bağlantısına giden QR kod">
-        <p>Android 10 ve üstü tabletlerde çalışır.</p>
+        <img src="qr-tablet.svg" width="144" height="144" alt="Tablet uygulamasının indirme bağlantısına giden QR kod" data-i18n-alt="t_qr_alt">
+        <p data-i18n="t_req">Android 10 ve üstü tabletlerde çalışır.</p>
       </div>
     </section>
   </div>
 
   <section class="card connect">
-    <h2><span class="num">3</span>Bağlanın</h2>
+    <h2><span class="num">3</span><span data-i18n="c_h">Bağlanın</span></h2>
     <ol>
-      <li>Tahtada <strong>CastHop</strong>'u açın; tablet ile tahta aynı Wi-Fi ağında olsun.</li>
-      <li>Tablette <strong>CastHop</strong>'u açıp <strong>Ekrana Bağlan</strong>'a dokunun ve tahtadaki QR kodu okutun.</li>
-      <li>Android'in ekran paylaşımı sorusuna <strong>Başlat</strong> deyin.</li>
+      <li data-i18n="c_1">Tahtada <strong>CastHop</strong>'u açın; tablet ile tahta aynı Wi-Fi ağında olsun.</li>
+      <li data-i18n="c_2">Tablette <strong>CastHop</strong>'u açıp <strong>Ekrana Bağlan</strong>'a dokunun ve tahtadaki QR kodu okutun.</li>
+      <li data-i18n="c_3">Android'in ekran paylaşımı sorusuna <strong>Başlat</strong> deyin.</li>
     </ol>
   </section>
 
   <section class="card connect" id="other">
-    <h2>Başka ekranlara yansıtın</h2>
-    <p>Tablet aynı uygulamayla bu cihazlara da bağlanır. Cihaza CastHop'u kurun, ekrandaki QR kodu okutun.</p>
+    <h2 data-i18n="o_h">Başka ekranlara yansıtın</h2>
+    <p data-i18n="o_p">Tablet aynı uygulamayla bu cihazlara da bağlanır. Cihaza CastHop'u kurun, ekrandaki QR kodu okutun.</p>
     <div class="cards">
       <div>
-        <a class="button secondary" href="https://github.com/ozkanceng/casthop/releases/latest/download/casthop-tv.apk">Android TV ve Android tablet</a>
-        <p class="note">Android 10 ve üstü. Google TV ve Fire TV'de de çalışır.</p>
+        <a class="button secondary" href="https://github.com/ozkanceng/casthop/releases/latest/download/casthop-tv.apk" data-i18n="o_tv">Android TV ve Android tablet</a>
+        <p class="note" data-i18n="o_tv_n">Android 10 ve üstü. Google TV ve Fire TV'de de çalışır.</p>
       </div>
       <div>
-        <a class="button secondary" href="https://github.com/ozkanceng/casthop/releases/latest/download/casthop-setup-x86_64.exe">Windows bilgisayar</a>
-        <p class="note">64 bit Windows 10 ve üstü. Windows ilk açılışta uyarı gösterebilir.</p>
+        <a class="button secondary" href="https://github.com/ozkanceng/casthop/releases/latest/download/casthop-setup-x86_64.exe" data-i18n="o_win">Windows bilgisayar</a>
+        <p class="note" data-i18n="o_win_n">64 bit Windows 10 ve üstü. Windows ilk açılışta uyarı gösterebilir.</p>
       </div>
       <div>
         <a class="button secondary" href="https://github.com/ozkanceng/casthop/releases/latest/download/casthop-mac.dmg">Mac</a>
-        <p class="note">macOS 14 ve üstü. İlk açılışta uyarı çıkarsa Sistem Ayarları'nda Gizlilik ve Güvenlik'ten "Yine de Aç"ı seçin.</p>
+        <p class="note" data-i18n="o_mac_n">macOS 14 ve üstü. İlk açılışta uyarı çıkarsa Sistem Ayarları'nda Gizlilik ve Güvenlik'ten "Yine de Aç"ı seçin.</p>
       </div>
     </div>
-    <p class="note">iPhone, iPad ve Apple TV sürümleri App Store'a eklenince burada olacak.</p>
+    <p class="note" data-i18n="o_apple">iPhone, iPad ve Apple TV sürümleri App Store'a eklenince burada olacak.</p>
   </section>
 
   <footer>
-    Açık kaynak, ücretsiz. <a href="https://github.com/ozkanceng/casthop#sorun-giderme">Sorun giderme</a> ·
-    <a href="https://github.com/ozkanceng/casthop/releases/latest">Tüm dosyalar</a> ·
-    <a href="https://github.com/ozkanceng/casthop/blob/main/README.en.md">English</a>
+    <span data-i18n="f_free">Açık kaynak, ücretsiz.</span>
+    <a href="https://github.com/ozkanceng/casthop#sorun-giderme" data-i18n="f_trouble" data-href-en="https://github.com/ozkanceng/casthop/blob/main/README.en.md#troubleshooting">Sorun giderme</a> ·
+    <a href="https://github.com/ozkanceng/casthop/releases/latest" data-i18n="f_files">Tüm dosyalar</a>
   </footer>
 </main>
 <script>
+const EN = {
+  "lede": "Mirror your tablet screen to a smart board, TV or computer, wirelessly.",
+  "b_h": "Install on the board",
+  "b_1": "Open this page on the board and press the button below.",
+  "b_2": "Double-click <strong>casthop_amd64.deb</strong> in the <strong>Downloads</strong> folder.",
+  "b_3": "In the package installer that opens, press <strong>Install</strong> and enter the administrator password.",
+  "b_4": "When it finishes, open <strong>CastHop</strong> from the menu.",
+  "b_dl": "Download the board package",
+  "b_note": "Needs the administrator password and an internet connection.",
+  "d1_s": "If the package installer does not open",
+  "d1_p": "If the file opens like an archive, open <strong>Terminal</strong>, copy the command, paste it with <kbd>Ctrl + Shift + V</kbd>, press <kbd>Enter</kbd> and enter your password.",
+  "copy": "Copy the command",
+  "d2_s": "If you have no administrator password",
+  "d2_p": "This command installs CastHop for your own account only. Paste it into Terminal and press <kbd>Enter</kbd>.",
+  "d3_s": "If the screen stays black",
+  "d3_p": "In CastHop, turn on <strong>Settings → Compatible picture mode</strong>. If there is still no picture, attach <strong>.cache/yansit/receiver.log</strong> (Home folder, hidden files) to your issue report.",
+  "t_h": "Install on the tablet",
+  "t_1": "Scan the QR code below with the tablet's camera, or open this page on the tablet.",
+  "t_2": "Open the downloaded <strong>casthop.apk</strong> file.",
+  "t_3": "If Android asks, allow installs from this source and tap <strong>Install</strong>.",
+  "t_dl": "Download the tablet app",
+  "t_req": "Works on tablets with Android 10 or later.",
+  "c_h": "Connect",
+  "c_1": "Open <strong>CastHop</strong> on the board; keep the tablet and the board on the same Wi-Fi network.",
+  "c_2": "On the tablet, open <strong>CastHop</strong>, tap <strong>Connect to screen</strong> and scan the QR code on the board.",
+  "c_3": "Answer Android's screen sharing question with <strong>Start now</strong>.",
+  "o_h": "Mirror to other screens",
+  "o_p": "The tablet connects to these devices with the same app. Install CastHop on the device and scan the QR code on its screen.",
+  "o_tv": "Android TV and Android tablet",
+  "o_tv_n": "Android 10 or later. Also works on Google TV and Fire TV.",
+  "o_win": "Windows computer",
+  "o_win_n": "64-bit Windows 10 or later. Windows may show a warning the first time you open it.",
+  "o_mac_n": "macOS 14 or later. If a warning appears the first time, choose \"Open Anyway\" under Privacy &amp; Security in System Settings.",
+  "o_apple": "The iPhone, iPad and Apple TV versions will be here once they are on the App Store.",
+  "f_free": "Open source, free.",
+  "f_trouble": "Troubleshooting",
+  "f_files": "All files",
+  "t_qr_alt": "QR code that links to the tablet app download",
+  "copied": "Copied. Now paste it into Terminal.",
+  "selected": "Command selected; copy it with Ctrl + C.",
+  "title": "CastHop Setup",
+  "description": "Install CastHop in two steps and mirror your tablet screen to a smart board, TV or computer, wirelessly."
+};
+const TR = {};
+const store = {
+  get() { try { return localStorage.getItem("casthop-lang"); } catch { return null; } },
+  set(value) { try { localStorage.setItem("casthop-lang", value); } catch { /* private window: choice lasts for this visit only */ } },
+};
+let lang = "tr";
+const text = (key) => (lang === "en" ? EN[key] : TR[key]);
+
+document.querySelectorAll("[data-i18n]").forEach((el) => { TR[el.dataset.i18n] = el.innerHTML; });
+document.querySelectorAll("[data-i18n-alt]").forEach((el) => { TR[el.dataset.i18nAlt] = el.alt; });
+TR.title = document.title;
+TR.description = document.querySelector('meta[name="description"]').content;
+TR.copied = "Kopyalandı. Şimdi terminale yapıştırın.";
+TR.selected = "Komut seçildi; Ctrl + C ile kopyalayın.";
+TR.switch = "English";
+const troubleHref = document.querySelector("[data-href-en]");
+TR.troubleHref = troubleHref.href;
+EN.troubleHref = troubleHref.dataset.hrefEn;
+
+function apply(next) {
+  lang = next;
+  document.documentElement.lang = next;
+  document.querySelectorAll("[data-i18n]").forEach((el) => { el.innerHTML = text(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-alt]").forEach((el) => { el.alt = text(el.dataset.i18nAlt); });
+  document.title = text("title");
+  document.querySelector('meta[name="description"]').content = text("description");
+  troubleHref.href = text("troubleHref");
+  const toggle = document.getElementById("lang");
+  toggle.textContent = next === "en" ? "Türkçe" : "English";
+  toggle.lang = next === "en" ? "tr" : "en";
+  document.querySelectorAll("[data-copy]").forEach((button) => { button.nextElementSibling.textContent = ""; });
+}
+
+const saved = store.get();
+const browserIsTurkish = /^tr\b/i.test(navigator.language || "");
+apply(saved === "en" || saved === "tr" ? saved : browserIsTurkish ? "tr" : "en");
+document.getElementById("lang").addEventListener("click", () => {
+  const next = lang === "en" ? "tr" : "en";
+  store.set(next);
+  apply(next);
+});
+
 // Android'de tablet adımı öne alınır: öğretmen sayfayı tablette açtıysa indirme düğmesi ilk görünen olsun.
 if (/Android/i.test(navigator.userAgent)) {
   const cards = document.querySelector(".cards");
@@ -164,14 +251,14 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
     const status = button.nextElementSibling;
     try {
       await navigator.clipboard.writeText(command.textContent);
-      status.textContent = "Kopyalandı. Şimdi terminale yapıştırın.";
+      status.textContent = text("copied");
     } catch {
       const range = document.createRange();
       range.selectNodeContents(command);
       const selection = getSelection();
       selection.removeAllRanges();
       selection.addRange(range);
-      status.textContent = "Komut seçildi; Ctrl + C ile kopyalayın.";
+      status.textContent = text("selected");
     }
   });
 });

@@ -421,3 +421,10 @@ cd apple && xcodegen generate && open CastHop.xcodeproj
 - [ ] Mac Dock'ta, iPhone ve iPad ana ekranında simge kenar boşluğu doğru görünüyor.
 - [ ] Windows kurucusunda, Başlat menüsünde ve görev çubuğunda simge net görünüyor.
 - [ ] Pardus menüsünde ve tahta görev çubuğunda simge net görünüyor.
+
+## Site ve `kur` dil desteği (gerçek cihaz)
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Siteyi tahtanın tarayıcısında (Türkçe) ve tablette (dili İngilizce) açın | Türkçe sistemde Türkçe, İngilizce sistemde İngilizce açılır; üstteki düğme dili değiştirir, yenileyince seçim kalır | ☐ |
+| 2 | Tahtada `kur` komutunu `LANG=en_US.UTF-8` ile ve varsayılan dille çalıştırın | Mesajlar sırasıyla İngilizce ve Türkçe; kurulum ikisinde de tamamlanır | ☐ |

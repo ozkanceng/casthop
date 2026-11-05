@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+### Eklendi / Added
+- Kurulum sitesi artık İngilizce de konuşuyor: dil tarayıcı diline göre seçilir, sayfanın üstündeki düğmeyle değiştirilir ve seçim hatırlanır. Tek komutlu `kur` betiğinin mesajları da sistem diline göre Türkçe veya İngilizce çıkar.
+
 ## [0.3.2] - 2026-11-05
 
 ### Düzeltildi / Fixed

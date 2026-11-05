@@ -2,14 +2,52 @@
 # CastHop'u tahtaya yönetici şifresi olmadan kurar ve başlatır; yeniden çalıştırmak son sürüme günceller.
 #   wget -nv --tries=10 --retry-connrefused --waitretry=5 -O- https://ozkanceng.github.io/casthop/kur | sh
 # Betiğin tamamı indirilmeden hiçbir şey çalışmasın diye her şey main içindedir.
+# Mesajlar Türkçe veya İngilizce: sistem dili tr ile başlıyorsa Türkçe, aksi halde İngilizce.
 set -eu
 
 BASE="${YANSIT_RELEASE_URL:-https://github.com/ozkanceng/casthop/releases/latest/download}"
 ARCHIVE="casthop-x86_64.tar.gz"
 DEST="$HOME/.local/opt/yansit"
 
+# Display language follows the usual locale precedence: LC_ALL, then LC_MESSAGES, then LANG.
+case "${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}" in
+    tr*) UI_LANG=tr ;;
+    *) UI_LANG=en ;;
+esac
+
+# msg <key>: the message in the display language. Keep both languages in step when adding a key.
+msg() {
+    if [ "$UI_LANG" = tr ]; then
+        case "$1" in
+            failed) printf 'Kurulum tamamlanamadı: %s' "$2" ;;
+            no_fetch_tool) printf 'wget veya curl bulunamadı.' ;;
+            wrong_arch) printf 'CastHop yalnız 64 bit (x86_64) tahtalarda çalışır.' ;;
+            downloading) printf 'CastHop indiriliyor (yaklaşık 115 MB)...' ;;
+            download_failed) printf 'İndirilemedi. Tahtanın internet bağlantısını kontrol edin.' ;;
+            sums_failed) printf 'Sağlama dosyası indirilemedi.' ;;
+            verifying) printf 'Dosya doğrulanıyor...' ;;
+            corrupt) printf 'İndirilen dosya bozuk. Komutu yeniden çalıştırın.' ;;
+            done) printf "Kurulum tamamlandı. Menüde 'CastHop' görünür." ;;
+            opening) printf 'CastHop açılıyor; tabletle ekrandaki QR kodu okutun.' ;;
+        esac
+    else
+        case "$1" in
+            failed) printf 'Installation failed: %s' "$2" ;;
+            no_fetch_tool) printf 'Neither wget nor curl was found.' ;;
+            wrong_arch) printf 'CastHop only runs on 64-bit (x86_64) boards.' ;;
+            downloading) printf 'Downloading CastHop (about 115 MB)...' ;;
+            download_failed) printf "Download failed. Check the board's internet connection." ;;
+            sums_failed) printf 'Could not download the checksum file.' ;;
+            verifying) printf 'Verifying the file...' ;;
+            corrupt) printf 'The downloaded file is corrupt. Run the command again.' ;;
+            done) printf "Installation complete. 'CastHop' appears in the menu." ;;
+            opening) printf 'Opening CastHop; scan the QR code on the screen with the tablet.' ;;
+        esac
+    fi
+}
+
 fail() {
-    printf '\nKurulum tamamlanamadı: %s\n' "$1" >&2
+    printf '\n%s\n' "$(msg failed "$(msg "$1")")" >&2
     exit 1
 }
 
@@ -20,7 +58,7 @@ fetch() {
     elif command -v curl >/dev/null 2>&1; then
         curl -fL --retry 10 --retry-connrefused --retry-delay 5 --progress-bar -o "$2" "$1"
     else
-        fail "wget veya curl bulunamadı."
+        fail no_fetch_tool
     fi
 }
 
@@ -33,19 +71,19 @@ fetch_quiet() {
 }
 
 main() {
-    [ "$(uname -m)" = "x86_64" ] || fail "CastHop yalnız 64 bit (x86_64) tahtalarda çalışır."
+    [ "$(uname -m)" = "x86_64" ] || fail wrong_arch
 
     work="$(mktemp -d)"
     trap 'rm -rf "$work"' EXIT
 
     cd "$work"
-    echo "CastHop indiriliyor (yaklaşık 115 MB)..."
-    fetch "$BASE/$ARCHIVE" "$ARCHIVE" || fail "İndirilemedi. Tahtanın internet bağlantısını kontrol edin."
-    fetch_quiet "$BASE/SHA256SUMS" SHA256SUMS || fail "Sağlama dosyası indirilemedi."
+    echo "$(msg downloading)"
+    fetch "$BASE/$ARCHIVE" "$ARCHIVE" || fail download_failed
+    fetch_quiet "$BASE/SHA256SUMS" SHA256SUMS || fail sums_failed
 
-    echo "Dosya doğrulanıyor..."
+    echo "$(msg verifying)"
     grep "  $ARCHIVE\$" SHA256SUMS | sha256sum -c --quiet - \
-        || fail "İndirilen dosya bozuk. Komutu yeniden çalıştırın."
+        || fail corrupt
 
     # Güncellemede eski sürüm açıksa dosyaları değişmeden önce kapanmalı.
     pkill -f "$DEST/bin/casthop" 2>/dev/null || true
@@ -56,10 +94,10 @@ main() {
     sh package/install-user.sh >/dev/null
 
     echo
-    echo "Kurulum tamamlandı. Menüde 'CastHop' görünür."
+    echo "$(msg done)"
     if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
         nohup "$DEST/casthop" >/dev/null 2>&1 &
-        echo "CastHop açılıyor; tabletle ekrandaki QR kodu okutun."
+        echo "$(msg opening)"
     fi
 }
 
