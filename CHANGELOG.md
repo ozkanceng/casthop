@@ -4,6 +4,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+## [0.3.0] - 2026-11-05
+
 ### Eklendi / Added
 - "Nasıl bağlanırım?" rehberinde CastHop'un Pardus tahtaya, TV'ye, Android cihaza, Windows'a ve Mac'e nasıl kurulduğu açılır bölümlerle anlatılıyor; indirme bağlantıları, Pardus için yönetici şifresiz tek komutlu kurulum ve kullanım sorumluluğu uyarısı da var.
 - iPhone ve iPad'de kamerayı yansıtma: bağlanma ekranındaki "Kamerayı yansıt" düğmesi ReplayKit olmadan uygulama içinden gönderir; uygulamadan çıkınca durur.
