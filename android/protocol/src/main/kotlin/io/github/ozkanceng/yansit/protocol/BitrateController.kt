@@ -29,6 +29,11 @@ public class BitrateController(private val config: Config) {
         val delaySlopeThresholdUsPerSec: Long = 15_000,
         val slopeWindowMs: Long = 1000,
         val dropRatioThreshold: Double = 0.05,
+        /**
+         * A report with fewer frames says nothing about the link: a still screen is redrawn twice a second, and one
+         * late frame would read as a rising delay or a 100% drop.
+         */
+        val minReportFrames: Long = IDLE_REPORT_FRAMES,
         /** Uygulanan değerden en az bu oranda farklıysa kodlayıcıya yeni değer verilir. */
         val applyThresholdRatio: Double = 0.05,
     ) {
@@ -69,6 +74,11 @@ public class BitrateController(private val config: Config) {
     }
 
     public fun onReceiverReport(nowMs: Long, report: ControlMessage.ReceiverReport) {
+        if (report.framesReceived < config.minReportFrames) {
+            // The delay trend starts again once the picture moves.
+            delayHistory.clear()
+            return
+        }
         delayHistory.addLast(DelayPoint(nowMs, report.c2rAvgUs))
         while (delayHistory.size > 2 && nowMs - delayHistory[1].atMs >= config.slopeWindowMs) delayHistory.removeFirst()
 
@@ -139,5 +149,10 @@ public class BitrateController(private val config: Config) {
         recoveryTarget = 0.0
         falling = false
         delayHistory.clear()
+    }
+
+    public companion object {
+        /** Frames per receiver report (500 ms) below which the stream counts as a still screen: under 10 fps. */
+        public const val IDLE_REPORT_FRAMES: Long = 5
     }
 }

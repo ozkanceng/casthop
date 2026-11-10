@@ -18,8 +18,8 @@ class StreamPlannerTest {
         override val widthAlignment: Int = 16,
         override val heightAlignment: Int = 16,
         override val bitrateRange: LongRange = 64_000L..40_000_000L,
+        override val codec: Int = Codec.H264,
     ) : VideoEncoderCaps {
-        override val codec: Int = Codec.H264
         override fun isSupported(width: Int, height: Int, fps: Int): Boolean {
             val fitsLandscape = width <= maxW && height <= maxH
             val fitsPortrait = width <= maxH && height <= maxW
@@ -216,6 +216,25 @@ class StreamPlannerTest {
         assertEquals(500_000, tiny.minBps)
         assertTrue(tiny.startBps >= tiny.minBps)
         assertTrue(tiny.maxBps >= tiny.startBps)
+    }
+
+    @Test
+    fun h265GetsAboutAThirdLessDataThanH264ForTheSameFrame() {
+        val avc = StreamPlanner.plan(2560, 1600, Preset.BALANCED, board1080, listOf(FakeEncoder()))!!
+        val hevc = StreamPlanner.plan(2560, 1600, Preset.BALANCED, board1080, listOf(FakeEncoder(codec = Codec.H265)))!!
+        assertEquals(avc.width to avc.height, hevc.width to hevc.height)
+        assertEquals(avc.startBps * StreamPlanner.HEVC_RATE_SHARE, hevc.startBps.toDouble(), 1.0)
+        assertEquals(avc.maxBps * StreamPlanner.HEVC_RATE_SHARE, hevc.maxBps.toDouble(), 1.0)
+        assertTrue(hevc.minBps >= 500_000)
+    }
+
+    @Test
+    fun theTeachersOwnMaximumIsKeptForH265() {
+        val hevc = StreamPlanner.plan(
+            2560, 1600, Preset.BALANCED, board1080, listOf(FakeEncoder(codec = Codec.H265)),
+            StreamOverrides(maxBitrateBps = 10_000_000),
+        )!!
+        assertEquals(10_000_000, hevc.maxBps)
     }
 }
 

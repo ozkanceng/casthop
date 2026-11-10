@@ -486,3 +486,38 @@ Mac alıcı, `fake-receiver` ve Pardus başsız alıcısı uyum testinde (`rotat
 - Isınma: 30 → 60 kare/sn geçişi 7,6 sn'de.
 - 30 kare/sn'de bit hızı: kare boyutu iki katına çıkıyor (~33 KB, 8 Mbit/s hedefte ~7,9 Mbit/s); düzeltme gerekmedi.
 - Yazı netliği: ince yazılı Ayarlar ekranı, dump karesi ile ekran görüntüsünün küçültülmüşü arasında SSIM 0,9973 (Lanczos) / 0,9981 (alan); GL süper örnekleme eklenmedi.
+
+## EasyCast karşılaştırması (Mac alıcı; gerçek tahtada yinelenecek)
+
+**Yöntem:**
+- Tablette milisaniye gösteren bir saat sayfası açılır (Chrome, `Date.now() % 1e6`). Mac'te Mac saatini gösteren bir pencere açılır.
+- Tek bir Mac ekran görüntüsünde alıcıdaki tablet saati ve Mac saati okunur.
+- İki saatin farkı kalıcı bir `adb shell` üzerinden `date +%s%N` ile ölçülüp düzeltilir; en kısa gidiş-dönüş 12–15 ms, doğruluk ±7 ms.
+- Değer tabletin ve Mac'in ekran çizim süresini de içerir; bu pay iki uygulamada aynıdır.
+- Veri hızı ve işlemci kullanımı alıcı sürecinde `nettop` ve `ps` ile, 20–30 sn boyunca ölçülür.
+- Netlik: tablet Ayarlar ekranı, alıcı tam ekranda; aynı bölge ekran yoğunluğunda yakalanıp `adb exec-out screencap` ile alınan referansla karşılaştırılır (SSIM, gri ton).
+
+**Ölçümler:**
+- Cihazlar: SM-X610 tablet (5 GHz Wi-Fi), MacBook Air (kablolu), aynı yerel ağ, 2026-11-10.
+- CastHop: alıcı güncel koddan Release, gönderici debug sürümü, Dengeli ayar.
+- EasyCast: Android 2.3.1, Mac alıcısı EasyCast Receiver 1.3.5.
+
+| | CastHop (Dengeli, 60 kare/sn) | EasyCast (1080p, 30 kare/sn, HEVC) | EasyCast (1080p, 60 kare/sn, HEVC) |
+|---|---|---|---|
+| Uçtan uca gecikme, ortanca (12 ölçüm) | ~107 ms (100–129) | ~119 ms (113–141) | ~155 ms (148–161) |
+| Kare hızı | 58–61 (istatistik satırı) | 30 (ayar) | 60 (ayar) |
+| Yazı netliği: SSIM / kenar oranı | 0,987 / 0,88 | 0,990 / 0,86 | ölçülmedi |
+| Veri hızı, sürekli değişen ekran | 7,5 Mbit/s | 2,1 Mbit/s | 6,0 Mbit/s |
+| Mac alıcısında işlemci | %10 | %7 | %12 |
+
+- CastHop'un kendi istatistik satırı aynı sırada 29–40 ms gösterdi. Bu değer tabletteki ve Mac'teki ekran çizim süresini içermez.
+- Ölçüm arasında CastHop durağan Ayarlar ekranında Zayıf ağ'a (30 kare/sn) indi; 60'a dönmesi 1–2 dk sürdü, bu sürede uçtan uca gecikme ~120 ms ölçüldü. Neden: durağan ekranda saniyede 2 yeniden çizim olduğundan alıcı raporu tek kare taşıyordu; o karenin gecikmesi ya da atılması tıkanıklık sayılıyordu. Düzeltmeden önce 2,5 dk durağan ekranda 17 bit hızı düşüşü (en düşük 3,3 Mbit/s), düzeltmeden sonra 3 dk'da hiç düşüş yok (bit hızı tavanda kaldı).
+- H.265 varsayılan olduktan sonra (Mac alıcı donanım H.265 bildirir; tablette `c2.exynos.hevc.encoder`) Dengeli 5,2 Mbit/s başlayıp 4 sn'de 7,8 tavanına çıktı. Saat sayfasında alınan veri 4,95 Mbit/s (H.264'te 7,5): %34 az. Bu turda gecikme ve netlik H.265 ile yeniden ölçülmedi.
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Aynı yöntemi Pardus tahtada iki uygulamayla yineleyin (tahtada saat penceresi + tahtanın 240 fps video kaydı) | CastHop gecikmesi EasyCast'ten yüksek değil | ☐ |
+| 2 | Kalabalık 2,4 GHz sınıf ağında ikisini 10'ar dk çalıştırın | CastHop donma sayısı EasyCast'ten fazla değil | ☐ |
+| 3 | Tahtada durağan bir slaytı 5 dk yansıtın, sonra slaytı değiştirin | İstatistik satırında kare hızı 60 kalır, kalite Zayıf ağ'a inmez; yeni slayt hemen net gelir | ☐ |
+| 4 | Pardus tahtada (VA H.265 çözücü) ve VA'sız tahtada yansıtın, alıcı günlüğünde codec'e bakın | VA H.265 varsa H.265, yoksa H.264 seçilir; ikisinde de görüntü bozulmasız | ☐ |
+| 5 | H.265 ile gecikme ve yazı netliğini yukarıdaki yöntemle yeniden ölçün | Gecikme H.264'ten belirgin yüksek değil, SSIM ≥ 0,985 | ☐ |

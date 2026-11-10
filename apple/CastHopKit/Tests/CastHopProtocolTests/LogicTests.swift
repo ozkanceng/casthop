@@ -230,6 +230,29 @@ final class BitrateControllerTests: XCTestCase {
         XCTAssertGreaterThan(c.appliedBps, 16_000_000)
     }
 
+    func testStillScreenRedrawsAreNotCongestion() {
+        let c = make()
+        _ = c.tick(nowMs: 0)
+        // Two redraws a second: one arrives late and one is dropped.
+        c.onReceiverReport(nowMs: 0, report: report(20_000, received: 1))
+        c.onReceiverReport(nowMs: 500, report: report(120_000, received: 1, dropped: 1))
+        XCTAssertNil(c.tick(nowMs: 500))
+        c.onReceiverReport(nowMs: 1_000, report: report(30_000, received: 1))
+        XCTAssertNil(c.tick(nowMs: 1_000))
+    }
+
+    func testDelayTrendStartsAgainWhenThePictureMoves() {
+        let c = make()
+        _ = c.tick(nowMs: 0)
+        c.onReceiverReport(nowMs: 0, report: report(20_000, received: 1))
+        c.onReceiverReport(nowMs: 500, report: report(60_000))
+        XCTAssertNil(c.tick(nowMs: 500))
+        c.onReceiverReport(nowMs: 1_000, report: report(61_000))
+        XCTAssertNil(c.tick(nowMs: 1_000))
+        c.onReceiverReport(nowMs: 1_500, report: report(90_000))
+        XCTAssertEqual(c.tick(nowMs: 1_500), 11_200_000)
+    }
+
     func testReceiverAndSenderDropsAreCongestion() {
         let c = make()
         c.onReceiverReport(nowMs: 0, report: report(20_000, received: 30, dropped: 3))

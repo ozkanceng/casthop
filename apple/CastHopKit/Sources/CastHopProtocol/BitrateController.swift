@@ -20,6 +20,9 @@ public final class BitrateController {
         public var delaySlopeThresholdUsPerSec: Int64 = 15_000
         public var slopeWindowMs: Int64 = 1000
         public var dropRatioThreshold = 0.05
+        /// A report with fewer frames says nothing about the link: a still screen is redrawn a few times a second,
+        /// and one late frame would read as a rising delay or a 100% drop.
+        public var minReportFrames = BitrateController.idleReportFrames
         /// A new value goes to the encoder only if it differs from the applied one by this ratio.
         public var applyThresholdRatio = 0.05
 
@@ -37,6 +40,9 @@ public final class BitrateController {
     }
 
     private static let longAgo = Int64.min / 2
+
+    /// Frames per receiver report (500 ms) below which the stream counts as a still screen: under 10 fps.
+    public static let idleReportFrames: UInt32 = 5
 
     private let config: Config
     private var target: Double
@@ -65,6 +71,11 @@ public final class BitrateController {
     public func onSenderDrop() { pendingCongestion = true }
 
     public func onReceiverReport(nowMs: Int64, report: ReceiverReport) {
+        guard report.framesReceived >= config.minReportFrames else {
+            // The delay trend starts again once the picture moves.
+            delayHistory.removeAll()
+            return
+        }
         let c2r = Int64(report.c2rAvgUs)
         delayHistory.append(DelayPoint(atMs: nowMs, c2rAvgUs: c2r))
         while delayHistory.count > 2 && nowMs - delayHistory[1].atMs >= config.slopeWindowMs {

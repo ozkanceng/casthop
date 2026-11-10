@@ -44,9 +44,12 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(KEY_CAMERA_MODE, false)
         set(value) = prefs.edit { putBoolean(KEY_CAMERA_MODE, value) }
 
-    /** Tahta donanımla çözebiliyorsa H.265 kullan (deneysel; aynı kalitede ≈ %30–40 daha az bit hızı). */
+    /**
+     * Use H.265 when both the tablet and the screen have a hardware codec for it: the same picture with about a third
+     * less data, which matters most on a crowded classroom network. Otherwise H.264.
+     */
     var hevcEnabled: Boolean
-        get() = prefs.getBoolean(KEY_HEVC, false)
+        get() = prefs.getBoolean(KEY_HEVC, true)
         set(value) = prefs.edit { putBoolean(KEY_HEVC, value) }
 
     var overrides: StreamOverrides

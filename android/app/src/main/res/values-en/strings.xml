@@ -116,7 +116,7 @@
     <string name="pin_label">Code</string>
     <string name="err_wrong_pin">Wrong code</string>
     <string name="err_wrong_pin_body">Enter the current 6-digit code shown on the screen. After 5 wrong attempts the code changes and you must wait 30 seconds.</string>
-    <string name="settings_hevc">Use H.265 (experimental)</string>
+    <string name="settings_hevc">Use H.265</string>
     <string name="settings_hevc_desc">If the screen can decode it in hardware, the same quality needs less data. Otherwise H.264 is used.</string>
     <string name="quality_good">Connection: good</string>
     <string name="quality_fair">Connection: fair</string>

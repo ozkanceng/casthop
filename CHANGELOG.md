@@ -5,9 +5,11 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 ## [Yayımlanmamış / Unreleased]
 
 ### Düzeltildi / Fixed
+- **Durağan slaytta kalite kendiliğinden düşmez (Android ve iPhone/iPad):** Ekran değişmezken saniyede 2 küçük kare gider. Bunlardan birinin biraz geç gelmesi ağ tıkanıklığı sanılıyor, veri hızı yarım dakikada birkaç kez düşüyor, kalite Zayıf ağ'a inip ancak bir dakika sonra dönüyordu. Artık az kare taşıyan ölçümler tıkanıklık sayılmaz; slayt değişince görüntü tam kaliteyle gelir.
 - **Samsung tabletin kendiliğinden yeniden başlaması giderildi (Android):** Ağ yavaşlayıp kalite bir basamak düştüğünde yeni görüntü kodlayıcısı eski, daha büyük bir kare alabiliyordu. Samsung'un Exynos kodlayıcı sürücüsü bu durumda tableti çökertiyordu. Ekran artık kodlayıcıya OpenGL üzerinden çizilir ve her kare tam kodlayıcının boyutunda olur; başka boyutta kare ona ulaşamaz.
 
 ### Değiştirildi / Changed
+- **H.265 varsayılan, daha az veri (Android):** Tablette ve ekranda donanım H.265 desteği varsa yansıtma H.265 ile yapılır ve aynı görüntü için üçte bir daha az veri gönderilir (Dengeli: 8 yerine 5,2 Mbit/s başlangıç). Kalabalık Wi-Fi'da donma azalır. Desteklemeyen tahtada H.264 sürer; Ayarlar'dan kapatılabilir.
 - **Döndürmede görüntü kesilmez (Android):** Tablet döndürülünce kodlayıcı yeniden kurulmuyor; görüntü aynı akışın içinde yeni yönüne geçer, tahtada kısa siyah ya da donma olmaz. Dikey tutulan tabletin görüntüsü yatay tahtada ortada, iki yanı siyah gösterilir (bu sürümün tahta, TV ve Apple alıcılarında dikey görüntü aşağıdaki gibi daha büyük ve keskin gelir).
 - **Dikey tablet tahtada daha keskin (Android gönderici; Pardus, Windows, Android TV ve Apple alıcıları):** Dikey ekran yatay görüntüye sığdırılırken karenin yalnız %40'ı kullanılıyordu. Tablet artık resmi 90° çevirip görüntünün tamamını kullanır, tahta geri çevirerek dikey gösterir: aynı veri hızıyla yazı daha net. Eski alıcıya bağlanınca önceki gibi kenar boşluklu gönderilir.
 - **Durağan ekranda ağ boşalır (Android):** Ekran değişmezken kodlayıcı aynı kareyi saniyede 10 kez yolluyordu; kalabalık 2,4 GHz ağı boşuna dolduruyordu. Artık saniyede 2 küçük kare gider (≈ 3 kbit/s). Tahta yine her zaman güncel görüntüyü gösterir.

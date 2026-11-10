@@ -560,7 +560,12 @@ class MirrorSession(
 
     private fun checkLatencyBudget(report: ControlMessage.ReceiverReport) {
         val now = MonotonicClock.nowUs()
-        if (report.framesReceived == 0L || report.c2rAvgUs <= config.latencyBudgetUs || now < drainCooldownUntilUs) return
+        // A still screen (a few redraws a second) has nothing queued to drain; one late redraw is not a backlog.
+        if (report.framesReceived < BitrateController.IDLE_REPORT_FRAMES || report.c2rAvgUs <= config.latencyBudgetUs ||
+            now < drainCooldownUntilUs
+        ) {
+            return
+        }
         // Yoldaki fazla veri (tampon) boşalana kadar bekle: bütçenin üstündeki kısım kadar, en fazla 1 sn.
         val drainUs = (report.c2rAvgUs - config.latencyBudgetUs / 3).coerceIn(50_000, 1_000_000)
         drainUntilUs = now + drainUs

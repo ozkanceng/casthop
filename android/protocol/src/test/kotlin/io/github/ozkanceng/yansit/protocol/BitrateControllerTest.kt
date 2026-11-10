@@ -76,6 +76,32 @@ class BitrateControllerTest {
     }
 
     @Test
+    fun `a still screen's few redraws are not congestion`() {
+        val c = BitrateController(config)
+        c.tick(0)
+        // Two redraws a second: one arrives late and one is dropped.
+        c.onReceiverReport(0, report(20_000, received = 1))
+        c.onReceiverReport(500, report(120_000, received = 1, dropped = 1))
+        assertNull(c.tick(500))
+        c.onReceiverReport(1_000, report(30_000, received = 1))
+        assertNull(c.tick(1_000))
+    }
+
+    @Test
+    fun `the delay trend starts again when the picture moves`() {
+        val c = BitrateController(config)
+        c.tick(0)
+        c.onReceiverReport(0, report(20_000, received = 1))
+        // Moving again: the first busy report must not be compared with the still screen's delay.
+        c.onReceiverReport(500, report(60_000))
+        assertNull(c.tick(500))
+        c.onReceiverReport(1_000, report(61_000))
+        assertNull(c.tick(1_000))
+        c.onReceiverReport(1_500, report(90_000))       // +30 ms in 1 s while moving
+        assertEquals(11_200_000, c.tick(1_500))
+    }
+
+    @Test
     fun `no increase within two seconds after congestion`() {
         val c = BitrateController(config)
         c.onSenderDrop()

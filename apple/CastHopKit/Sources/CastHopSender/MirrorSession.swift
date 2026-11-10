@@ -496,7 +496,9 @@ public final class MirrorSession: @unchecked Sendable {
 
     private func checkLatencyBudget(_ report: ReceiverReport) {
         let now = MonotonicClock.nowUs()
-        guard report.framesReceived != 0, Int64(report.c2rAvgUs) > config.latencyBudgetUs, now >= drainCooldownUntilUs else { return }
+        // A still screen has nothing queued to drain; one late redraw is not a backlog.
+        guard report.framesReceived >= BitrateController.idleReportFrames,
+              Int64(report.c2rAvgUs) > config.latencyBudgetUs, now >= drainCooldownUntilUs else { return }
         // Wait until the data in the path has drained: what is over budget, at most 1 s.
         let drainUs = UInt64(min(max(Int64(report.c2rAvgUs) - config.latencyBudgetUs / 3, 50_000), 1_000_000))
         locked {

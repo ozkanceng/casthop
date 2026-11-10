@@ -1,5 +1,6 @@
 package io.github.ozkanceng.yansit.sender
 
+import io.github.ozkanceng.yansit.protocol.Codec
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -86,6 +87,8 @@ object StreamPlanner {
     /** Below this even a still slide turns to mush; the governor's floor never goes lower on a small frame. */
     private const val MIN_BITRATE_FLOOR = 500_000L
     private const val FULL_RATE_SHARE = 0.8
+    /** H.265 needs about a third less data than H.264 for the same picture; the presets are H.264 numbers. */
+    internal const val HEVC_RATE_SHARE = 0.65
 
     /**
      * @param sourceWidth kaynak (yansıtılan ekran) genişliği, piksel — yönelime göre
@@ -146,7 +149,8 @@ object StreamPlanner {
      * The preset's numbers are for a board-sized frame at its long side (16:9) and frame rate; anything from
      * [FULL_RATE_SHARE] of that pixel rate up counts as full (a 16:10 tablet on a 1080p board). A smaller pixel rate
      * (a 1280×720 board, a 30 fps step) gets proportionally less, never more: the same picture quality without
-     * filling the network. The teacher's own maximum ([StreamOverrides.maxBitrateBps]) is kept as given.
+     * filling the network. H.265 gets [HEVC_RATE_SHARE] of the H.264 numbers: the same picture with less of a
+     * crowded classroom network. The teacher's own maximum ([StreamOverrides.maxBitrateBps]) is kept as given.
      */
     internal fun bitrates(
         preset: Preset,
@@ -157,7 +161,8 @@ object StreamPlanner {
         fps: Int,
     ): Triple<Long, Long, Long> {
         val referenceRate = preset.longSideCap.toDouble() * (preset.longSideCap * 9 / 16) * preset.fps * FULL_RATE_SHARE
-        val scale = (width.toDouble() * height * fps / referenceRate).coerceIn(0.0, 1.0)
+        val codecShare = if (enc.codec == Codec.H265) HEVC_RATE_SHARE else 1.0
+        val scale = (width.toDouble() * height * fps / referenceRate).coerceIn(0.0, 1.0) * codecShare
         fun scaled(bps: Long) = (bps * scale).toLong()
         val maxBps = min(overrides.maxBitrateBps ?: max(scaled(preset.maxBps), MIN_BITRATE_FLOOR), enc.bitrateRange.last)
             .coerceAtLeast(enc.bitrateRange.first)

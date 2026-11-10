@@ -298,6 +298,10 @@ Son 8 örnekten en düşük `rtt`'li örneğin `offset`'i kullanılır. S her PI
 ### 7.6 Bit hızı uyarlama (S tarafı, bağlayıcı olmayan referans)
 
 ```
+her alıcı raporunda:
+  frames_received < 5 ise rapor yok sayılır, c2r eğim geçmişi silinir
+  # durağan ekranda saniyede ~2 yeniden çizim: rapor başına 1 karenin gecikmesi ve atılma oranı ölçüm değil gürültüdür
+
 her 250 ms:
   congested = send_queue_delay > 50 ms
            || (rapor var && c2r_avg eğimi > +15 ms/sn son 1 sn)
@@ -429,4 +433,5 @@ Bu bölüm her alıcı uygulaması için bağlayıcıdır. Pardus alıcısı ref
 - v1 (2026-11-03, M1): test vektörleriyle donduruldu. `offset_us` i64, `request_pairing`/`audio_enabled` bool, STREAM_CONFIG ve SENDER_STATS Z/O ayrımı, kanonik tag sırası ve hata kodu listesi eklendi.
 - v1 (2026-11-05): tel formatı değişmedi. IDR isteklerinin bekletilmesi (§7.2) ve otomatik ön ayar geçişi (§7.6) eklendi; ürün adı CastHop oldu, tel üzerindeki `yansit` adları korundu.
 - v1 (2026-11-05): tel formatı değişmedi. Alıcı davranışı yazıya geçirildi (§11); belge ile Pardus alıcısı arasındaki çelişkiler koda göre düzeltildi.
+- v1 (2026-11-10): tel formatı değişmedi. §7.6: 5'ten az kare taşıyan alıcı raporu tıkanıklık sayılmaz (durağan ekranda sahte tıkanıklık ve gereksiz kalite düşüşü oluyordu).
 - v1 (2026-11-10): geriye uyumlu ekleme, sürüm aynı. Kare bayrağı bit 3 ROTATED (§3) ve WELCOME `0x0E rotated_frames` (§7, §11): dikey kaynak yatay karede 90° çevrilip tam boyutta gönderilebilir, alıcı geri çevirir. Eski alıcı tag'i bildirmez, gönderici biti koymaz; eski gönderici tag'i yok sayar. Vektörler: `welcome_full`, `frame_video_rotated`.

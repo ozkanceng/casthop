@@ -117,7 +117,7 @@
     <string name="pin_label">Kod</string>
     <string name="err_wrong_pin">Kod yanlış</string>
     <string name="err_wrong_pin_body">Ekrandaki güncel 6 haneli kodu girin. 5 hatalı denemeden sonra kod değişir ve 30 saniye beklemek gerekir.</string>
-    <string name="settings_hevc">H.265 kullan (deneysel)</string>
+    <string name="settings_hevc">H.265 kullan</string>
     <string name="settings_hevc_desc">Ekran donanımla çözebiliyorsa aynı kalitede daha az veri gönderilir. Ekran desteklemiyorsa H.264 kullanılır.</string>
     <string name="quality_good">Bağlantı: iyi</string>
     <string name="quality_fair">Bağlantı: orta</string>
