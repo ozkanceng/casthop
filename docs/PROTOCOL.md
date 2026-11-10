@@ -70,7 +70,8 @@ Her mesaj = 24 baytlık başlık + yük.
 | 0 (`0x0001`) | CONFIG | Yük codec yapılandırmasıdır (§5, §6). |
 | 1 (`0x0002`) | KEYFRAME | Bağımsız çözülebilir kare (IDR/IRAP). |
 | 2 (`0x0004`) | DISCONTINUITY | Bu çerçeveden önce S tarafında çerçeve atıldı veya akış yeniden yapılandırıldı. |
-| 3–15 | — | Ayrılmış. |
+| 3 (`0x0008`) | ROTATED | Yalnız VIDEO, CONFIG olmayan çerçevede: karedeki resim 90° saat yönünde çevrilmiştir (resmin üst kenarı karenin sağında). R resmi 90° saat yönünün tersine çevirip gösterir. S bu biti yalnız WELCOME'da `rotated_frames` doğruysa koyar. |
+| 4–15 | — | Ayrılmış. |
 
 ## 4. Bağlantı başına durum makinesi
 
@@ -189,6 +190,7 @@ Token/PIN kuralları: token ve PIN **tek kullanımlıktır**; başarılı HELLO 
 | 0x0B | pair_key | bytes[32] | O — request_pairing=1 ve auth başarılıysa |
 | 0x0C | key_id | bytes[16] | O — pair_key varsa R **MUST** ekler |
 | 0x0D | audio_enabled | bool | Z — yanlışsa S AUDIO bağlantısı açmaz |
+| 0x0E | rotated_frames | bool | O — R, ROTATED bayraklı kareleri geri çevirerek gösterebilir; yalnız doğruysa yazılır |
 
 #### `0x03` REJECT (R→S, ardından R bağlantıyı kapatır)
 | Tag | Ad | Tip | Z/O |
@@ -311,7 +313,7 @@ her 250 ms:
   değişim ≥ %5 ise PARAMETER_KEY_VIDEO_BITRATE uygula
 ```
 
-Bit hızı tek başına yetmezse S ön ayarı da değiştirebilir. Bu geçiş yeni bir STREAM_CONFIG ve CONFIG ile bildirilir; tel formatı değişmez:
+Bit hızı tek başına yetmezse S ön ayarı da değiştirebilir. Boyut değişirse geçiş yeni bir STREAM_CONFIG ve CONFIG ile bildirilir; yalnız bit hızı aralığı ve kare hızı değişirse (Android göndericide boyut oturum boyunca sabittir) yalnız STREAM_CONFIG gönderilir, akış kesilmez. Tel formatı değişmez:
 
 ```
 bitrate ≤ floor × 1.05 iken 3 sn tıkanıklık sürerse:  bir alt ön ayar
@@ -414,6 +416,8 @@ Bu bölüm her alıcı uygulaması için bağlayıcıdır. Pardus alıcısı ref
 
 **Görüntü.** Çözücü önünde 4'ten çok kare 250 ms boyunca birikirse kareler IDR'ye kadar atılır ve `KEYFRAME_REQUEST(BACKLOG_DROPPED)` gönderilir. Her durumda aşılmayan sınır 30 karedir; ilk kare çizilene kadar bu sınır 120'dir. H.265 yalnız donanım çözücü varsa WELCOME'da bildirilir.
 
+**Döndürülmüş kare.** `rotated_frames` bildiren R, ROTATED bayraklı karenin resmini 90° saat yönünün tersine çevirip gösterir; en-boy oranı çevrilmiş boyutla (genişlik ↔ yükseklik) korunur. Bayrak kareden kareye değişebilir ve araya CONFIG ya da IDR girmez: R çevirmeyi, o kare ekrana çıktığı anda uygular. Bayrağın etkisi STREAM_CONFIG `rotation_deg` ile toplanmaz; `rotation_deg` bilgi amaçlıdır. `rotated_frames` bildirmeyen R'ye S bu biti koymaz; bit gelirse yok sayılır (§3).
+
 **Ses.** Hedef gecikme, görüntünün yakalama→çizim ortalaması + bir ekran karesidir, 40–250 ms ile sınırlıdır. `pts + offset + hedef` anı 5 ms içinde geçmiş olan paket atılır ve `audio_late` artar.
 
 **Keşif.** Hizmet adı UTF-8 karakter ortasından kesilmeden 63 bayta indirilir. Ad boşsa `CastHop` kullanılır. QR'da yalnız yerel IPv4 adresleri bulunur.
@@ -425,3 +429,4 @@ Bu bölüm her alıcı uygulaması için bağlayıcıdır. Pardus alıcısı ref
 - v1 (2026-11-03, M1): test vektörleriyle donduruldu. `offset_us` i64, `request_pairing`/`audio_enabled` bool, STREAM_CONFIG ve SENDER_STATS Z/O ayrımı, kanonik tag sırası ve hata kodu listesi eklendi.
 - v1 (2026-11-05): tel formatı değişmedi. IDR isteklerinin bekletilmesi (§7.2) ve otomatik ön ayar geçişi (§7.6) eklendi; ürün adı CastHop oldu, tel üzerindeki `yansit` adları korundu.
 - v1 (2026-11-05): tel formatı değişmedi. Alıcı davranışı yazıya geçirildi (§11); belge ile Pardus alıcısı arasındaki çelişkiler koda göre düzeltildi.
+- v1 (2026-11-10): geriye uyumlu ekleme, sürüm aynı. Kare bayrağı bit 3 ROTATED (§3) ve WELCOME `0x0E rotated_frames` (§7, §11): dikey kaynak yatay karede 90° çevrilip tam boyutta gönderilebilir, alıcı geri çevirir. Eski alıcı tag'i bildirmez, gönderici biti koymaz; eski gönderici tag'i yok sayar. Vektörler: `welcome_full`, `frame_video_rotated`.

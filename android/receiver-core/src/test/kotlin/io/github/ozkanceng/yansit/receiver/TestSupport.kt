@@ -20,7 +20,11 @@ class RecordingVideoBackend : VideoBackend {
     var accept = true
     val configs = ArrayList<Pair<Int, ByteArray>>()
     val submitted = ArrayList<Triple<ByteArray, Long, Boolean>>()
+    val rotated = ArrayList<Boolean>()
+    var rotation = false
     var resets = 0
+
+    override val supportsRotation: Boolean get() = rotation
 
     /** When set, every submitted frame is reported as rendered at once. */
     var onSubmit: ((Long) -> Unit)? = null
@@ -30,8 +34,9 @@ class RecordingVideoBackend : VideoBackend {
         return accept
     }
 
-    override fun submit(accessUnit: ByteArray, timestampUs: Long, keyframe: Boolean) {
+    override fun submit(accessUnit: ByteArray, timestampUs: Long, keyframe: Boolean, rotated: Boolean) {
         submitted += Triple(accessUnit, timestampUs, keyframe)
+        this.rotated += rotated
         onSubmit?.invoke(timestampUs)
     }
 

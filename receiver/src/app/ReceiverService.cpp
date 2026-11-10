@@ -87,6 +87,13 @@ ReceiverService::ReceiverService(Options options, QObject* parent) : QObject(par
         m_videoHeight = h;
         emit videoSizeChanged();
     });
+    connect(m_video, &media::VideoPipeline::videoRotatedChanged, this, [this](bool rotated) {
+        if (rotated == m_videoRotated)
+            return;
+        qCInfo(lcRecv) << "görüntü çevrili:" << rotated;
+        m_videoRotated = rotated;
+        emit videoRotatedChanged();
+    });
 
     m_tickTimer.setInterval(kTickIntervalMs);
     connect(&m_tickTimer, &QTimer::timeout, this, &ReceiverService::tick);
@@ -125,6 +132,8 @@ session::ReceiverInfo ReceiverService::receiverInfo() const {
     if (media::AudioPipeline::aacAvailable(audioMode))
         info.audioDecoders.push_back({Codec::AacLc, 0});
     info.audioEnabled = m_options.audio && !info.audioDecoders.empty();
+    // Both renderers are QML items that can turn (VideoView.qml, CpuVideoView.qml).
+    info.rotatedFrames = true;
     return info;
 }
 
@@ -525,6 +534,7 @@ void ReceiverService::finishSessionStats() {
                                : QJsonValue());
     o.insert(QStringLiteral("decoder"), m_video->decoderName());
     o.insert(QStringLiteral("hardware"), m_video->hardwareDecoding());
+    o.insert(QStringLiteral("video_rotated"), m_video->rotatedSeen());
     if (const auto e2e = m_video->e2eAvgUs()) {
         o.insert(QStringLiteral("e2e_avg_ms"), double(e2e) / 1000.0);
         o.insert(QStringLiteral("e2e_p95_ms"), double(m_video->e2eP95Us()) / 1000.0);

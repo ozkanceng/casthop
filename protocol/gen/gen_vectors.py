@@ -112,7 +112,7 @@ CONTROL_OK = [
                                  "display_width": 3840, "display_height": 2160, "display_refresh": 60,
                                  "video_decoders": [[0x01, 0x03], [0x02, 0x01]], "audio_decoders": [[0x10, 0x00], [0x11, 0x00]],
                                  "attach_key": ATTACH_KEY, "resume_token": RESUME_TOKEN, "pair_key": PAIR_KEY,
-                                 "key_id": KEY_ID, "audio_enabled": True}),
+                                 "key_id": KEY_ID, "audio_enabled": True, "rotated_frames": True}),
     ("welcome_min", "WELCOME", {"version": 1, "receiver_name": "", "session_id": SESSION_ID,
                                 "display_width": 1920, "display_height": 1080, "display_refresh": 60,
                                 "video_decoders": [[0x01, 0x00]], "audio_decoders": [],
@@ -196,6 +196,8 @@ def frame_vectors():
     v = [
         {"name": "frame_video_keyframe", "hex": hx(frame(0x01, 0x0002, 1000000, 1, b"\x00\x00\x00\x01")),
          "expect": {"type": 1, "flags": 2, "pts_us": 1000000, "seq": 1, "length": 4, "payload": "00000001"}},
+        {"name": "frame_video_rotated", "hex": hx(frame(0x01, 0x000A, 2000000, 2, b"\x00\x00\x00\x01\x65")),
+         "expect": {"type": 1, "flags": 0x000A, "pts_us": 2000000, "seq": 2, "length": 5, "payload": "0000000165"}},
         {"name": "frame_control_ping", "hex": hx(frame(0x03, 0, 1000000, 7, ping_payload)),
          "expect": {"type": 3, "flags": 0, "pts_us": 1000000, "seq": 7, "length": len(ping_payload),
                     "payload": hx(ping_payload)}},

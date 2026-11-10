@@ -117,7 +117,8 @@ class StreamPlannerTest {
         assertEquals(1280, plan.width)
         assertEquals(30, plan.fps)
         assertEquals(6_000_000, plan.maxBps)
-        assertEquals(6_000_000, plan.startBps)
+        // 1280x800@30 is 31 % of BEST's pixel rate: the start bit rate follows, the teacher's maximum stays.
+        assertEquals(4_938_271, plan.startBps)
     }
 
     @Test
@@ -150,6 +151,71 @@ class StreamPlannerTest {
         assertEquals(listOf(1280, 1600, 1920), StreamPlanner.supportedLongSides(listOf(FakeEncoder()), 1920, 1080))
         assertTrue(StreamPlanner.supportedLongSides(listOf(enc720), 2560, 1600).isEmpty() ||
             StreamPlanner.supportedLongSides(listOf(enc720), 2560, 1600).all { it <= 1280 })
+    }
+
+    @Test
+    fun aQualityStepKeepsTheFrameSize() {
+        val enc = FakeEncoder()
+        val base = StreamPlanner.plan(2560, 1600, Preset.BALANCED, board1080, listOf(enc))!!
+        val weak = StreamPlanner.atFixedSize(base, Preset.WEAK_NETWORK, board1080, enc)!!
+        assertEquals(base.width, weak.width)
+        assertEquals(base.height, weak.height)
+        assertEquals(base.encoderName, weak.encoderName)
+        assertEquals(30, weak.fps)
+        assertEquals(800_000, weak.minBps)
+        assertEquals(5_000_000, weak.maxBps)
+
+        val back = StreamPlanner.atFixedSize(weak, Preset.BALANCED, board1080, enc)!!
+        assertEquals(base, back)
+    }
+
+    @Test
+    fun aFixedSizeTheEncoderCannotRunFastFallsBackTo30() {
+        val slow = FakeEncoder(maxPixelsPerSec = 1280L * 800 * 30)
+        val base = StreamPlanner.plan(2560, 1600, Preset.WEAK_NETWORK, board1080, listOf(slow))!!
+        val best = StreamPlanner.atFixedSize(base, Preset.BEST, board1080, slow)!!
+        assertEquals(base.width, best.width)
+        assertEquals(30, best.fps)
+        assertEquals(7_407_407, best.maxBps) // BEST's numbers for 31 % of its pixel rate
+    }
+
+    @Test
+    fun aFixedSizeKeepsTheEncodersBitrateLimits() {
+        val narrow = FakeEncoder(bitrateRange = 1_000_000L..10_000_000L)
+        val base = StreamPlanner.plan(2560, 1600, Preset.BEST, board1080, listOf(narrow))!!
+        val weak = StreamPlanner.atFixedSize(base, Preset.WEAK_NETWORK, board1080, narrow)!!
+        assertEquals(1_000_000, weak.minBps)
+        assertEquals(5_000_000, weak.maxBps)
+        assertEquals(10_000_000, StreamPlanner.atFixedSize(weak, Preset.BEST, board1080, narrow)!!.maxBps)
+    }
+
+    @Test
+    fun aSmallBoardGetsASmallerBitrate() {
+        val plan = StreamPlanner.plan(2560, 1600, Preset.BALANCED, ReceiverDisplay(1280, 720, 60), listOf(FakeEncoder()))!!
+        assertEquals(1152, plan.width)
+        assertEquals(720, plan.height)
+        // 1152x720 is 72 % of BALANCED's full pixel rate (80 % of 1600x900).
+        assertEquals(5_760_000, plan.startBps)
+        assertEquals(8_640_000, plan.maxBps)
+        assertEquals(1_440_000, plan.minBps)
+    }
+
+    @Test
+    fun aFullHdBoardKeepsThePresetsBitrates() {
+        for (preset in Preset.entries) {
+            val plan = StreamPlanner.plan(2560, 1600, preset, board1080, listOf(FakeEncoder()))!!
+            assertEquals(preset.startBps, plan.startBps, preset.name)
+            assertEquals(preset.maxBps, plan.maxBps, preset.name)
+            assertEquals(preset.minBps, plan.minBps, preset.name)
+        }
+    }
+
+    @Test
+    fun theFloorNeverGoesBelowHalfAMegabit() {
+        val tiny = StreamPlanner.plan(2560, 1600, Preset.WEAK_NETWORK, ReceiverDisplay(640, 400, 30), listOf(FakeEncoder()))!!
+        assertEquals(500_000, tiny.minBps)
+        assertTrue(tiny.startBps >= tiny.minBps)
+        assertTrue(tiny.maxBps >= tiny.startBps)
     }
 }
 

@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.ozkanceng.yansit.R
+import io.github.ozkanceng.yansit.stream.NetworkDiagnostics
 import io.github.ozkanceng.yansit.data.RememberedBoard
 import io.github.ozkanceng.yansit.protocol.Bytes
 import io.github.ozkanceng.yansit.sender.MirrorStats
@@ -519,6 +520,12 @@ private fun QualityLabel(stats: MirrorStats) {
         else -> R.string.quality_poor to MaterialTheme.colorScheme.error
     }
     Text(stringResource(label), style = MaterialTheme.typography.titleMedium, color = color)
+    if (stats.autoLowered) {
+        val context = LocalContext.current
+        // Checked once each time quality drops; the band does not change while mirroring.
+        val on24GHz = remember(stats.autoLowered) { NetworkDiagnostics.onWifi24GHz(context) }
+        if (on24GHz == true) Text(stringResource(R.string.quality_hint_24ghz), style = MaterialTheme.typography.bodyLarge)
+    }
 }
 
 private fun audioText(a: AudioState): Int = when (a) {

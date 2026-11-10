@@ -123,6 +123,7 @@
     <string name="quality_fair">Bağlantı: orta</string>
     <string name="quality_poor">Bağlantı: zayıf</string>
     <string name="quality_auto_lowered">Ağ zayıf: kalite otomatik düşürüldü</string>
+    <string name="quality_hint_24ghz">Tablet 2,4 GHz Wi-Fi\'da. 5 GHz bir ağa ya da telefonun 5 GHz hotspot\'una bağlanırsanız görüntü daha akıcı olur.</string>
     <string name="settings_latency">Gecikme ölçümü</string>
     <string name="settings_latency_desc">Yansıtırken bu ekranı açın: alıcı, tabletin çizdiği an ile kendi ekranına geldiği an arasındaki süreyi gösterir.</string>
     <string name="settings_latency_open">Ölçüm ekranını aç</string>

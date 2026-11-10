@@ -21,6 +21,12 @@ public object FrameFlags {
     public const val CONFIG: Int = 0x0001
     public const val KEYFRAME: Int = 0x0002
     public const val DISCONTINUITY: Int = 0x0004
+
+    /**
+     * VIDEO only: the picture in this frame is turned 90° clockwise (its top edge is on the frame's right). The
+     * receiver turns it back. Sent only to a receiver whose WELCOME has `rotated_frames` (PROTOCOL.md §3).
+     */
+    public const val ROTATED: Int = 0x0008
 }
 
 /**
@@ -45,6 +51,7 @@ public data class FrameHeader(
     public val isConfig: Boolean get() = flags and FrameFlags.CONFIG != 0
     public val isKeyframe: Boolean get() = flags and FrameFlags.KEYFRAME != 0
     public val isDiscontinuity: Boolean get() = flags and FrameFlags.DISCONTINUITY != 0
+    public val isRotated: Boolean get() = flags and FrameFlags.ROTATED != 0
 }
 
 public object Frames {

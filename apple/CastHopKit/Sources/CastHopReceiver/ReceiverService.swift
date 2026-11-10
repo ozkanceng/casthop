@@ -13,6 +13,8 @@ public struct ReceiverOptions: Sendable {
     public var qrHosts: [String] = []
     public var pairingFile: URL?
     public var statsFile: URL?
+    /// Test tool: every video access unit (Annex-B, CONFIG without its codec byte) is appended here as received.
+    public var videoDump: URL?
     public var approvalTimeoutMs: Int64 = 20_000
     public var audio = true
     /// Decode without a window or audio device.
@@ -98,6 +100,14 @@ public final class ReceiverService: @unchecked Sendable {
     private var nextId: ConnId = 0
     private var timers: [DispatchSourceTimer] = []
     private var trustedStore: TrustedStore?
+    private lazy var videoDump: FileHandle? = options.videoDump.flatMap { url in
+        if !FileManager.default.fileExists(atPath: url.path) {
+            FileManager.default.createFile(atPath: url.path, contents: nil)
+        }
+        let h = try? FileHandle(forWritingTo: url)
+        _ = try? h?.seekToEnd()
+        return h
+    }
 
     private var snapshot = ReceiverSnapshot()
     public var onChange: ((ReceiverSnapshot) -> Void)?
@@ -266,6 +276,7 @@ public final class ReceiverService: @unchecked Sendable {
             info.audioDecoders.append(CodecSupport(codec: Codec.aacLc, flags: 0))
         }
         info.audioEnabled = options.audio && !info.audioDecoders.isEmpty
+        info.rotatedFrames = true
         return info
     }
 
@@ -360,7 +371,11 @@ public final class ReceiverService: @unchecked Sendable {
 
     private func onMedia(_ c: ReceiverConnection, _ header: FrameHeader, _ payload: Data, recvUs: UInt64) {
         switch sessions?.mediaSlot(of: c.id) {
-        case .video where header.type == .video: video.push(header: header, payload: payload, recvUs: recvUs)
+        case .video where header.type == .video:
+            if let dump = videoDump {
+                try? dump.write(contentsOf: header.isConfig ? payload.dropFirst() : payload)
+            }
+            video.push(header: header, payload: payload, recvUs: recvUs)
         case .audio where header.type == .audio: audio.push(header: header, payload: payload, recvUs: recvUs)
         default: break
         }
@@ -485,6 +500,7 @@ public final class ReceiverService: @unchecked Sendable {
             "c2d_avg_ms": ms(sessionC2dSumUs, sessionC2dCount),
             "decoder": video.decoderName,
             "hardware": video.hardwareDecoding,
+            "video_rotated": video.rotatedSeen,
             "audio_received": audio.totalReceived,
             "audio_played": audio.totalPlayed,
             "audio_late": audio.totalLate,

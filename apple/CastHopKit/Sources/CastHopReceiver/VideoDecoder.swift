@@ -8,6 +8,13 @@ import VideoToolbox
 public protocol VideoOutput: AnyObject {
     func enqueue(_ sampleBuffer: CMSampleBuffer)
     func flush()
+    /// The frames from the next `enqueue` on carry a picture turned 90° clockwise (PROTOCOL.md §11, ROTATED): show it
+    /// turned back counter-clockwise. Called on the decoder's thread only when the turn changes, and with `false` on reset.
+    func setRotated(_ rotated: Bool)
+}
+
+public extension VideoOutput {
+    func setRotated(_ rotated: Bool) {}
 }
 
 /// VideoToolbox receive path (PROTOCOL.md §5, §11): CONFIG first, Annex-B in, frames dropped up to the next IDR when the
@@ -54,6 +61,8 @@ public final class VideoDecoder: @unchecked Sendable {
     private var totalDroppedCount: Int64 = 0
     private var usesHardware = false
     private var lastKeyframeRequestUs: UInt64 = 0
+    private var shownRotated = false
+    private var rotatedSeenFlag = false
 
     private var codec: UInt8 = 0
     private var config = Data()
@@ -88,6 +97,8 @@ public final class VideoDecoder: @unchecked Sendable {
     public var totalRendered: Int64 { locked { totalRenderedCount } }
     public var totalDropped: Int64 { locked { totalDroppedCount } }
     public var hardwareDecoding: Bool { locked { usesHardware } }
+    /// A turned frame (ROTATED) was shown in this session.
+    public var rotatedSeen: Bool { locked { rotatedSeenFlag } }
     public var decoderName: String { "VideoToolbox" }
 
     private func locked<T>(_ body: () -> T) -> T {
@@ -103,8 +114,14 @@ public final class VideoDecoder: @unchecked Sendable {
 
     public func reset() {
         destroySession()
+        let wasRotated: Bool = locked {
+            defer { shownRotated = false }
+            return shownRotated
+        }
+        if wasRotated { output?.setRotated(false) }
         output?.flush()
         lock.lock()
+        rotatedSeenFlag = false
         generation += 1
         stats = Stats()
         offsetUs = nil
@@ -233,9 +250,10 @@ public final class VideoDecoder: @unchecked Sendable {
             inFlight += 1
             return generation
         }
+        let rotated = header.isRotated
         let status = VTDecompressionSessionDecodeFrame(session, sampleBuffer: sample, flags: [._EnableAsynchronousDecompression],
                                                        infoFlagsOut: nil) { [weak self] status, _, image, pts, _ in
-            self?.decoded(status: status, image: image, pts: pts, generation: current)
+            self?.decoded(status: status, image: image, pts: pts, rotated: rotated, generation: current)
         }
         if status != noErr {
             locked { inFlight = max(inFlight - 1, 0) }
@@ -339,7 +357,7 @@ public final class VideoDecoder: @unchecked Sendable {
         }
     }
 
-    private func decoded(status: OSStatus, image: CVImageBuffer?, pts: CMTime, generation current: Int) {
+    private func decoded(status: OSStatus, image: CVImageBuffer?, pts: CMTime, rotated: Bool, generation current: Int) {
         lock.lock()
         guard current == generation else {
             lock.unlock()
@@ -353,8 +371,13 @@ public final class VideoDecoder: @unchecked Sendable {
             if status != noErr { requestKeyframe(KeyframeReason.decodeError) }
             return
         }
+        // The turn goes with the picture: the output learns of a change right before the first frame that has it.
+        let turned = rotated != shownRotated
+        shownRotated = rotated
+        if rotated { rotatedSeenFlag = true }
         lock.unlock()
 
+        if turned { output?.setRotated(rotated) }
         if let output, let sample = displaySample(image, pts: pts) { output.enqueue(sample) }
 
         let now = MonotonicClock.nowUs()

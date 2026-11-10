@@ -6,7 +6,7 @@ import Foundation
 func usage() -> Never {
     let text = """
     usage: casthop-receiver [--headless] [--port N] [--name NAME] [--data-dir DIR] [--pairing-file F] [--stats-file F]
-                            [--qr-host HOST]... [--approval-timeout MS] [--no-audio]
+                            [--qr-host HOST]... [--approval-timeout MS] [--no-audio] [--dump-video F]
 
     """
     FileHandle.standardError.write(Data(text.utf8))
@@ -38,6 +38,7 @@ while !args.isEmpty {
         guard let ms = Int64(value()) else { usage() }
         options.approvalTimeoutMs = ms
     case "--no-audio": options.audio = false
+    case "--dump-video": options.videoDump = URL(fileURLWithPath: value())
     default: usage()
     }
 }

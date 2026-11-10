@@ -52,6 +52,8 @@ internal data class TvState(
     val videoWidth: Int = 0,
     val videoHeight: Int = 0,
     val videoFailed: Boolean = false,
+    /** The picture on screen came turned 90° clockwise (FrameFlags.ROTATED) and is shown turned back. */
+    val videoRotated: Boolean = false,
     val hasNetwork: Boolean = true,
 )
 
@@ -76,6 +78,7 @@ internal class ReceiverController(context: Context) {
         MonotonicClock::nowUs,
         onVideoSize = { width, height -> _state.update { it.copy(videoWidth = width, videoHeight = height) } },
         onFailure = { failed -> _state.update { it.copy(videoFailed = failed) } },
+        onRotated = { rotated -> _state.update { it.copy(videoRotated = rotated) } },
     )
     private val audio = MediaCodecAudioBackend(catalog, MonotonicClock::nowUs)
 
@@ -190,7 +193,7 @@ internal class ReceiverController(context: Context) {
         nsd.stop()
         running.shutdown()
         holdWifi(false)
-        _state.update { it.copy(running = false, videoWidth = 0, videoHeight = 0, videoFailed = false) }
+        _state.update { it.copy(running = false, videoWidth = 0, videoHeight = 0, videoFailed = false, videoRotated = false) }
     }
 
     private fun fail(failure: Failure) {

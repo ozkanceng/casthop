@@ -22,12 +22,16 @@ import java.util.concurrent.TimeUnit
  *
  * Parameter sets travel inside the first keyframe, so a decoder needs no csd buffers. A new CONFIG with different
  * bytes (rotation, resolution or codec change) rebuilds the decoder. All decoder state lives on one handler thread.
+ *
+ * A ROTATED picture needs no new decoder: its turn is remembered by timestamp and [onRotated] reports a change just
+ * before that frame is released to the screen, which turns the view (PROTOCOL.md §11).
  */
 internal class MediaCodecVideoBackend(
     private val catalog: DecoderCatalog,
     private val clockUs: () -> Long,
     private val onVideoSize: (width: Int, height: Int) -> Unit,
     private val onFailure: (failed: Boolean) -> Unit,
+    private val onRotated: (rotated: Boolean) -> Unit,
 ) : VideoBackend {
     private class Item(val data: ByteArray, val timestampUs: Long)
 
@@ -42,6 +46,8 @@ internal class MediaCodecVideoBackend(
     override var hardware: Boolean = false
         private set
 
+    override val supportsRotation: Boolean = true
+
     private val handlerThread = HandlerThread("casthop-video").apply { start() }
     private val handler = Handler(handlerThread.looper)
 
@@ -55,6 +61,11 @@ internal class MediaCodecVideoBackend(
     private val pending = ArrayDeque<Item>()
     private val freeInputs = ArrayDeque<Int>()
 
+    /** (timestamp, rotated) where the turn changes, in decode order; handler thread only. */
+    private val turns = ArrayDeque<Pair<Long, Boolean>>()
+    private var queuedRotated = false
+    private var shownRotated = false
+
     private val callback = object : MediaCodec.Callback() {
         override fun onInputBufferAvailable(codec: MediaCodec, index: Int) {
             if (codec !== decoder) return
@@ -65,6 +76,12 @@ internal class MediaCodecVideoBackend(
         override fun onOutputBufferAvailable(codec: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
             if (codec !== decoder) return
             val show = info.size > 0
+            var rotated = shownRotated
+            while (turns.isNotEmpty() && turns.first().first <= info.presentationTimeUs) rotated = turns.removeFirst().second
+            if (show && rotated != shownRotated) {
+                shownRotated = rotated
+                onRotated(rotated)
+            }
             codec.releaseOutputBuffer(index, show)
             if (show) {
                 pipeline?.onRendered(info.presentationTimeUs, clockUs())
@@ -175,11 +192,15 @@ internal class MediaCodecVideoBackend(
         return false
     }
 
-    override fun submit(accessUnit: ByteArray, timestampUs: Long, keyframe: Boolean) {
+    override fun submit(accessUnit: ByteArray, timestampUs: Long, keyframe: Boolean, rotated: Boolean) {
         handler.post {
             if (streamCodec == 0 || (decoder == null && surface != null)) {
                 pipeline?.onDiscarded(timestampUs)
             } else {
+                if (rotated != queuedRotated) {
+                    queuedRotated = rotated
+                    turns.addLast(timestampUs to rotated)
+                }
                 pending.addLast(Item(accessUnit, timestampUs))
                 drain()
             }
@@ -228,6 +249,12 @@ internal class MediaCodecVideoBackend(
             streamConfig = ByteArray(0)
             candidates = emptyList()
             pending.clear()
+            turns.clear()
+            queuedRotated = false
+            if (shownRotated) {
+                shownRotated = false
+                onRotated(false)
+            }
             release()
             decoderName = ""
             hardware = false

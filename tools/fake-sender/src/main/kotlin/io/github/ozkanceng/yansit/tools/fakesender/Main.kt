@@ -67,6 +67,7 @@ private const val USAGE = """fake-sender — CastHop test göndericisi
   --rotate-input F    (mirror) --rotate-after kareden sonra bu dosyaya geç ve kodlayıcıyı yeniden yapılandır
   --rotate-after N    (mirror) döndürme benzetiminin karesi
   --rotate-size WxH   (mirror) döndürülmüş akışın boyutu (varsayılan 720x1280)
+  --rotated-frames    WELCOME rotated_frames bildirirse her video karesine ROTATED bayrağı (PROTOCOL.md §3)
   --quality-input F   (mirror) low quality stream for automatic quality steps (640x360 by default)
   --quality-size WxH  (mirror) size of that stream
   --quality-down-ms N (mirror) time at the bitrate floor before stepping down
@@ -105,6 +106,7 @@ private data class Options(
     val qualitySize: Pair<Int, Int>,
     val qualityDownMs: Long,
     val qualityUpMs: Long,
+    val rotatedFrames: Boolean,
 )
 
 private fun parseVideo(o: Options, f: File): H264Stream =
@@ -122,7 +124,7 @@ private fun parseArgs(args: Array<String>): Options {
     while (i < args.size) {
         val a = args[i]
         when (a) {
-            "--request-pairing", "--expect-pending" -> flags.add(a)
+            "--request-pairing", "--expect-pending", "--rotated-frames" -> flags.add(a)
             "-h", "--help" -> {
                 println(USAGE); exitProcess(0)
             }
@@ -187,6 +189,7 @@ private fun parseArgs(args: Array<String>): Options {
         },
         qualityDownMs = m["--quality-down-ms"]?.toLongOrNull() ?: 8_000,
         qualityUpMs = m["--quality-up-ms"]?.toLongOrNull() ?: 60_000,
+        rotatedFrames = "--rotated-frames" in flags,
     )
 }
 
@@ -306,6 +309,7 @@ private fun stream(o: Options, session: Session, result: StreamResult) {
         }
         var flags = if (au.keyframe) FrameFlags.KEYFRAME else 0
         if (discontinuity) flags = flags or FrameFlags.DISCONTINUITY
+        if (o.rotatedFrames && session.welcome.rotatedFrames) flags = flags or FrameFlags.ROTATED
         discontinuity = false
         video.send(flags, MonotonicClock.nowUs(), au.data)
         result.framesSent.incrementAndGet()
@@ -356,6 +360,7 @@ private fun streamWithMirrorSession(
         },
         fps = o.fps,
         frames = total,
+        extraFlags = if (o.rotatedFrames && session.welcome.rotatedFrames) FrameFlags.ROTATED else 0,
         onFrame = { index ->
             if (rotated != null && index == o.rotateAfter && reconfigured.compareAndSet(false, true)) {
                 // Döndürme benzetimi: kodlayıcı yeni boyutla yeniden başlar (Android'de VirtualDisplay.resize sonrası).
@@ -492,6 +497,8 @@ fun main(args: Array<String>) {
                 put("outcome", "welcome")
                 val w = outcome.session.welcome
                 put("paired", w.pairKey != null)
+                put("rotated_frames", w.rotatedFrames)
+                put("rotated_sent", o.rotatedFrames && w.rotatedFrames)
                 val keyFile = o.pairingKey
                 if (o.requestPairing && keyFile != null && w.pairKey != null && w.keyId != null) {
                     keyFile.writeText(

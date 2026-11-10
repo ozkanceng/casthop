@@ -46,6 +46,7 @@ public object ControlCodec {
                 w.bytes(0x09, msg.attachKey, KEY_SIZE); w.bytes(0x0A, msg.resumeToken, KEY_SIZE)
                 msg.pairKey?.let { w.bytes(0x0B, it, KEY_SIZE) }; msg.keyId?.let { w.bytes(0x0C, it, ID_SIZE) }
                 w.bool(0x0D, msg.audioEnabled)
+                if (msg.rotatedFrames) w.bool(0x0E, true)
             }
             is Reject -> { w.u8(0x01, msg.reason); msg.retryAfterMs?.let { w.u32(0x02, it) } }
             is PendingApproval -> w.u32(0x01, msg.timeoutMs)
@@ -97,6 +98,7 @@ public object ControlCodec {
                 videoDecoders = r.pairs(0x07), audioDecoders = r.pairs(0x08),
                 attachKey = r.bytes(0x09, KEY_SIZE), resumeToken = r.bytes(0x0A, KEY_SIZE),
                 pairKey = r.bytesOrNull(0x0B, KEY_SIZE), keyId = r.bytesOrNull(0x0C, ID_SIZE), audioEnabled = r.bool(0x0D),
+                rotatedFrames = r.boolOrNull(0x0E) ?: false,
             )
             MsgType.REJECT -> Reject(r.u8(0x01), r.u32OrNull(0x02))
             MsgType.PENDING_APPROVAL -> PendingApproval(r.u32(0x01))

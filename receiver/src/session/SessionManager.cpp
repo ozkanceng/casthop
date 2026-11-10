@@ -63,6 +63,7 @@ Welcome SessionManager::makeWelcome(const Session& s) const {
     w.attachKey = s.attachKey;
     w.resumeToken = s.resumeToken;
     w.audioEnabled = m_info.audioEnabled;
+    w.rotatedFrames = m_info.rotatedFrames;
     return w;
 }
 

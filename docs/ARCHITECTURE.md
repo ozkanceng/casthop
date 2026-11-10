@@ -6,7 +6,8 @@
 flowchart LR
   subgraph Tablet["Android tablet (gönderici)"]
     MP[MediaProjection] --> VD[VirtualDisplay]
-    VD -->|Surface, sıfır kopya| VE[MediaCodec H.264/H.265 enc]
+    VD -->|SurfaceTexture, sıfır kopya| GL[OpenGL ES<br/>sabit kare, ortala, hız sınırı]
+    GL -->|kodlayıcı giriş Surface| VE[MediaCodec H.264/H.265 enc]
     MP --> APC[AudioPlaybackCapture<br/>AudioRecord PCM]
     APC --> AE[MediaCodec Opus/AAC enc]
     VE --> VQ[Video gönderim kuyruğu<br/>sınırlı, kare atar]
@@ -43,12 +44,23 @@ Tek dinleme portu, üç TLS bağlantısı (CONTROL, VIDEO, AUDIO). İlk bağlant
 
 **İş parçacıkları (Coroutines + ayrılmış thread'ler):**
 - `encoder-video`: `MediaCodec` async callback'leri ayrı `HandlerThread` üzerinde; çıktı `ByteBuffer` → kopyalanıp çerçevelenir → kuyruğa.
+- `mirror-gl`: EGL bağlamı, `SurfaceTexture` güncellemesi ve çizim (`ScreenSource`).
 - `net-video`, `net-audio`, `net-control`: her soket için `Dispatchers.IO` üzerinde tek yazıcı coroutine; okuma ayrı.
 - `audio-capture`: `AudioRecord.read` döngüsü (yüksek öncelikli thread).
 
 **Video yakalama/kodlama ayrıntıları**
-- `MediaCodec.createPersistentInputSurface()` → `VirtualDisplay` bu Surface'a çizer. Döndürmede: `virtualDisplay.resize(w,h,dpi)` → `codec.stop()` → `configure(yeniFormat)` → `setInputSurface(kalıcı)` → `start()`. VirtualDisplay asla yeniden oluşturulmaz (Android 14+ token kuralı). Kalıcı Surface'ın sorunlu olduğu cihazlarda yedek: yeni codec + `virtualDisplay.setSurface()`.
-- Format anahtarları (yetenek sorgusuyla desteklenenler): `KEY_BITRATE_MODE` (CBR varsayılan, VBR seçenekli; `isBitrateModeSupported`), `KEY_I_FRAME_INTERVAL` (10 sn; gereken her durumda IDR ayrıca istenir, periyodik IDR yalnız havada ani yük yaratır), `KEY_REPEAT_PREVIOUS_FRAME_AFTER` (statik ekranda 100 ms), `KEY_PRIORITY=0` (realtime), `KEY_LATENCY=1`, `KEY_MAX_B_FRAMES=0`, `KEY_PREPEND_HEADER_TO_SYNC_FRAMES=1` (API 29; SPS/PPS her IDR önünde), `KEY_PROFILE/KEY_LEVEL` (High → yoksa Main → Baseline), `KEY_OPERATING_RATE`, `KEY_MAX_FPS_TO_ENCODER`.
+- Ekran yolu (`ScreenSource`): `VirtualDisplay` → `SurfaceTexture` (OES doku) → OpenGL ES 2 → kodlayıcının `createInputSurface()` yüzeyi (EGL_RECORDABLE_ANDROID). VirtualDisplay oturumda bir kez oluşturulur, asla yeniden oluşturulmaz (Android 14+ token kuralı).
+- Kodlayıcı karesi oturum başında tahtanın yönüne (`FrameFit.planningSource`: yatay tahtada yatay) ve öğretmenin seçtiği ön ayara göre planlanır, oturum boyunca değişmez. Hatırlanan daha zayıf ön ayar boyutu değil yalnız bit hızını ve kare hızını düşürür. Ekran bu karenin içine en-boy korunarak ortalanır, kalan alan siyahtır (`FrameFit.layout`). VirtualDisplay tam bu dikdörtgenin boyutuna `resize` edilir, böylece görüntü iki kez ölçeklenmez.
+- Dikey ekran yatay karede: alıcı WELCOME'da `rotated_frames` bildirdiyse GL resmi 90° saat yönünde çevirerek kareyi doldurur ve bu karelere `ROTATED` bayrağı konur; alıcı geri çevirip gösterir ([PROTOCOL.md §11](PROTOCOL.md)). Dikey tablet yatay tahtada kare piksellerinin ~%40'ı yerine tamamını kullanır. Çevirme çizimde (pts ile) kaydedilir, bayrak kodlayıcı çıktısında aynı pts'e göre konur (`OrientationTimeline`). Bildirmeyen alıcıya eski davranış (kenar boşluklu) sürer.
+- Döndürme: yalnız `VirtualDisplay.resize` ve yeni `SurfaceTexture`; kodlayıcı çalışmayı sürdürür, yeni CONFIG/IDR yok, `STREAM_CONFIG` değişmez.
+- Kalite basamağı: boyut aynı kalır (`StreamPlanner.atFixedSize`), yalnız bit hızı aralığı ve kare hızı değişir (`MirrorSession.retune`): GL daha az kare geçirir, bit hızı `PARAMETER_KEY_VIDEO_BITRATE` ile uygulanır, `STREAM_CONFIG` bilgi olarak gönderilir. Kodlayıcı yeniden kurulmaz, yeni CONFIG/IDR yok. Kodlayıcı oturumun en yüksek kare hızıyla kurulur (`KEY_FRAME_RATE`, `KEY_OPERATING_RATE`). SM-X610'da (Exynos) 30 fps beslemede kodlayıcı hedef bit hızını tutturdu (kare boyutu iki katına çıktı), bu yüzden bit hızı kare hızına göre düzeltilmez; başka kodlayıcıda düşük çıkarsa bu ağ için güvenli yöndedir.
+- Boyut yalnız kodlayıcı hatası yedeğinde değişir (`lowerPlan` → `reconfigure`). GL her kareyi kodlayıcının kendi boyutunda çizdiği için yeni kodlayıcıya başka boyutta kare ulaşamaz. Ekran durağansa son kare yeni kodlayıcıya hemen yeniden çizilir.
+  - Neden: kalıcı giriş yüzeyinde eski boyutta bir kare kalabiliyor ve yeni kodlayıcının ilk karesi oluyordu. Samsung Exynos sürücüsü (`exynos_mfc`, `mfc_alloc_enc_roi_buffer`) yapılandırılandan büyük ilk karede çekirdek çökmesi verip tableti yeniden başlatıyor (SM-X610, kalite düşüşünde iki kez görüldü).
+- Kare hızı GL'de sınırlanır: yakalama zamanına göre aralıkta en çok bir kare (çeyrek aralık tolerans). Erken gelen kare beklenir; ardından yenisi gelmezse aralık dolunca çizilir, tahta her zaman ekranın son hâlinde kalır. Bu yolda `KEY_MAX_FPS_TO_ENCODER` verilmez (kodlayıcı GL'nin geçirdiği kareleri atmasın).
+- Durağan ekran: ekran yolunda `KEY_REPEAT_PREVIOUS_FRAME_AFTER` verilmez; 500 ms yeni kare gelmezse GL son resmi yeniden çizer (saniyede 2 kare). Kodlayıcının 100 ms tekrarı CBR'de saniyede 10 gereksiz kareyle kalabalık ağı dolduruyordu; SM-X610'da üstelik hiç kare üretmedi (durağan ekranda 0 kare/sn). Ölçüm: durağan ekranda ~2 kare/sn, ~3 kbit/s. KEYFRAME_REQUEST gelince IDR isteğiyle birlikte hemen yeniden çizilir, IDR durağan ekranda da bir kare süresinde çıkar.
+- Ölçekleme kalitesi: VirtualDisplay kodlayıcı boyutunda açıldığından küçültmeyi SurfaceFlinger yapar. 2560→1600 ince yazılı ekranda dump karesi ile Lanczos/alan küçültmeli ekran görüntüsü arasında SSIM 0,997–0,998 ölçüldü (iki referans arasındaki fark ≤ 0,0015); GL'de süper örnekleme ölçülebilir kazanç getirmeyeceği için eklenmedi.
+- Kamera yolu (`CameraEncoder`): Camera2 doğrudan `createPersistentInputSurface()` yüzeyine çizer; boyut oturumda sabittir.
+- Format anahtarları (yetenek sorgusuyla desteklenenler): `KEY_BITRATE_MODE` (CBR varsayılan, VBR seçenekli; `isBitrateModeSupported`), `KEY_I_FRAME_INTERVAL` (10 sn; gereken her durumda IDR ayrıca istenir, periyodik IDR yalnız havada ani yük yaratır), `KEY_REPEAT_PREVIOUS_FRAME_AFTER` (yalnız kamera yolu, 100 ms; ekran yolu GL'de yeniden çizer), `KEY_PRIORITY=0` (realtime), `KEY_LATENCY=1`, `KEY_MAX_B_FRAMES=0`, `KEY_PREPEND_HEADER_TO_SYNC_FRAMES=1` (API 29; SPS/PPS her IDR önünde), `KEY_PROFILE/KEY_LEVEL` (High → yoksa Main → Baseline), `KEY_OPERATING_RATE`, `KEY_MAX_FPS_TO_ENCODER` (yalnız kamera).
 - Çalışma anı: `PARAMETER_KEY_REQUEST_SYNC_FRAME` (yeni alıcı, tıkanıklık sonrası, alıcı isteği), `PARAMETER_KEY_VIDEO_BITRATE` (uyarlama).
 - Yetenek sorgusu: `MediaCodecList(REGULAR_CODECS)` → `isEncoder && isHardwareAccelerated` → `VideoCapabilities.areSizeAndRateSupported`, `bitrateRange`, `profileLevels`, `widthAlignment/heightAlignment`. Arayüz yalnız desteklenen kombinasyonları gösterir.
 - Çözünürlük: alıcının bildirdiği ekran boyutuna ve ön ayar tavanına sığacak şekilde en-boy korunarak ölçeklenir, hizalamaya yuvarlanır.
@@ -61,7 +73,12 @@ Tek dinleme portu, üç TLS bağlantısı (CONTROL, VIDEO, AUDIO). İlk bağlant
 | Dengeli | 1600 | 60 | 8 / 12 / 2 Mbps |
 | Zayıf ağ | 1280 | 30 | 3 / 5 / 0,8 Mbps |
 
+Bit hızları ön ayarın tavan boyutundaki 16:9 kare ve kare hızı içindir. Planın piksel hızı (genişlik × yükseklik × fps) bunun %80'inden azsa üç değer de aynı oranla **yalnız aşağı** ölçeklenir (`StreamPlanner.bitrates`): 1280×720 tahtada Dengeli ~4,9 Mbps'le başlar, büyük tahtada değerler aynıdır. Taban en az 500 kbps'tir; öğretmenin gelişmiş ayardaki tavanı olduğu gibi kalır.
+
+**Isınma (`FrameRateRamp`):** 60 fps plan 30 fps başlar; uygulanan bit hızı başlangıcın %90'ının üstünde 3 sn kesintisiz kalınca 60'a çıkılır (`STREAM_CONFIG` bilgi olarak). Kalite basamağı ve yeniden yapılandırma ısınmayı iptal eder. Bağlantının ilk saniyelerinde kuyruk dolup IDR patlamasıyla başlanmaz.
+
 **Gönderim kuyruğu ve canlılık**
+- **Yakalamada geri basınç (`CaptureGate`):** ağ kareyi yakında alamayacaksa kare hiç kodlanmaz: kuyruk boşsa ya da tek ve 16 ms'den genç kare varsa çizilir, değilse GL en yeni resmi tutar ve 4 ms sonra yeniden sorar. Kodlayıcıdan önce atılan resim hiçbir şeyi bozmaz; kodlayıcıdan sonra atılan P-kare IDR'ye dek her kareyi götürür. Kapı tek seferde 50 ms'den uzun kapalı kalırsa bir kez tıkanıklık bildirilir (`BitrateController` kare atmadaki gibi düşer). Gönderim yokken (yeniden bağlanma, duraklatma) kapı açıktır. Ölçüm (alıcıya 2 sn'de bir 400 ms SIGSTOP): IDR 4 → 1, alınan bit hızı 1,70 → 2,97 Mbit/s.
 - Video kuyruğu en fazla ~2 kare veya 50 ms bekleyen veri tutar. Aşılırsa: kuyruktaki tüm P-kareler atılır, `DROP` sayacı artar, kodlayıcıdan IDR istenir, sonraki IDR'ye kadar P-kareler gönderilmez (H.264 P-kareleri referans olduğundan tek tek atılamaz). Aynı anda `BitrateController`'a tıkanıklık olayı bildirilir.
 - **Anahtar kare koruması (`KeyframeGate`):** tıkalı ağda büyük bir IDR yazılırken arkasındaki P-kareler atılır ve bu yeni bir IDR isteği doğurur. Önceki IDR yazılırken gelen istekler bekletilir, yazım bitince tek IDR istenir; 1 sn zaman aşımı görüntünün donup kalmasını önler. Yeniden bağlanma ve duraklatma sonrası zorunlu IDR'ler bu kapıdan geçmez.
 - VIDEO soketinin `SO_SNDBUF` değeri güncel bit hızının ≈ 100 ms'si kadar tutulur (32–512 KiB, bit hızı değiştikçe güncellenir) ki çekirdek tamponu kuyruk görevi görmesin; `TCP_NODELAY` açık.
@@ -71,7 +88,7 @@ Tek dinleme portu, üç TLS bağlantısı (CONTROL, VIDEO, AUDIO). İlk bağlant
 
 **BitrateController** (saf mantık, birim testli): girdiler = gönderici kuyruk gecikmesi, alıcı raporu (tahmini tek yön gecikme eğimi, geç kare oranı, alınan bit hızı). AIMD: tıkanıklık → ×0,7 (en sık 500 ms'de bir); 2 sn kararlı → tıkanıklık öncesi hızın %85'ine dek +%31/sn, sonra +%8/sn tavana kadar. Ayrıntı: [PROTOCOL.md §7.6](PROTOCOL.md).
 
-**QualityGovernor** (saf mantık, birim testli): bit hızı tabana indiği hâlde tıkanıklık sürerse çözünürlük ve kare hızı da düşmelidir. Bit hızı tabandayken 3 sn geçerse bir alt ön ayara inilir, 60 sn kararlı ve tavanın %90'ındaysa bir üst ön ayara çıkılır. Yükseldikten sonraki 30 sn içinde yine inerse bekleme iki katına çıkar (en çok 480 sn). Son geçişten sonra inmek için en az 5 sn, çıkmak için en az 15 sn beklenir: yavaş ağda En iyi kaliteden Zayıf ağ'a yaklaşık 10 sn'de inilir. Her geçişte ulaşılan ön ayar alıcının sertifika parmak iziyle saklanır (Android `BoardStore`, iOS `SharedStore` `presets.json`); sonraki oturum oradan başlar, ağ iyiyse bugünkü gibi yükselir. Seçilen ön ayara dönülünce kayıt silinir. Öğretmenin seçtiği ön ayar tavandır, `StreamOverrides` verilmişse governor kapalıdır. Geçiş `MirrorController.stepQuality` ile yapılır: `VirtualDisplay` yalnız `resize` edilir, kodlayıcı `reconfigure` ile yeniden kurulur. Etkin ön ayar `Capture` içinde tutulur; döndürme otomatik düşüşü geri almaz. Eşikler tasarım tahminidir.
+**QualityGovernor** (saf mantık, birim testli): bit hızı tabana indiği hâlde tıkanıklık sürerse çözünürlük ve kare hızı da düşmelidir. Bit hızı tabandayken 3 sn geçerse bir alt ön ayara inilir, 60 sn kararlı ve tavanın %90'ındaysa bir üst ön ayara çıkılır. Yükseldikten sonraki 30 sn içinde yine inerse bekleme iki katına çıkar (en çok 480 sn). Son geçişten sonra inmek için en az 5 sn, çıkmak için en az 15 sn beklenir: yavaş ağda En iyi kaliteden Zayıf ağ'a yaklaşık 10 sn'de inilir. Her geçişte ulaşılan ön ayar alıcının sertifika parmak iziyle saklanır (Android `BoardStore`, iOS `SharedStore` `presets.json`); sonraki oturum oradan başlar, ağ iyiyse bugünkü gibi yükselir. Seçilen ön ayara dönülünce kayıt silinir. Öğretmenin seçtiği ön ayar tavandır, `StreamOverrides` verilmişse governor kapalıdır. Android'de geçiş `MirrorController.stepQuality` ile yapılır: çözünürlük oturum boyunca sabittir, basamak yalnız bit hızı aralığını ve kare hızını değiştirir (`MirrorSession.retune`, kodlayıcı durmaz). Etkin ön ayar `Capture` içinde tutulur; döndürme otomatik düşüşü geri almaz. Eşikler tasarım tahminidir.
 
 **Ses:** `AudioPlaybackCaptureConfiguration` (USAGE_MEDIA, USAGE_GAME, USAGE_UNKNOWN) + `AudioRecord` 48 kHz stereo PCM16 → `MediaCodec` Opus (API 29 yazılım kodlayıcısı; çalışma anında doğrulanır) 20 ms paket, 128 kbps; yoksa AAC-LC. Zaman damgası `AudioRecord.getTimestamp(TIMEBASE_MONOTONIC)` → videoyla aynı `CLOCK_MONOTONIC` tabanı. CONFIG yükü (OpusHead / AudioSpecificConfig) kodlayıcının özel CSD biçimine bağlı kalmamak için parametrelerden üretilir.
 
@@ -137,7 +154,7 @@ Zaman damgası eşleme: `pts_alıcı = pts_gönderici + saat_ofseti + D`. `D` = 
 Pardus alıcısıyla aynı C++ kod. Platforma bağlı parçalar ayrılmıştır: mDNS Windows'ta `DnsServiceRegister`, otomatik başlatma kayıt defteri `Run` anahtarı, anahtar dosyası kullanıcı ACL'si. Çözücü `d3d11h264dec` ve `d3d11h265dec`, görüntü işlemci çizim yolundan geçer. Kurucu Inno Setup ile Qt ve GStreamer'ı içinde getirir, 47800 için güvenlik duvarı kuralı ekler (`.github/workflows/windows.yml`).
 
 ### 2.2b Android TV ve tablet alıcısı (`/android/receiver-core`, `/android/tv`)
-`receiver-core` saf Kotlin/JVM'dir: `PairingManager`, `SessionManager`, `Connection`, rapor ve saat senkronu. `tools/fake-receiver` bu çekirdeği cihazsız çalıştırır. `tv` uygulaması TLS sunucusunu (`AndroidKeyStore`, `SSLServerSocket`), `MediaCodec` + `SurfaceView` görüntüyü, `AudioTrack` sesini ve `NsdManager` yayınını ekler. Kumanda ve dokunmatikle kullanılır.
+`receiver-core` saf Kotlin/JVM'dir: `PairingManager`, `SessionManager`, `Connection`, rapor ve saat senkronu. `tools/fake-receiver` bu çekirdeği cihazsız çalıştırır. `tv` uygulaması TLS sunucusunu (`AndroidKeyStore`, `SSLServerSocket`), `MediaCodec` + `TextureView` görüntüyü (ROTATED kareyi `setTransform` ile geri çevirir), `AudioTrack` sesini ve `NsdManager` yayınını ekler. Kumanda ve dokunmatikle kullanılır.
 
 ### 2.2c Apple (`/apple`)
 `CastHopKit` Swift paketi protokol, gönderici ve alıcı kodunu tutar; TLS `Network.framework` ile, parmak izi sabitlemelidir. Xcode projesi `project.yml`'den XcodeGen ile üretilir, commit edilmez.
@@ -149,6 +166,8 @@ Pardus alıcısıyla aynı C++ kod. Platforma bağlı parçalar ayrılmıştır:
 
 ### 2.2d Alıcıların ortak kuralı
 Üç alıcı (C++, Kotlin, Swift) `docs/PROTOCOL.md` §11'e uyar ve aynı `--headless --port --pairing-file --stats-file` sözleşmesini sağlar; `tools/conformance/run.py` hepsine aynı senaryoları çalıştırır. Ortak kod yerine üç uygulama seçildi: TLS sunucusu ve kimlik her platformda yeniden yazılacağı için paylaşılabilen yalnız oturum mantığı kalıyor, OpenSSL'i iki mobil platforma taşımaya değmiyor.
+
+Üçü de WELCOME'da `rotated_frames` bildirir ve `ROTATED` kareyi geri çevirir: dönüş kare pts'iyle kaydedilir, resim ekrana çıkarken değiştirilir (Pardus `RotationTimeline` + QML `rotation: -90`, TV `TextureView.setTransform`, Apple `DisplayOutput.place` katman dönüşümü), böylece çevrilmiş ve düz kare karışmaz. İstatistik dosyasında `video_rotated`.
 
 ### 2.3 `/protocol`
 `PROTOCOL.md`'nin makine-okur karşılıkları: `vectors/*.hex` (ham baytlar) + `vectors.json` (beklenen alanlar / beklenen hata). Her iki uygulamanın test paketi bu dizini okur.

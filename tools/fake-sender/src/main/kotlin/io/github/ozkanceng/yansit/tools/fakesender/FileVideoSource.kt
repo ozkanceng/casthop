@@ -19,6 +19,8 @@ class FileVideoSource(
     private val select: (StreamPlan) -> H264Stream,
     private val fps: Int,
     private val frames: Int,
+    /** Added to every picture frame (not CONFIG), e.g. FrameFlags.ROTATED. */
+    private val extraFlags: Int = 0,
     private val onFrame: (index: Int) -> Unit = {},
     private val onFinished: () -> Unit,
 ) : VideoSource {
@@ -57,7 +59,8 @@ class FileVideoSource(
                     if (skipToKeyframe && !au.keyframe) continue
                     if (au.keyframe) skipToKeyframe = false
                     val now = MonotonicClock.nowUs()
-                    sink(EncodedFrame(au.data, now, if (au.keyframe) FrameFlags.KEYFRAME else 0, now))
+                    val flags = (if (au.keyframe) FrameFlags.KEYFRAME else 0) or extraFlags
+                    sink(EncodedFrame(au.data, now, flags, now))
                     framesProduced.incrementAndGet()
                 }
                 if (running) onFinished()

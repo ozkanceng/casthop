@@ -24,6 +24,8 @@ struct ReceiverInfo {
     std::vector<protocol::CodecSupport> videoDecoders;
     std::vector<protocol::CodecSupport> audioDecoders;
     bool audioEnabled = false;
+    /// WELCOME rotated_frames: the screen turns FrameFlags::Rotated pictures back.
+    bool rotatedFrames = false;
 };
 
 /// Bağlı göndericinin HELLO'dan gelen bilgileri.

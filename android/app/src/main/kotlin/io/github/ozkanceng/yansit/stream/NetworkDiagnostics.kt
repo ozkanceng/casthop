@@ -3,6 +3,8 @@ package io.github.ozkanceng.yansit.stream
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.wifi.WifiInfo
+import android.os.Build
 import java.net.Inet4Address
 
 /** Bağlanamama nedenini sınıflandırmaya yardımcı ağ bilgisi (RISKS R1). */
@@ -28,6 +30,22 @@ object NetworkDiagnostics {
             prefixes.any { (addr, len) -> len in 1..32 && sameSubnet(addr, h, len) }
         }
     }
+
+    /**
+     * Is the tablet a client of a 2.4 GHz Wi-Fi? Crowded 2.4 GHz classrooms are the usual reason the picture cannot
+     * keep up; 5 GHz carries it. `null` when unknown: the tablet shares its own hotspot, or Android is older than 12.
+     */
+    fun onWifi24GHz(context: Context): Boolean? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return null
+        val frequency = cm.allNetworks.firstNotNullOfOrNull { n ->
+            val caps = cm.getNetworkCapabilities(n)?.takeIf { it.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) }
+            (caps?.transportInfo as? WifiInfo)?.frequency?.takeIf { it > 0 }
+        } ?: return null
+        return is24GHz(frequency)
+    }
+
+    internal fun is24GHz(frequencyMhz: Int): Boolean = frequencyMhz in 2400..2500
 
     internal fun sameSubnet(a: Int, b: Int, prefixLength: Int): Boolean {
         val mask = if (prefixLength == 0) 0 else (-1 shl (32 - prefixLength))

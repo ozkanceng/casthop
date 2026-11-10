@@ -1,5 +1,6 @@
 #include "common/Clock.h"
 #include "media/VideoPipeline.h"
+#include "media/RotationTimeline.h"
 
 #include <gst/gst.h>
 #include <gtest/gtest.h>
@@ -34,4 +35,28 @@ TEST(Clock, MonotonicUsMatchesGStreamerMonotonicClock) {
     }
     gst_object_unref(clock);
     EXPECT_LE(smallest, 1000);
+}
+
+// A turned picture must be shown turned back from exactly its own frame on, even when the decoder is several frames
+// behind the network (PROTOCOL.md §11, FrameFlags::Rotated).
+TEST(RotationTimeline, EachFrameShowsWithTheTurnItCameWith) {
+    yansit::media::RotationTimeline t;
+    t.record(1000, false);
+    t.record(2000, true);
+    t.record(3000, true);
+    t.record(4000, false);
+    EXPECT_FALSE(t.at(1000));
+    EXPECT_TRUE(t.at(2000));
+    EXPECT_TRUE(t.at(3000));
+    EXPECT_FALSE(t.at(4000));
+    EXPECT_FALSE(t.at(5000));
+}
+
+TEST(RotationTimeline, AFrameTheDecoderSkippedDoesNotLoseTheTurn) {
+    yansit::media::RotationTimeline t;
+    t.record(1000, true);
+    t.record(2000, true);
+    EXPECT_TRUE(t.at(2000)); // 1000 never reached the screen
+    t.clear();
+    EXPECT_FALSE(t.at(3000));
 }

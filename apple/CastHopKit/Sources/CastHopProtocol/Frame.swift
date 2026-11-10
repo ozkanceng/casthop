@@ -18,6 +18,8 @@ public enum FrameFlags {
     public static let config: UInt16 = 0x0001
     public static let keyframe: UInt16 = 0x0002
     public static let discontinuity: UInt16 = 0x0004
+    /// VIDEO only: the picture is turned 90° clockwise (top edge on the frame's right); the receiver turns it back.
+    public static let rotated: UInt16 = 0x0008
 }
 
 public struct FrameHeader: Equatable, Sendable {
@@ -38,6 +40,7 @@ public struct FrameHeader: Equatable, Sendable {
     public var isConfig: Bool { flags & FrameFlags.config != 0 }
     public var isKeyframe: Bool { flags & FrameFlags.keyframe != 0 }
     public var isDiscontinuity: Bool { flags & FrameFlags.discontinuity != 0 }
+    public var isRotated: Bool { flags & FrameFlags.rotated != 0 }
 }
 
 public struct Frame: Sendable {

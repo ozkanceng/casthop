@@ -42,6 +42,8 @@ class ReceiverService : public QObject {
     Q_PROPERTY(QString receiverName READ receiverName NOTIFY receiverNameChanged)
     Q_PROPERTY(int videoWidth READ videoWidth NOTIFY videoSizeChanged)
     Q_PROPERTY(int videoHeight READ videoHeight NOTIFY videoSizeChanged)
+    /// The picture came turned 90° clockwise (FrameFlags::Rotated); the view turns it back.
+    Q_PROPERTY(bool videoRotated READ videoRotated NOTIFY videoRotatedChanged)
     Q_PROPERTY(QVariantList trustedSenders READ trustedSenders NOTIFY trustedChanged)
     Q_PROPERTY(int port READ port CONSTANT)
     Q_PROPERTY(QString qrUri READ qrUri NOTIFY credentialsChanged)
@@ -121,6 +123,7 @@ public:
 
     int videoWidth() const { return m_videoWidth; }
     int videoHeight() const { return m_videoHeight; }
+    bool videoRotated() const { return m_videoRotated; }
     /// Her öğe: {keyId, name}.
     QVariantList trustedSenders() const;
 
@@ -133,6 +136,7 @@ signals:
     void statsChanged();
     void receiverNameChanged();
     void videoSizeChanged();
+    void videoRotatedChanged();
     void trustedChanged();
 
 private:
@@ -192,6 +196,7 @@ private:
     std::uint16_t m_senderFpsX100 = 0;
     int m_videoWidth = 0;
     int m_videoHeight = 0;
+    bool m_videoRotated = false;
 };
 
 } // namespace yansit

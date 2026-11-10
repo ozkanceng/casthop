@@ -79,6 +79,8 @@ struct ToFields {
                {"audio_enabled", m.audioEnabled}};
         optHex(j, "pair_key", m.pairKey);
         optHex(j, "key_id", m.keyId);
+        if (m.rotatedFrames)
+            j["rotated_frames"] = true;
         return {"WELCOME", j};
     }
     std::pair<std::string, json> operator()(const Reject& m) const {

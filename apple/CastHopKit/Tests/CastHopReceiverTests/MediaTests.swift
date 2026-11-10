@@ -39,7 +39,8 @@ final class VideoRoundTripTests: XCTestCase {
     }
 
     /// Runs frames through encoder and decoder as the wire would carry them.
-    private func roundTrip(codec: UInt8, frames count: Int) throws -> (VideoDecoder, [EncodedFrame]) {
+    private func roundTrip(codec: UInt8, frames count: Int, to sink: VideoOutput? = nil,
+                           rotated: (Int) -> Bool = { _ in false }) throws -> (VideoDecoder, [EncodedFrame]) {
         let encoder = VideoToolboxEncoder()
         let lock = NSLock()
         var frames: [EncodedFrame] = []
@@ -58,15 +59,23 @@ final class VideoRoundTripTests: XCTestCase {
         encoder.stop()
 
         let decoder = VideoDecoder()
+        decoder.output = sink
         decoder.setClockOffset(0)
         var seq: UInt32 = 0
+        var index = 0
         lock.lock()
         let output = frames
         lock.unlock()
         for f in output {
             var payload = f.data
-            if f.isConfig { payload = Data([codec]) + payload }
-            decoder.push(header: FrameHeader(type: .video, flags: f.flags, ptsUs: f.ptsUs, seq: seq, length: payload.count),
+            var flags = f.flags
+            if f.isConfig {
+                payload = Data([codec]) + payload
+            } else {
+                if rotated(index) { flags |= FrameFlags.rotated }
+                index += 1
+            }
+            decoder.push(header: FrameHeader(type: .video, flags: flags, ptsUs: f.ptsUs, seq: seq, length: payload.count),
                          payload: payload, recvUs: f.ptsUs + 1000)
             seq += 1
         }
@@ -87,6 +96,38 @@ final class VideoRoundTripTests: XCTestCase {
         }
         XCTAssertEqual(decoder.totalRendered, Int64(video.count))
         XCTAssertEqual(decoder.totalDropped, 0)
+    }
+
+    /// Records what the decoder hands to the screen, in order.
+    private final class RecordingOutput: VideoOutput {
+        private let lock = NSLock()
+        private var log: [String] = []
+        var events: [String] { lock.withLock { log } }
+
+        func enqueue(_ sampleBuffer: CMSampleBuffer) { lock.withLock { log.append("frame") } }
+        func flush() { lock.withLock { log.append("flush") } }
+        func setRotated(_ rotated: Bool) { lock.withLock { log.append(rotated ? "rotated" : "upright") } }
+    }
+
+    func testTurnReachesTheOutputRightBeforeItsFirstFrame() throws {
+        let sink = RecordingOutput()
+        let (decoder, frames) = try roundTrip(codec: Codec.h264, frames: 8, to: sink) { $0 >= 3 }
+        let video = frames.filter { !$0.isConfig }.count
+        XCTAssertGreaterThan(video, 3)
+        XCTAssertEqual(sink.events, Array(repeating: "frame", count: 3) + ["rotated"]
+            + Array(repeating: "frame", count: video - 3))
+        XCTAssertTrue(decoder.rotatedSeen)
+
+        decoder.reset()
+        XCTAssertEqual(sink.events.suffix(2), ["upright", "flush"], "a new stream starts upright")
+        XCTAssertFalse(decoder.rotatedSeen)
+    }
+
+    func testUprightStreamNeverTurns() throws {
+        let sink = RecordingOutput()
+        let (decoder, _) = try roundTrip(codec: Codec.h264, frames: 6, to: sink)
+        XCTAssertFalse(sink.events.contains("rotated"))
+        XCTAssertFalse(decoder.rotatedSeen)
     }
 
     func testH265FramesSurviveTheWireFormatWhereHardwareExists() throws {

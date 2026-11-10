@@ -32,6 +32,7 @@ private const val USAGE = """fake-receiver: the Android TV receiver's core on th
   --approval-timeout MS   takeover approval timeout, 1000-120000 (default 20000)
   --qr-host IP            address to put in the QR; repeat for several (default 127.0.0.1)
   --board-name S          receiver name (default "Fake Receiver")
+  --dump-video F          append every video access unit (Annex-B, as received) to F, for ffprobe/ffmpeg
 
 There is no decoder or screen here: frames are counted as rendered when they arrive and audio packets as played
 when they are due, so frames_rendered says nothing about pictures. It only proves the protocol and session logic.
@@ -45,6 +46,7 @@ private class Options(
     val approvalTimeoutMs: Long,
     val qrHosts: List<String>,
     val name: String,
+    val dumpVideo: File?,
 )
 
 private fun usage(message: String): Nothing {
@@ -64,7 +66,7 @@ private fun parseArgs(args: Array<String>): Options {
                 exitProcess(0)
             }
             "--headless" -> Unit
-            "--port", "--data-dir", "--pairing-file", "--stats-file", "--approval-timeout", "--board-name" -> {
+            "--port", "--data-dir", "--pairing-file", "--stats-file", "--approval-timeout", "--board-name", "--dump-video" -> {
                 if (i >= args.size) usage("$a needs a value")
                 values[a] = args[i++]
             }
@@ -87,20 +89,32 @@ private fun parseArgs(args: Array<String>): Options {
         approvalTimeoutMs = approval ?: 20_000,
         qrHosts = hosts.ifEmpty { listOf("127.0.0.1") },
         name = values["--board-name"] ?: "Fake Receiver",
+        dumpVideo = values["--dump-video"]?.let(::File),
     )
 }
 
 /** Stands in for the decoder and the screen: a frame is rendered the moment it arrives. */
-private class CountingVideoBackend : VideoBackend {
+private class CountingVideoBackend(dumpFile: File?) : VideoBackend {
+    private val dump = dumpFile?.let { java.io.BufferedOutputStream(java.io.FileOutputStream(it, true)) }
+
     @Volatile
     var pipeline: VideoPipeline? = null
 
     override val decoderName: String = "fake-receiver"
     override val hardware: Boolean = false
 
+    // Nothing is shown, so turning is free: the stats file says whether turned frames arrived.
+    override val supportsRotation: Boolean = true
+
     override fun configure(codec: Int, config: ByteArray): Boolean = true
 
-    override fun submit(accessUnit: ByteArray, timestampUs: Long, keyframe: Boolean) {
+    override fun submit(accessUnit: ByteArray, timestampUs: Long, keyframe: Boolean, rotated: Boolean) {
+        dump?.let {
+            synchronized(it) {
+                it.write(accessUnit)
+                it.flush()
+            }
+        }
         pipeline?.onRendered(timestampUs, MonotonicClock.nowUs())
     }
 
@@ -155,7 +169,7 @@ fun main(args: Array<String>) {
         exitProcess(1)
     }
 
-    val video = CountingVideoBackend()
+    val video = CountingVideoBackend(o.dumpVideo)
     val audio = CountingAudioBackend()
     val engine = ReceiverEngine(
         ReceiverEngine.Options(

@@ -58,6 +58,7 @@ fun ControlMessage.toFields(): Map<String, Any?> {
             "display_refresh" to displayRefresh.toLong(), "video_decoders" to pairs(videoDecoders),
             "audio_decoders" to pairs(audioDecoders), "attach_key" to b(attachKey), "resume_token" to b(resumeToken),
             "pair_key" to b(pairKey), "key_id" to b(keyId), "audio_enabled" to audioEnabled,
+            "rotated_frames" to rotatedFrames.takeIf { it },
         )
         is ControlMessage.Reject -> mapOf("reason" to reason.toLong(), "retry_after_ms" to retryAfterMs)
         is ControlMessage.PendingApproval -> mapOf("timeout_ms" to timeoutMs)

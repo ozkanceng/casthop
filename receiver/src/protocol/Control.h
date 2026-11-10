@@ -127,6 +127,8 @@ struct Welcome {
     std::optional<Key32> pairKey;
     std::optional<Id16> keyId;
     bool audioEnabled = false;
+    /// The receiver turns FrameFlags::Rotated frames back; written only when true.
+    bool rotatedFrames = false;
     bool operator==(const Welcome&) const = default;
 };
 

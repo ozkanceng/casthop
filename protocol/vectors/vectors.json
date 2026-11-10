@@ -30,6 +30,18 @@
       }
     },
     {
+      "name": "frame_video_rotated",
+      "hex": "59540101000a000000000000001e848000000002000000050000000165",
+      "expect": {
+        "type": 1,
+        "flags": 10,
+        "pts_us": 2000000,
+        "seq": 2,
+        "length": 5,
+        "payload": "0000000165"
+      }
+    },
+    {
       "name": "frame_control_ping",
       "hex": "595401030000000000000000000f4240000000070000001420000100040000000702000800000000000f4240",
       "expect": {
@@ -209,7 +221,7 @@
     },
     {
       "name": "control_welcome_full",
-      "hex": "020001000200010200055461687461030010404142434445464748494a4b4c4d4e4f0400020f0005000208700600013c0700040103020108000410001100090020808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f0a0020a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf0b0020c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf0c0010505152535455565758595a5b5c5d5e5f0d000101",
+      "hex": "020001000200010200055461687461030010404142434445464748494a4b4c4d4e4f0400020f0005000208700600013c0700040103020108000410001100090020808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f0a0020a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf0b0020c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf0c0010505152535455565758595a5b5c5d5e5f0d0001010e000101",
       "expect": {
         "message": "WELCOME",
         "fields": {
@@ -243,7 +255,8 @@
           "resume_token": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
           "pair_key": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf",
           "key_id": "505152535455565758595a5b5c5d5e5f",
-          "audio_enabled": true
+          "audio_enabled": true,
+          "rotated_frames": true
         }
       },
       "roundtrip": true

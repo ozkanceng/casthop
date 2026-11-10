@@ -38,6 +38,36 @@ struct LaunchOptions {
 /// Decoded frames go straight to the layer. Called on the decoder's thread.
 final class DisplayOutput: VideoOutput, @unchecked Sendable {
     let layer = AVSampleBufferDisplayLayer()
+    // Main thread only.
+    private var rotated = false
+    private var container = CGRect.zero
+
+    func setRotated(_ rotated: Bool) {
+        DispatchQueue.main.async { [self] in
+            guard rotated != self.rotated else { return }
+            self.rotated = rotated
+            place(in: container)
+        }
+    }
+
+    /// Lays the layer out over [bounds]. A turned picture (PROTOCOL.md §11, ROTATED) gets the turned size and is turned
+    /// back counter-clockwise, so `videoGravity` keeps its aspect ratio. Main thread.
+    func place(in bounds: CGRect) {
+        container = bounds
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        layer.setAffineTransform(.identity)
+        let size = rotated ? CGSize(width: bounds.height, height: bounds.width) : bounds.size
+        layer.bounds = CGRect(origin: .zero, size: size)
+        layer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+#if os(macOS)
+        let counterClockwise = CGFloat.pi / 2 // y points up
+#else
+        let counterClockwise = -CGFloat.pi / 2
+#endif
+        layer.setAffineTransform(rotated ? CGAffineTransform(rotationAngle: counterClockwise) : .identity)
+        CATransaction.commit()
+    }
 
     func enqueue(_ sampleBuffer: CMSampleBuffer) {
         let renderer = layer.sampleBufferRenderer

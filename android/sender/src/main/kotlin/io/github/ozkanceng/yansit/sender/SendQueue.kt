@@ -40,6 +40,9 @@ class SendQueue(
     /** Kuyruktaki en eski karenin yaşı (µs); boşsa 0. */
     fun oldestAgeUs(nowUs: Long): Long = lock.withLock { queue.peekFirst()?.let { nowUs - it.enqueuedUs } ?: 0 }
 
+    /** Kuyrukta bekleyen kare sayısı. */
+    fun depth(): Int = lock.withLock { queue.size }
+
     /** @return kare kabul edildiyse true. */
     fun offer(frame: EncodedFrame, nowUs: Long): Boolean {
         var dropped = 0

@@ -12,14 +12,19 @@ public interface VideoBackend {
     public val decoderName: String
     public val hardware: Boolean
 
+    /** The screen can turn ROTATED pictures back (WELCOME `rotated_frames`, PROTOCOL.md §11). */
+    public val supportsRotation: Boolean get() = false
+
     /** A CONFIG frame arrived (start of stream, rotation, codec change). False when no decoder can take it. */
     public fun configure(codec: Int, config: ByteArray): Boolean
 
     /**
      * Annex-B access unit in decode order. [timestampUs] rises strictly and is the key for the callbacks.
      * Must not block: the caller is the socket reader, and a stalled reader is delay piling up in TCP.
+     * [rotated]: the picture is turned 90° clockwise and must be shown turned back, from the moment this frame is
+     * shown (only when [supportsRotation]).
      */
-    public fun submit(accessUnit: ByteArray, timestampUs: Long, keyframe: Boolean)
+    public fun submit(accessUnit: ByteArray, timestampUs: Long, keyframe: Boolean, rotated: Boolean)
 
     /** The session ended: drop everything. */
     public fun reset()
@@ -74,8 +79,13 @@ public class VideoPipeline(
     public var totalDropped: Long = 0
         private set
 
+    /** A turned picture reached the decoder in this session (stats file `video_rotated`). */
+    public var rotatedSeen: Boolean = false
+        private set
+
     public val decoderName: String get() = backend.decoderName
     public val hardware: Boolean get() = backend.hardware
+    public val supportsRotation: Boolean get() = backend.supportsRotation
 
     public fun reset() {
         backend.reset()
@@ -97,6 +107,7 @@ public class VideoPipeline(
             totalReceived = 0
             totalRendered = 0
             totalDropped = 0
+            rotatedSeen = false
         }
     }
 
@@ -112,6 +123,7 @@ public class VideoPipeline(
         var keyframeRequest: Int? = null
         var accessUnit: ByteArray? = null
         var timestampUs = 0L
+        val rotated = header.isRotated && backend.supportsRotation
         synchronized(lock) {
             countReceived(header, payload.size, recvUs)
             val gap = lastSeq.let { it != null && header.seq != (it + 1) and 0xFFFF_FFFFL }
@@ -142,10 +154,11 @@ public class VideoPipeline(
                 }
                 timestampUs = nextTimestamp(header.ptsUs)
                 inFlight.addLast(timestampUs)
+                if (rotated) rotatedSeen = true
             }
         }
         keyframeRequest?.let(onKeyframeNeeded)
-        accessUnit?.let { backend.submit(it, timestampUs, header.isKeyframe) }
+        accessUnit?.let { backend.submit(it, timestampUs, header.isKeyframe, rotated) }
     }
 
     private fun pushConfig(payload: ByteArray) {

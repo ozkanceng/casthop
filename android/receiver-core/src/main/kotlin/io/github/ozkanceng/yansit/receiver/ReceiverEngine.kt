@@ -83,6 +83,7 @@ public data class SessionSummary(
     val audioPlayed: Long,
     val audioLate: Long,
     val audioLatencyMs: Double?,
+    val videoRotated: Boolean = false,
 ) {
     public fun toJson(): String = "{" + listOf(
         "\"session_id\":${jsonString(sessionIdHex)}",
@@ -97,6 +98,7 @@ public data class SessionSummary(
         "\"audio_played\":$audioPlayed",
         "\"audio_late\":$audioLate",
         "\"audio_latency_ms\":${audioLatencyMs ?: "null"}",
+        "\"video_rotated\":$videoRotated",
     ).joinToString(",") + "}"
 }
 
@@ -317,6 +319,7 @@ public class ReceiverEngine(
         videoDecoders = options.videoDecoders,
         audioDecoders = options.audioDecoders,
         audioEnabled = audioOn && options.audioDecoders.isNotEmpty(),
+        rotatedFrames = video.supportsRotation,
     )
 
     private fun acceptLoop() {
@@ -563,6 +566,7 @@ public class ReceiverEngine(
             } else {
                 null
             },
+            videoRotated = video.rotatedSeen,
         )
         post { observer.onSessionFinished(summary) }
     }

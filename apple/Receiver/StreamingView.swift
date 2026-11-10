@@ -3,58 +3,59 @@ import CastHopReceiver
 import SwiftUI
 
 #if os(macOS)
-/// Hosts the display layer. The layer stays the same across layout changes, so frames are not interrupted.
+/// Hosts the display layer, turned when the picture is (`DisplayOutput.place`). The layer stays the same across layout
+/// changes, so frames are not interrupted.
 private final class LayerView: NSView {
-    private let videoLayer: AVSampleBufferDisplayLayer
+    private let display: DisplayOutput
 
-    init(_ layer: AVSampleBufferDisplayLayer) {
-        videoLayer = layer
+    init(_ display: DisplayOutput) {
+        self.display = display
         super.init(frame: .zero)
         wantsLayer = true
         self.layer?.backgroundColor = NSColor.black.cgColor
-        self.layer?.addSublayer(layer)
+        self.layer?.addSublayer(display.layer)
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
     override func layout() {
         super.layout()
-        videoLayer.frame = bounds
+        display.place(in: bounds)
     }
 }
 
 private struct VideoSurface: NSViewRepresentable {
-    let layer: AVSampleBufferDisplayLayer
+    let display: DisplayOutput
     let gravity: AVLayerVideoGravity
 
-    func makeNSView(context: Context) -> LayerView { LayerView(layer) }
-    func updateNSView(_ view: LayerView, context: Context) { layer.videoGravity = gravity }
+    func makeNSView(context: Context) -> LayerView { LayerView(display) }
+    func updateNSView(_ view: LayerView, context: Context) { display.layer.videoGravity = gravity }
 }
 #else
 private final class LayerView: UIView {
-    private let videoLayer: AVSampleBufferDisplayLayer
+    private let display: DisplayOutput
 
-    init(_ layer: AVSampleBufferDisplayLayer) {
-        videoLayer = layer
+    init(_ display: DisplayOutput) {
+        self.display = display
         super.init(frame: .zero)
         backgroundColor = .black
-        self.layer.addSublayer(layer)
+        self.layer.addSublayer(display.layer)
     }
 
     required init?(coder: NSCoder) { fatalError("not used") }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        videoLayer.frame = bounds
+        display.place(in: bounds)
     }
 }
 
 private struct VideoSurface: UIViewRepresentable {
-    let layer: AVSampleBufferDisplayLayer
+    let display: DisplayOutput
     let gravity: AVLayerVideoGravity
 
-    func makeUIView(context: Context) -> LayerView { LayerView(layer) }
-    func updateUIView(_ view: LayerView, context: Context) { layer.videoGravity = gravity }
+    func makeUIView(context: Context) -> LayerView { LayerView(display) }
+    func updateUIView(_ view: LayerView, context: Context) { display.layer.videoGravity = gravity }
 }
 #endif
 
@@ -90,7 +91,7 @@ struct StreamingView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VideoSurface(layer: model.display.layer, gravity: model.pictureMode == .fit ? .resizeAspect : .resizeAspectFill)
+            VideoSurface(display: model.display, gravity: model.pictureMode == .fit ? .resizeAspect : .resizeAspectFill)
                 .ignoresSafeArea()
                 .accessibilityHidden(true)
             VStack {

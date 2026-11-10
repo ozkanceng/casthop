@@ -9,7 +9,7 @@ VERSION = 1
 HEADER_SIZE = 24
 
 FRAME_TYPES = {"VIDEO": 0x01, "AUDIO": 0x02, "CONTROL": 0x03}
-FLAGS = {"CONFIG": 0x0001, "KEYFRAME": 0x0002, "DISCONTINUITY": 0x0004}
+FLAGS = {"CONFIG": 0x0001, "KEYFRAME": 0x0002, "DISCONTINUITY": 0x0004, "ROTATED": 0x0008}
 MAX_PAYLOAD = {0x01: 8 * 1024 * 1024, 0x02: 64 * 1024, 0x03: 64 * 1024}
 
 MSG_FLAG_CRITICAL = 0x01
@@ -54,6 +54,7 @@ MESSAGES = {
         (0x0B, "pair_key", "b32", False),
         (0x0C, "key_id", "b16", False),
         (0x0D, "audio_enabled", "bool", True),
+        (0x0E, "rotated_frames", "bool", False),
     ]),
     "REJECT": (0x03, [
         (0x01, "reason", "u8", True),

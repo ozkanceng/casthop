@@ -17,6 +17,8 @@ namespace FrameFlags {
 inline constexpr std::uint16_t Config = 0x0001;
 inline constexpr std::uint16_t Keyframe = 0x0002;
 inline constexpr std::uint16_t Discontinuity = 0x0004;
+/// VIDEO only: the picture is turned 90° clockwise (top edge on the frame's right); the receiver turns it back.
+inline constexpr std::uint16_t Rotated = 0x0008;
 } // namespace FrameFlags
 
 /// Türe göre en büyük yük (PROTOCOL.md §3).
@@ -32,6 +34,7 @@ struct FrameHeader {
     bool isConfig() const { return flags & FrameFlags::Config; }
     bool isKeyframe() const { return flags & FrameFlags::Keyframe; }
     bool isDiscontinuity() const { return flags & FrameFlags::Discontinuity; }
+    bool isRotated() const { return flags & FrameFlags::Rotated; }
 };
 
 /// En az 24 bayt bekler. @throws ProtocolException

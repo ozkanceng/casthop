@@ -47,6 +47,26 @@ class MediaPipelineTest {
     }
 
     @Test
+    fun theRotatedFlagReachesABackendThatCanTurn() {
+        backend.rotation = true
+        config()
+        video.pushFrame(frame(FrameFlags.KEYFRAME or FrameFlags.ROTATED), byteArrayOf(1, 2, 3), now)
+        delta()
+        assertEquals(listOf(true, false), backend.rotated)
+        assertTrue(video.rotatedSeen)
+        video.reset()
+        assertEquals(false, video.rotatedSeen)
+    }
+
+    @Test
+    fun aBackendThatCannotTurnNeverGetsTheFlag() {
+        config()
+        video.pushFrame(frame(FrameFlags.KEYFRAME or FrameFlags.ROTATED), byteArrayOf(1, 2, 3), now)
+        assertEquals(listOf(false), backend.rotated)
+        assertEquals(false, video.rotatedSeen)
+    }
+
+    @Test
     fun deltaBeforeTheFirstKeyframeIsDroppedAndRequestsOne() {
         config()
         delta()

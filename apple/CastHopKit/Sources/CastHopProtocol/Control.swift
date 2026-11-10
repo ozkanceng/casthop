@@ -152,10 +152,13 @@ public struct Welcome: Equatable, Sendable {
     public var pairKey: Data?
     public var keyId: Data?
     public var audioEnabled: Bool
+    /// The receiver turns `FrameFlags.rotated` frames back; written only when true.
+    public var rotatedFrames: Bool
 
     public init(version: UInt16 = 1, receiverName: String, sessionId: Data, displayWidth: UInt16, displayHeight: UInt16,
                 displayRefresh: UInt8, videoDecoders: [CodecSupport], audioDecoders: [CodecSupport], attachKey: Data,
-                resumeToken: Data, pairKey: Data? = nil, keyId: Data? = nil, audioEnabled: Bool) {
+                resumeToken: Data, pairKey: Data? = nil, keyId: Data? = nil, audioEnabled: Bool,
+                rotatedFrames: Bool = false) {
         self.version = version
         self.receiverName = receiverName
         self.sessionId = sessionId
@@ -169,6 +172,7 @@ public struct Welcome: Equatable, Sendable {
         self.pairKey = pairKey
         self.keyId = keyId
         self.audioEnabled = audioEnabled
+        self.rotatedFrames = rotatedFrames
     }
 }
 
@@ -332,6 +336,7 @@ public enum ControlCodec {
             if let p = m.pairKey { w.bytes(0x0B, p, size: keySize) }
             if let k = m.keyId { w.bytes(0x0C, k, size: idSize) }
             w.bool(0x0D, m.audioEnabled)
+            if m.rotatedFrames { w.bool(0x0E, true) }
             return w.out
         case .reject(let reason, let retry):
             var w = TlvWriter(msgType: MsgType.reject)
@@ -441,7 +446,8 @@ public enum ControlCodec {
                                     videoDecoders: try r.pairs(0x07), audioDecoders: try r.pairs(0x08),
                                     attachKey: try r.bytes(0x09, keySize), resumeToken: try r.bytes(0x0A, keySize),
                                     pairKey: try r.bytesOpt(0x0B, keySize), keyId: try r.bytesOpt(0x0C, idSize),
-                                    audioEnabled: try r.bool(0x0D)))
+                                    audioEnabled: try r.bool(0x0D),
+                                    rotatedFrames: try r.boolOpt(0x0E) ?? false))
         case MsgType.reject:
             return .reject(reason: try r.u8(0x01), retryAfterMs: try r.u32Opt(0x02))
         case MsgType.pendingApproval:

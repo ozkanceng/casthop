@@ -170,6 +170,18 @@ class Run:
                     "--device-name", "Conformance Rotate")
         self.streamed(90)
 
+    def rotated_frames(self):
+        """Turned frames (PROTOCOL.md §3 ROTATED, §11): only sent when WELCOME allows them, and shown turned."""
+        result = self.sender("rotated", "--auth", "qr", "--input", str(self.media / "test.h264"), "--fps", "30",
+                             "--frames", "60", "--rotated-frames", "--device-name", "Conformance Rotated")
+        session = self.streamed()
+        offered = bool(result.get("rotated_frames"))
+        if bool(result.get("rotated_sent")) != offered:
+            raise Failure(f"ROTATED sent without rotated_frames in WELCOME: {result}")
+        if session is not None and "video_rotated" in session and session["video_rotated"] != offered:
+            raise Failure(f"video_rotated={session['video_rotated']}, rotated_frames={offered}: {session}")
+        print(f"   rotated_frames={offered}", flush=True)
+
     def audio(self, name):
         self.sender(f"audio-{name}", "--auth", "qr", "--engine", "mirror", "--input", str(self.media / "test.h264"),
                     "--audio-input", str(self.media / f"test.{name}"), "--fps", "30", "--frames", "120",
@@ -213,7 +225,7 @@ def main():
     p.add_argument("--media", help="directory with ready test media")
     p.add_argument("--ffmpeg", default="ffmpeg")
     p.add_argument("--work", help="working directory (temporary by default)")
-    p.add_argument("--skip", action="append", default=[], choices=["opus", "aac", "resume", "rotation"])
+    p.add_argument("--skip", action="append", default=[], choices=["opus", "aac", "resume", "rotation", "rotated-frames"])
     args = p.parse_args()
     if not args.receiver and not args.pairing_file:
         p.error("--receiver or --pairing-file is required")
@@ -229,6 +241,8 @@ def main():
                  ("pairing key", run.pairing_key)]
     if "rotation" not in args.skip:
         scenarios.append(("rotation", run.rotation))
+    if "rotated-frames" not in args.skip:
+        scenarios.append(("rotated frames", run.rotated_frames))
     for codec in ("aac", "opus"):
         if codec not in args.skip:
             scenarios.append((f"{codec} audio", lambda c=codec: run.audio(c)))

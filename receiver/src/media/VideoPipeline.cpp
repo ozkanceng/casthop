@@ -15,6 +15,7 @@
 #include <array>
 #include <cstdlib>
 #include <string_view>
+#include <utility>
 
 Q_LOGGING_CATEGORY(lcVideo, "yansit.video")
 
@@ -158,16 +159,22 @@ void VideoPipeline::reset() {
     m_totalRendered = 0;
     m_totalDropped = 0;
     m_totalReceived = 0;
+    m_rotatedSeen = false;
+    bool wasRotated = false;
     {
         std::lock_guard lock(m_mutex);
         m_stats = {};
         m_inFlight.clear();
+        m_turns.clear();
+        wasRotated = std::exchange(m_shownRotated, false);
         m_basePtsUs.reset();
         m_offsetUs.reset();
         m_width = m_height = 0;
         m_patternByPts.clear();
         m_decodedInfoValid = false;
     }
+    if (wasRotated)
+        emit videoRotatedChanged(false);
     std::lock_guard e2e(m_e2eMutex);
     m_e2eSamples.clear();
     m_e2eSessionSumUs = 0;
@@ -548,7 +555,10 @@ void VideoPipeline::pushFrame(const FrameHeader& header, Bytes&& payload, std::u
             ptsNs = m_lastBufferPtsNs + 1;
         m_lastBufferPtsNs = ptsNs;
         m_inFlight.push_back(ptsNs);
+        m_turns.record(ptsNs, header.isRotated());
     }
+    if (header.isRotated())
+        m_rotatedSeen = true;
 
     GstBuffer* buf = gst_buffer_new_wrapped_full(GST_MEMORY_FLAG_READONLY, data->data(), data->size(), 0,
                                                  data->size(), data, [](gpointer p) { delete static_cast<Bytes*>(p); });
@@ -567,9 +577,17 @@ void VideoPipeline::handleSinkProbe(GstPadProbeInfo* info) {
         const std::uint64_t now = monotonicUs();
         const GstClockTime pts = GST_BUFFER_PTS(buf);
         std::optional<std::uint32_t> e2e;
+        std::optional<bool> turned;
         {
             std::lock_guard lock(m_mutex);
             ++m_stats.framesRendered;
+            if (GST_CLOCK_TIME_IS_VALID(pts)) {
+                const bool rotated = m_turns.at(pts);
+                if (rotated != m_shownRotated) {
+                    m_shownRotated = rotated;
+                    turned = rotated;
+                }
+            }
             // Bu karede gecikme deseni okunduysa uçtan uca süre (tablette çizim → tahtada çizim).
             while (!m_patternByPts.empty() && m_patternByPts.front().first < pts)
                 m_patternByPts.pop_front();
@@ -603,6 +621,9 @@ void VideoPipeline::handleSinkProbe(GstPadProbeInfo* info) {
             m_e2eSessionSumUs += *e2e;
             ++m_e2eSessionCount;
         }
+        if (turned)
+            QMetaObject::invokeMethod(
+                this, [this, r = *turned] { emit videoRotatedChanged(r); }, Qt::QueuedConnection);
         ++m_totalRendered;
         if (!m_firstRendered.exchange(true))
             QMetaObject::invokeMethod(this, &VideoPipeline::firstFrameRendered, Qt::QueuedConnection);

@@ -147,7 +147,7 @@ object MirrorController {
     private class Capture(val service: MirrorService, val projection: MediaProjection?) {
         var display: VirtualDisplay? = null
         var camera: CameraCapture? = null
-        var encoder: ScreenEncoder? = null
+        var encoder: CaptureSource? = null
         var plan: StreamPlan? = null
         /** Preset in use when the network or encoder moved away from the chosen one. */
         var preset: Preset? = null
@@ -156,12 +156,13 @@ object MirrorController {
         fun release() {
             displayListener?.let { service.getSystemService(DisplayManager::class.java).unregisterDisplayListener(it) }
             displayListener = null
-            display?.release()
-            display = null
             camera?.release()
             camera = null
+            // The source detaches the display before it lets go of its surface.
             encoder?.release()
             encoder = null
+            display?.release()
+            display = null
             try {
                 projection?.stop()
             } catch (e: RuntimeException) {
@@ -381,7 +382,7 @@ object MirrorController {
             return
         }
         val plan = base.copy(width = size.width, height = size.height)
-        val encoder = ScreenEncoder(caps)
+        val encoder = CameraEncoder(caps)
         try {
             synchronized(lock) {
                 capture?.encoder = encoder
@@ -428,15 +429,23 @@ object MirrorController {
         scope.launch { startCapture(service, projection, s) }
     }
 
+    /**
+     * The encoder frame for the session: the screen turned to the board's orientation, so turning the tablet never
+     * changes it ([ScreenSource] moves the picture inside it).
+     */
     private fun currentPlan(context: Context, s: MirrorSession, preset: Preset? = null): StreamPlan? {
-        val (srcW, srcH) = currentDisplaySize(context)
+        val (screenW, screenH) = currentDisplaySize(context)
         val w = s.welcome
+        val (srcW, srcH) = FrameFit.planningSource(screenW, screenH, w.displayWidth, w.displayHeight)
         val settings = AppSettings(context)
         return StreamPlanner.plan(
             srcW, srcH, preset ?: settings.preset, ReceiverDisplay(w.displayWidth, w.displayHeight, w.displayRefresh),
             encodersFor(settings, w), settings.overrides,
         )
     }
+
+    private fun receiverDisplay(s: MirrorSession): ReceiverDisplay =
+        s.welcome.let { ReceiverDisplay(it.displayWidth, it.displayHeight, it.displayRefresh) }
 
     /** H.265 yalnız ayar açık, tahta donanımla çözüyor ve tablette donanım kodlayıcı varsa; önce denenir. */
     private fun encodersFor(settings: AppSettings, w: ControlMessage.Welcome): List<AndroidEncoderCaps> {
@@ -454,22 +463,33 @@ object MirrorController {
     }
 
     private fun startCapture(service: MirrorService, projection: MediaProjection, s: MirrorSession) {
+        val settings = AppSettings(service)
         val start = startPreset(service)
-        val plan = currentPlan(service, s, start)
-        if (plan == null) {
-            Log.e(TAG, "uygun kodlayıcı yok: ${encodersFor(AppSettings(service), s.welcome).map { it.name }}")
+        // The frame size comes from the teacher's preset and stays for the session; a remembered weaker
+        // preset only lowers the bit rate and frame rate (StreamPlanner.atFixedSize).
+        val sized = currentPlan(service, s, settings.preset)
+        if (sized == null) {
+            Log.e(TAG, "uygun kodlayıcı yok: ${encodersFor(settings, s.welcome).map { it.name }}")
             fail(MirrorError.NO_ENCODER)
             return
         }
-        val caps = encodersFor(AppSettings(service), s.welcome).first { it.name == plan.encoderName }
-        val encoder = ScreenEncoder(caps)
+        val caps = encodersFor(settings, s.welcome).first { it.name == sized.encoderName }
+        val plan = if (start == settings.preset) {
+            sized
+        } else {
+            StreamPlanner.atFixedSize(sized, start, receiverDisplay(s), caps, settings.overrides) ?: sized
+        }
+        val dpi = service.resources.displayMetrics.densityDpi
+        val (screenW, screenH) = currentDisplaySize(service)
+        var display: VirtualDisplay? = null
+        var encoder: ScreenSource? = null
         try {
-            // The surface is attached only once the encoder runs. Frames drawn into a persistent surface with no
-            // running encoder are lost, and the session then starts black until the surface is attached again.
-            val display = projection.createVirtualDisplay(
-                "CastHop", plan.width, plan.height, service.resources.displayMetrics.densityDpi,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, null, null, main,
-            )
+            // Created without a surface: the source sizes it and attaches its own once the encoder runs.
+            val vd = projection.createVirtualDisplay(
+                "CastHop", plan.width, plan.height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, null, null, main,
+            ) ?: error("createVirtualDisplay")
+            display = vd
+            encoder = ScreenSource(caps, vd, dpi, screenW, screenH, maxFps = sized.fps, canRotate = s.welcome.rotatedFrames)
             synchronized(lock) {
                 capture?.display = display
                 capture?.encoder = encoder
@@ -477,7 +497,6 @@ object MirrorController {
                 capture?.preset = start
             }
             s.startVideo(plan, encoder)
-            display?.surface = encoder.inputSurface
             watchRotation(service)
             _state.value = MirrorState.Mirroring(board, null, audio = startAudio(service, projection, s))
             Log.i(TAG, "yansıtma: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName}), $start")
@@ -487,7 +506,12 @@ object MirrorController {
         } catch (e: RuntimeException) {
             // MediaCodec yapılandırma hataları (IllegalStateException, CodecException...).
             Log.e(TAG, "kodlayıcı başlatılamadı", e)
-            synchronized(lock) { if (capture?.encoder == null) encoder.release() }
+            synchronized(lock) {
+                if (capture?.encoder == null) {
+                    encoder?.release()
+                    display?.release()
+                }
+            }
             fail(MirrorError.ENCODER_FAILED)
         }
     }
@@ -543,22 +567,17 @@ object MirrorController {
         scope.launch { onSourceResized() }
     }
 
+    /** Rotation: the encoder and the stream stay as they are; only the picture moves inside the frame. */
     @Synchronized
     private fun onSourceResized() {
-        val (c, s) = synchronized(lock) { capture to session }
-        if (c == null || s == null) return
-        val service = c.service
-        val newPlan = currentPlan(service, s, c.preset) ?: return
-        val old = c.plan ?: return
-        if (newPlan.width == old.width && newPlan.height == old.height) return
-        Log.i(TAG, "kaynak boyutu değişti: ${old.width}x${old.height} → ${newPlan.width}x${newPlan.height}")
-        val started = System.nanoTime()
-        synchronized(lock) {
-            c.display?.resize(newPlan.width, newPlan.height, service.resources.displayMetrics.densityDpi)
-            c.plan = newPlan
+        val c = synchronized(lock) { capture } ?: return
+        val source = c.encoder as? ScreenSource ?: return
+        val (w, h) = currentDisplaySize(c.service)
+        try {
+            source.setSourceSize(w, h)
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "döndürme", e)
         }
-        s.reconfigure(newPlan)
-        Log.i(TAG, "yeniden yapılandırma ${(System.nanoTime() - started) / 1_000_000} ms")
     }
 
     /** Kodlayıcı tekrar tekrar hata verirse bir alt ön ayar (ARCHITECTURE.md §7). */
@@ -570,7 +589,6 @@ object MirrorController {
         val next = active.lower ?: active
         val plan = currentPlan(c.service, s, next)?.takeIf { it != current } ?: return null
         synchronized(lock) {
-            c.display?.resize(plan.width, plan.height, c.service.resources.displayMetrics.densityDpi)
             c.plan = plan
             c.preset = next
         }
@@ -587,14 +605,16 @@ object MirrorController {
         val active = c.preset ?: settings.preset
         val next = (if (step == QualityStep.DOWN) active.lower else active.higher) ?: return false
         if (next < settings.preset) return false
-        val plan = currentPlan(c.service, s, next)?.takeIf { it != c.plan } ?: return false
-        Log.i(TAG, "kalite: $active → $next (${plan.width}x${plan.height}@${plan.fps})")
+        val base = c.plan ?: return false
+        val caps = encodersFor(settings, s.welcome).firstOrNull { it.name == base.encoderName } ?: return false
+        // Same frame size as before: only the bit rate range and frame rate change, the encoder keeps running.
+        val plan = StreamPlanner.atFixedSize(base, next, receiverDisplay(s), caps)?.takeIf { it != base } ?: return false
+        Log.i(TAG, "kalite: $active → $next (${plan.width}x${plan.height}@${plan.fps}, ${plan.minBps}–${plan.maxBps} bps)")
         synchronized(lock) {
-            c.display?.resize(plan.width, plan.height, c.service.resources.displayMetrics.densityDpi)
             c.plan = plan
             c.preset = next
         }
-        s.reconfigure(plan)
+        s.retune(plan)
         boardFingerprint?.let { BoardStore(c.service).savePreset(it, next.takeIf { p -> p != settings.preset }) }
         return true
     }
@@ -606,7 +626,7 @@ object MirrorController {
         val st = _state.value
         if (c == null || s == null || st !is MirrorState.Mirroring || st.paused) return
         // Yeni kare üretimi durur: tahtada son kare ve "Yansıtma duraklatıldı" kalır.
-        c.display?.surface = null
+        c.encoder?.setFramesEnabled(false)
         c.camera?.pause()
         s.pause()
         _state.value = st.copy(paused = true)
@@ -616,7 +636,7 @@ object MirrorController {
         val (c, s) = synchronized(lock) { capture to session }
         val st = _state.value
         if (c == null || s == null || st !is MirrorState.Mirroring || !st.paused) return
-        c.display?.surface = c.encoder?.inputSurface
+        c.encoder?.setFramesEnabled(true)
         c.camera?.resume()
         s.unpause()
         _state.value = st.copy(paused = false)
@@ -744,13 +764,13 @@ object MirrorController {
         }
         s.start()
         try {
-            // Önceki oturum kodlayıcıyı durdurdu; aynı Surface ve VirtualDisplay ile yeniden başlar.
+            // Önceki oturum kodlayıcıyı durdurdu; aynı VirtualDisplay ile yeniden başlar.
             s.startVideo(plan, encoder)
             val audio = c.projection?.let { startAudio(c.service, it, s) } ?: AudioState.OFF_CAMERA
             val cur = _state.value
             if (cur is MirrorState.Mirroring) {
                 if (cur.paused) {
-                    c.display?.surface = encoder.inputSurface
+                    encoder.setFramesEnabled(true)
                     c.camera?.resume()
                 }
                 _state.value = cur.copy(reconnecting = false, paused = false, audio = audio)

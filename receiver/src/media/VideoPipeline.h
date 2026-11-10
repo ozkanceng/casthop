@@ -1,5 +1,6 @@
 #pragma once
 
+#include "media/RotationTimeline.h"
 #include "protocol/Frame.h"
 
 #include <QObject>
@@ -116,6 +117,8 @@ public:
     std::uint32_t totalRendered() const { return m_totalRendered.load(); }
     std::uint32_t totalDropped() const { return m_totalDropped; }
     std::uint32_t totalReceived() const { return m_totalReceived; }
+    /// A turned picture (FrameFlags::Rotated) reached the decoder in this session (stats file `video_rotated`).
+    bool rotatedSeen() const { return m_rotatedSeen.load(); }
 
     /// Internal: hands an appsink sample to the renderer (streaming thread).
     void deliverSample(GstSample* sample);
@@ -134,6 +137,8 @@ signals:
     /// Oturumun ilk karesi çizildi.
     void firstFrameRendered();
     void videoSizeChanged(int width, int height);
+    /// The frame now on screen came turned 90° clockwise and must be shown turned back (or no longer).
+    void videoRotatedChanged(bool rotated);
     void decoderChanged();
     /// The GL drawing chain failed; switch to CPU mode.
     void glRenderFailed(const QString& message);
@@ -175,6 +180,9 @@ private:
     std::optional<std::uint64_t> m_basePtsUs; ///< oturumun ilk karesinin gönderici PTS'i
     std::optional<std::int64_t> m_offsetUs;
     std::deque<std::uint64_t> m_inFlight; ///< appsrc'ye verilmiş, henüz sink'e ulaşmamış PTS'ler (ns)
+    RotationTimeline m_turns;             ///< PTS (ns) → çevrili mi
+    bool m_shownRotated = false;
+    std::atomic<bool> m_rotatedSeen{false};
     std::atomic<std::uint32_t> m_totalRendered{0};
     std::atomic<bool> m_firstRendered{false};
     std::uint32_t m_totalDropped = 0;

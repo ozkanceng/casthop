@@ -25,4 +25,12 @@ class NetworkDiagnosticsTest {
         assertTrue(NetworkDiagnostics.sameSubnet(ip("172.16.0.1"), ip("172.16.0.1"), 32))
         assertFalse(NetworkDiagnostics.sameSubnet(ip("172.16.0.1"), ip("172.16.0.2"), 32))
     }
+
+    @Test
+    fun tellsTheCrowdedBandFromTheOthers() {
+        assertTrue(NetworkDiagnostics.is24GHz(2422)) // channel 3, both classrooms seen so far
+        assertTrue(NetworkDiagnostics.is24GHz(2484))
+        assertFalse(NetworkDiagnostics.is24GHz(5180))
+        assertFalse(NetworkDiagnostics.is24GHz(5955)) // 6 GHz
+    }
 }

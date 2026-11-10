@@ -22,6 +22,8 @@ public data class ReceiverInfo(
     val videoDecoders: List<CodecSupport> = emptyList(),
     val audioDecoders: List<CodecSupport> = emptyList(),
     val audioEnabled: Boolean = false,
+    /** WELCOME `rotated_frames`: the screen turns ROTATED pictures back. */
+    val rotatedFrames: Boolean = false,
 )
 
 /** What HELLO said about the connected sender. */
@@ -187,6 +189,7 @@ public class SessionManager(
         attachKey = s.attachKey,
         resumeToken = s.resumeToken,
         audioEnabled = receiverInfo.audioEnabled,
+        rotatedFrames = receiverInfo.rotatedFrames,
     )
 
     /** Outcome of the takeover dialog on the screen. */

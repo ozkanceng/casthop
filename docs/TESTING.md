@@ -172,7 +172,7 @@ dar bant, kalıcı eşleştirme); burada yalnız gerçek donanımın davranış�
 
 | # | Adım | Beklenen | ✓ |
 |---|---|---|---|
-| 1 | Yansıtırken tableti yataydan dikeye çevirin | ≤ 1 sn içinde tahtada dikey görüntü (kenar boşluklu); `adb logcat -s YansitMirror` içinde `yeniden yapılandırma … ms` | ☐ |
+| 1 | Yansıtırken tableti yataydan dikeye çevirin | ≤ 1 sn içinde tahtada dikey görüntü (kenar boşluklu); `adb logcat -s YansitScreen` içinde `kaynak: … → …` ve `görüntü …`; `YansitEncoder` içinde yeni `kodlayıcı:` satırı yok | ☐ |
 | 2 | Geri yataya çevirin, 5 kez hızlıca döndürün | Her seferinde ≤ 1 sn; uygulama çökmez | ☐ |
 | 3 | Yansıtırken tabletin Wi-Fi'ını kapatıp 2 sn sonra açın | Tahtada son görüntü donar, ağ gelince ≤ 3 sn içinde akış sürer; tablette kısa süre "Bağlantı yeniden kuruluyor…" | ☐ |
 | 4 | Wi-Fi'ı 20 sn kapalı tutup açın | Tablet tahtayı hatırlıyorsa kendiliğinden yeniden bağlanır (QR gerekmez) | ☐ |
@@ -184,7 +184,7 @@ dar bant, kalıcı eşleştirme); burada yalnız gerçek donanımın davranış�
 | 10 | Tablet ve tahta farklı Wi-Fi ağlarındayken bağlanın | "Tablet ve tahta farklı ağlarda" + hotspot adımları | ☐ |
 | 11 | Hotspot adımlarını uygulayın (tablet hotspot, tahta ona bağlı) | Yeni QR ile bağlantı kurulur | ☐ |
 | 12 | Kalabalık/2,4 GHz bir ağda 5 dk yansıtın | Görüntü zaman zaman kalitesini düşürür ama gecikme birikmez (kartta gecikme < 300 ms civarı) | ☐ |
-| 13 | Ağı bit hızı tabana inecek kadar zayıflatın (uzaklaşın veya ağı yükleyin), 5 sn bekleyin | Tablette "Ağ zayıf: kalite otomatik düşürüldü"; tahtada çözünürlük düşer, oturum kopmaz, görüntü siyah kalmaz | ☐ |
+| 13 | Ağı bit hızı tabana inecek kadar zayıflatın (uzaklaşın veya ağı yükleyin), 5 sn bekleyin | Tablette "Ağ zayıf: kalite otomatik düşürüldü"; çözünürlük kartta aynı kalır, kare hızı ve veri hızı düşer; oturum kopmaz, görüntü siyah kalmaz | ☐ |
 | 14 | Geçiş anındaki görüntü kesintisini ölçün | Kısa kesinti; süreyi not edin (eşikler tasarım tahmini, ayar gerekebilir) | ☐ |
 | 15 | Kalite düşükken tableti döndürün | Görüntü döner, kalite seçili ön ayara dönmez | ☐ |
 | 16 | Ağı düzeltip en az 70 sn bekleyin | Kalite kendiliğinden bir basamak yükselir, uyarı kalkar; seçilen ön ayarı aşmaz | ☐ |
@@ -195,6 +195,14 @@ dar bant, kalıcı eşleştirme); burada yalnız gerçek donanımın davranış�
 | 21 | Samsung Exynos tablette (ör. SM-X610) **En iyi kalite** ile 4K alıcıya (Mac, 4K tahta) 10 kez bağlanıp durdurun | Tablet yeniden başlamaz; logcat `yansıtma: 1920x1200@…`, 2560 görünmez | ☐ |
 | 22 | Ağ koparken (Wi-Fi'ı 3 sn kapatıp açın) hemen **Durdur**'a basın, 5 kez tekrarlayın | Uygulama kapanmaz (`RejectedExecutionException` yok) | ☐ |
 | 23 | Uygulamayı kaldırıp yeniden kurun, Ayarlar'ı açın | Görüntü kalitesinde **Dengeli** seçili | ☐ |
+| 24 | Samsung Exynos tablette (ör. SM-X610) **En iyi kalite** ile yavaş Wi-Fi'da yansıtmayı 10 kez başlatın; kalite her seferinde Zayıf ağ'a insin | Tablet yeniden başlamaz; `adb shell dumpsys dropbox \| grep LAST_KMSG` yeni kayıt göstermez; basamaklarda `YansitEncoder` yeni `kodlayıcı:` satırı yazmaz, görüntü kesilmez | ☐ |
+| 25 | Yansıtırken tableti 10 kez döndürün (dikey ↔ yatay) | Tablet yeniden başlamaz; tahtada görüntü her seferinde yeni yöne geçer, siyah kalmaz, akış kesilmez (tahtada yeniden başlama/IDR beklemesi yok) | ☐ |
+| 26 | Yansıtırken **Duraklat**, beklerken kaliteyi düşürecek kadar ağı zayıflatın, sonra **Devam** | Duraklatmada tahtada son kare kalır; devamda görüntü yeni boyutta gelir | ☐ |
+| 27 | 2,4 GHz ağda kalite kendiliğinden düşsün | Tablette "Ağ zayıf…" altında "Tablet 2,4 GHz Wi-Fi'da…" önerisi; 5 GHz ağda bu öneri çıkmaz | ☐ |
+| 28 | Tablet dik tutulurken yansıtmayı başlatın | Tahtada yatay kare, dikey görüntü ortada, iki yanda siyah; logcat `yansıtma: 1920x1200@…` (yatay) | ☐ |
+| 29 | Küçük yazılı bir sayfayı (ör. PDF dipnotu) 0.3.9 ile ve bu sürümle yansıtın | Yazı en az aynı keskinlikte; kartta gecikme 0.3.9'dan yüksek değil | ☐ |
+| 30 | Zayıf ağ'a inmiş bir tahtaya yeniden bağlanın | logcat `yansıtma:` satırında boyut seçilen ön ayarınki (ör. Dengeli 1600x1000), kare hızı 30; ağ iyiyse 60'a çıkar | ☐ |
+| 31 | Zayıf ağ basamağında 1 dk yansıtın | Kartta veri hızı Zayıf ağ aralığında (≤ 5 Mbps), görüntü akıcı; hedeften çok düşükse not edin | ☐ |
 
 **Sonuç bildirimi:** `adb logcat -s YansitMirror YansitEncoder YansitService` çıktısı ve alıcının `--verbose`
 günlüğü; 1 ve 3. adımlarda ölçülen süreler.
@@ -457,3 +465,24 @@ cd apple && xcodegen generate && open CastHop.xcodeproj
 | 2 | Pardus tahtayı QR ile eşleştirip yansıtın | Görüntü ve ses gelir; bildirimde «Durdur» var | ☐ |
 | 3 | Kamera yansıtmayı açıp bir ekrana bağlanın | Kamera görüntüsü gelir, uygulama arka plana alınınca sürer | ☐ |
 | 4 | Eski paket adıyla (`io.github.ozkanceng.yansit`) kurulu bir tabletle aynı tahtaya bağlanın | İkisi de çalışır (protokol aynı) | ☐ |
+
+## Dikey görüntü, durağan ekran ve ısınma (gerçek cihaz)
+
+Mac alıcı, `fake-receiver` ve Pardus başsız alıcısı uyum testinde (`rotated frames`) ve SM-X610 + Mac'te ölçüldü (aşağıda). Gerçek tahta (Pardus GL), Windows, Android TV cihazı ve Apple TV'de denenmedi.
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Tableti dikey tutup Pardus tahtaya yansıtın (yeni alıcı) | Görüntü dikey, doğru yönde (üst kenar yukarıda), ekran yüksekliğini doldurur; yazı yatay tutulan tabletteki kadar net | ☐ |
+| 2 | Yansıtırken tableti yatay ↔ dikey döndürün (5 kez) | Her dönüşte görüntü yönü değişir; ters, yanlamasına ya da bir an yanlış yönde kare görülmez | ☐ |
+| 3 | 1 ve 2'yi Windows alıcısında, Android TV'de ve Apple TV'de / Mac uygulamasında yineleyin | Aynı sonuç; TV'de `TextureView` ile gecikme önceki `SurfaceView` sürümünden belirgin yüksek değil (istatistik satırı) | ☐ |
+| 4 | Dikey tableti eski sürüm (0.3.9) alıcıya bağlayın | Görüntü önceki gibi ortada, iki yanı siyah; çevrilmiş görüntü gelmez | ☐ |
+| 5 | Durağan bir slayt açıp 1 dk bekleyin, sonra sayfayı kaydırın | Tahta güncel; istatistikte durağanken ~2 kare/sn, kaydırınca hemen 60 kare/sn | ☐ |
+| 6 | Yansıtmayı başlatıp ilk 5 sn'yi izleyin | Görüntü hemen gelir; birkaç saniye içinde 30 → 60 kare/sn (tablet günlüğünde `kare hızı: 60`) | ☐ |
+| 7 | Kalabalık 2,4 GHz ağda 10 dk yansıtın | Donmalar önceki sürümden az; görüntü kendiliğinden düşük kaliteye inse de akıcı | ☐ |
+
+**Ölçümler (SM-X610 → Mac `casthop-receiver --dump-video`, 2026-11-10):**
+- Durağan ekran: önceki sürüm 0 kare/sn (Exynos kodlayıcı tekrar karesi üretmedi), yeni 2,0–2,1 kare/sn, kare başına 106–185 bayt. Hareketli video: 59,9 → 60,0 kare/sn, 11,8 → 11,9 Mbit/s.
+- Tıkanıklık (alıcıya 2 sn'de bir 400 ms SIGSTOP, 30 sn): IDR 4 → 1, alınan bit hızı 1,70 → 2,97 Mbit/s, 40,3 → 41,2 kare/sn.
+- Isınma: 30 → 60 kare/sn geçişi 7,6 sn'de.
+- 30 kare/sn'de bit hızı: kare boyutu iki katına çıkıyor (~33 KB, 8 Mbit/s hedefte ~7,9 Mbit/s); düzeltme gerekmedi.
+- Yazı netliği: ince yazılı Ayarlar ekranı, dump karesi ile ekran görüntüsünün küçültülmüşü arasında SSIM 0,9973 (Lanczos) / 0,9981 (alan); GL süper örnekleme eklenmedi.

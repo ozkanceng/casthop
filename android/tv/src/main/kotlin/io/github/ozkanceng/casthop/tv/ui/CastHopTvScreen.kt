@@ -1,7 +1,10 @@
 package io.github.ozkanceng.casthop.tv.ui
 
-import android.view.SurfaceHolder
-import android.view.SurfaceView
+import android.content.Context
+import android.graphics.Matrix
+import android.graphics.SurfaceTexture
+import android.view.Surface
+import android.view.TextureView
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -90,28 +93,82 @@ internal fun CastHopTvScreen(
     }
 }
 
-/** Fits the stream inside the screen and keeps its proportions. */
+/**
+ * Fits the stream inside the screen and keeps its proportions. A TextureView, not a SurfaceView: only a view in the
+ * normal drawing can be turned, which a ROTATED picture needs ([VideoTextureView]).
+ */
 @Composable
 private fun VideoSurface(state: TvState, controller: ReceiverController) {
     val ratio = if (state.videoWidth > 0 && state.videoHeight > 0) {
-        state.videoWidth.toFloat() / state.videoHeight
+        if (state.videoRotated) {
+            state.videoHeight.toFloat() / state.videoWidth
+        } else {
+            state.videoWidth.toFloat() / state.videoHeight
+        }
     } else {
         DEFAULT_ASPECT
     }
     AndroidView(
         factory = { context ->
-            SurfaceView(context).apply {
-                holder.addCallback(
-                    object : SurfaceHolder.Callback {
-                        override fun surfaceCreated(holder: SurfaceHolder) = controller.setSurface(holder.surface)
-                        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
-                        override fun surfaceDestroyed(holder: SurfaceHolder) = controller.setSurface(null)
-                    },
-                )
+            VideoTextureView(context).apply {
+                surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                    private var surface: Surface? = null
+
+                    override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) {
+                        surface = Surface(texture).also(controller::setSurface)
+                    }
+
+                    override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int) = Unit
+
+                    override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
+                        controller.setSurface(null) // waits for the decoder to let go
+                        surface?.release()
+                        surface = null
+                        return true
+                    }
+
+                    override fun onSurfaceTextureUpdated(texture: SurfaceTexture) = Unit
+                }
             }
         },
+        update = { view -> view.rotated = state.videoRotated },
         modifier = Modifier.aspectRatio(ratio),
     )
+}
+
+/**
+ * Shows the decoder's frames, turned back 90° counter-clockwise while [rotated]: the frame is stretched to the
+ * turned size and turned around the centre, so it fills the (portrait) view exactly.
+ */
+private class VideoTextureView(context: Context) : TextureView(context) {
+    var rotated: Boolean = false
+        set(value) {
+            if (field == value) return
+            field = value
+            applyTurn()
+        }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        applyTurn()
+    }
+
+    private fun applyTurn() {
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (!rotated || w <= 0f || h <= 0f) {
+            setTransform(null)
+            return
+        }
+        val cx = w / 2
+        val cy = h / 2
+        setTransform(
+            Matrix().apply {
+                setScale(h / w, w / h, cx, cy)
+                postRotate(-90f, cx, cy)
+            },
+        )
+    }
 }
 
 /**

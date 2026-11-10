@@ -151,7 +151,8 @@ final class VectorTests: XCTestCase {
                                       "video_decoders": pairs(w.videoDecoders), "audio_decoders": pairs(w.audioDecoders),
                                       "attach_key": w.attachKey.hex, "resume_token": w.resumeToken.hex,
                                       "pair_key": w.pairKey?.hex, "key_id": w.keyId?.hex,
-                                      "audio_enabled": w.audioEnabled]))
+                                      "audio_enabled": w.audioEnabled,
+                                      "rotated_frames": w.rotatedFrames ? true : nil]))
         case .reject(let reason, let retry):
             return ("REJECT", clean(["reason": reason, "retry_after_ms": retry]))
         case .pendingApproval(let t):

@@ -83,6 +83,9 @@ object StreamPlanner {
     private const val SCALE_STEP = 0.9
     private const val HIGH_FPS_MIN_RATIO = 0.75
     private const val USEFUL_LONG_SIDE = 1024
+    /** Below this even a still slide turns to mush; the governor's floor never goes lower on a small frame. */
+    private const val MIN_BITRATE_FLOOR = 500_000L
+    private const val FULL_RATE_SHARE = 0.8
 
     /**
      * @param sourceWidth kaynak (yansıtılan ekran) genişliği, piksel — yönelime göre
@@ -111,13 +114,56 @@ object StreamPlanner {
                 low != null -> low to 30
                 else -> continue
             }
-            val maxBps = min(overrides.maxBitrateBps ?: preset.maxBps, enc.bitrateRange.last)
-                .coerceAtLeast(enc.bitrateRange.first)
-            val minBps = preset.minBps.coerceIn(enc.bitrateRange.first, maxBps)
-            val startBps = preset.startBps.coerceIn(minBps, maxBps)
+            val (startBps, minBps, maxBps) = bitrates(preset, enc, overrides, size.first, size.second, fps)
             return StreamPlan(enc.name, enc.codec, enc.hardware, size.first, size.second, fps, startBps, minBps, maxBps)
         }
         return null
+    }
+
+    /**
+     * [preset]'s bit rates and frame rate at the session's fixed frame size: a quality step never changes the size
+     * (the encoder keeps running). 30 fps if [enc] cannot do the preset's rate at that size.
+     *
+     * @param base the session's plan; its size and encoder are kept
+     * @return `null` if [enc] cannot encode [base]'s size at all
+     */
+    fun atFixedSize(
+        base: StreamPlan,
+        preset: Preset,
+        receiver: ReceiverDisplay?,
+        enc: VideoEncoderCaps,
+        overrides: StreamOverrides = StreamOverrides(),
+    ): StreamPlan? {
+        val fpsWanted = min(overrides.fps ?: preset.fps, receiver?.refreshHz?.coerceAtLeast(30) ?: 60)
+        val fps = listOf(fpsWanted, 30).firstOrNull { enc.isSupported(base.width, base.height, it) } ?: return null
+        val (startBps, minBps, maxBps) = bitrates(preset, enc, overrides, base.width, base.height, fps)
+        return base.copy(fps = fps, startBps = startBps, minBps = minBps, maxBps = maxBps)
+    }
+
+    /**
+     * (start, min, max) for [preset] at [width]×[height]@[fps], within what [enc] accepts.
+     *
+     * The preset's numbers are for a board-sized frame at its long side (16:9) and frame rate; anything from
+     * [FULL_RATE_SHARE] of that pixel rate up counts as full (a 16:10 tablet on a 1080p board). A smaller pixel rate
+     * (a 1280×720 board, a 30 fps step) gets proportionally less, never more: the same picture quality without
+     * filling the network. The teacher's own maximum ([StreamOverrides.maxBitrateBps]) is kept as given.
+     */
+    internal fun bitrates(
+        preset: Preset,
+        enc: VideoEncoderCaps,
+        overrides: StreamOverrides,
+        width: Int,
+        height: Int,
+        fps: Int,
+    ): Triple<Long, Long, Long> {
+        val referenceRate = preset.longSideCap.toDouble() * (preset.longSideCap * 9 / 16) * preset.fps * FULL_RATE_SHARE
+        val scale = (width.toDouble() * height * fps / referenceRate).coerceIn(0.0, 1.0)
+        fun scaled(bps: Long) = (bps * scale).toLong()
+        val maxBps = min(overrides.maxBitrateBps ?: max(scaled(preset.maxBps), MIN_BITRATE_FLOOR), enc.bitrateRange.last)
+            .coerceAtLeast(enc.bitrateRange.first)
+        val minBps = max(scaled(preset.minBps), min(MIN_BITRATE_FLOOR, preset.minBps)).coerceIn(enc.bitrateRange.first, maxBps)
+        val startBps = scaled(preset.startBps).coerceIn(minBps, maxBps)
+        return Triple(startBps, minBps, maxBps)
     }
 
     /** Ayarlar ekranında gösterilecek kare hızları: kullanışlı bir çözünürlükte (uzun kenar ≥ 1024) desteklenenler. */

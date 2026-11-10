@@ -128,6 +128,8 @@ public sealed interface ControlMessage {
         val pairKey: Bytes? = null,
         val keyId: Bytes? = null,
         val audioEnabled: Boolean,
+        /** The receiver turns [FrameFlags.ROTATED] frames back; written only when true. */
+        val rotatedFrames: Boolean = false,
     ) : ControlMessage { override val msgType: Int get() = MsgType.WELCOME }
 
     public data class Reject(val reason: Int, val retryAfterMs: Long? = null) : ControlMessage {

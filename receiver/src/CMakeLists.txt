@@ -61,6 +61,7 @@ add_library(yansit_core STATIC
     media/AudioPipeline.h
     media/LatencyPattern.cpp
     media/LatencyPattern.h
+    media/RotationTimeline.h
     media/VideoPipeline.cpp
     media/VideoPipeline.h
     net/Connection.cpp

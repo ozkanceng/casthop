@@ -13,6 +13,8 @@ public struct ReceiverInfo: Equatable, Sendable {
     public var videoDecoders: [CodecSupport] = []
     public var audioDecoders: [CodecSupport] = []
     public var audioEnabled = false
+    /// Turned frames (ROTATED) are shown turned back (PROTOCOL.md §11).
+    public var rotatedFrames = false
 
     public init(name: String) { self.name = name }
 }
@@ -100,7 +102,8 @@ public final class SessionManager {
         Welcome(receiverName: receiverInfo.name, sessionId: s.sessionId, displayWidth: receiverInfo.displayWidth,
                 displayHeight: receiverInfo.displayHeight, displayRefresh: receiverInfo.displayRefresh,
                 videoDecoders: receiverInfo.videoDecoders, audioDecoders: receiverInfo.audioDecoders,
-                attachKey: s.attachKey, resumeToken: s.resumeToken, audioEnabled: receiverInfo.audioEnabled)
+                attachKey: s.attachKey, resumeToken: s.resumeToken, audioEnabled: receiverInfo.audioEnabled,
+                rotatedFrames: receiverInfo.rotatedFrames)
     }
 
     public func onHello(conn: ConnId, hello: Hello, serverNonce: Data, certFingerprint: Data, nowMs: Int64) -> Actions {

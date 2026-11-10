@@ -26,10 +26,23 @@ import java.util.concurrent.atomic.AtomicLong
 
 /** Kodlayıcı soyutlaması: [MirrorSession] Android'den bağımsız kalır (CI'da dosya kaynağıyla çalışır). */
 interface VideoSource {
-    /** Kodlanmış çıktılar [sink]'e verilir; ilk çıktı CONFIG (SPS/PPS, Annex-B) olmalıdır. */
+    /**
+     * Kodlanmış çıktılar [sink]'e verilir; ilk çıktı CONFIG (SPS/PPS, Annex-B) olmalıdır. The size may differ from
+     * the last start (quality step): every frame the new encoder gets must have the plan's size.
+     */
     fun start(plan: StreamPlan, sink: (EncodedFrame) -> Unit, onError: (Throwable) -> Unit)
     fun requestKeyframe()
     fun setBitrate(bps: Long)
+
+    /** Fewer or more frames per second without restarting; sources that cannot do this keep their rate. */
+    fun setFrameRate(fps: Int) = Unit
+
+    /**
+     * [ready] says whether the network can take a new frame now ([CaptureGate]). A source that can hold its
+     * picture asks before encoding one and waits while it says no; others ignore it.
+     */
+    fun setFrameGate(ready: () -> Boolean) = Unit
+
     fun stop()
 }
 
@@ -128,6 +141,9 @@ class MirrorSession(
         private set
     private val epoch = AtomicInteger()
     private val queue = SendQueue(onDrop = { onQueueDrop() })
+    private val captureGate = CaptureGate(onCongestion = { bitrate?.onSenderDrop() })
+    /** Warm-up at the start of the session; `null` once done or cancelled by a quality step. */
+    @Volatile private var ramp: FrameRateRamp? = null
     private val pingId = AtomicLong()
     private val framesSent = AtomicLong()
     private val lastKeyframeRequestUs = AtomicLong()
@@ -163,6 +179,7 @@ class MirrorSession(
         this.plan = plan
         this.source = source
         bitrate = BitrateController(BitrateController.Config(plan.startBps, plan.minBps, plan.maxBps))
+        ramp = FrameRateRamp(plan.fps).takeIf { it.active }
         video = SenderClient.attach(session, StreamKind.VIDEO).also { it.setSendBufferBytes(sendBufferFor(plan.startBps)) }
         sendStreamConfig(plan)
         sender = Thread(::sendLoop, "mirror-video").apply {
@@ -171,6 +188,7 @@ class MirrorSession(
             start()
         }
         statsLastTickUs = MonotonicClock.nowUs()
+        source.setFrameGate(::captureReady)
         scheduler.scheduleWithFixedDelay(::bitrateTick, BITRATE_TICK_MS, BITRATE_TICK_MS, TimeUnit.MILLISECONDS)
         scheduler.scheduleWithFixedDelay(::statsTick, STATS_INTERVAL_MS, STATS_INTERVAL_MS, TimeUnit.MILLISECONDS)
         startSource(plan)
@@ -241,13 +259,14 @@ class MirrorSession(
     }
 
     /**
-     * Kaynak boyutu değişti (döndürme, paylaşılan uygulama penceresi): kodlayıcı yeni ayarla yeniden başlar,
-     * yeni CONFIG + IDR gönderilir. Çağıran VirtualDisplay'i önceden yeniden boyutlandırmalıdır.
+     * New stream format (quality step): the encoder restarts with the new plan and sends a new CONFIG + IDR.
+     * Turning the tablet does not come here; the source keeps the frame size ([VideoSource.start]).
      */
     fun reconfigure(newPlan: StreamPlan) {
         val src = source ?: return
         if (ended.get()) return
         src.stop()
+        ramp = null
         plan = newPlan
         bitrate = BitrateController(
             BitrateController.Config(
@@ -258,6 +277,34 @@ class MirrorSession(
         )
         sendOffThread { sendStreamConfig(newPlan) }
         startSource(newPlan)
+    }
+
+    /**
+     * Quality step at the same frame size ([StreamPlanner.atFixedSize]): new bit rate range and frame rate, the
+     * encoder keeps running (no CONFIG, no IDR). A plan of another size or encoder goes through [reconfigure].
+     */
+    fun retune(newPlan: StreamPlan) {
+        val src = source ?: return
+        val old = plan ?: return
+        if (ended.get()) return
+        if (newPlan.copy(fps = old.fps, startBps = old.startBps, minBps = old.minBps, maxBps = old.maxBps) != old) {
+            reconfigure(newPlan)
+            return
+        }
+        ramp = null
+        plan = newPlan
+        val b = BitrateController(
+            BitrateController.Config(
+                (bitrate?.appliedBps ?: newPlan.startBps).coerceIn(newPlan.minBps, newPlan.maxBps),
+                newPlan.minBps,
+                newPlan.maxBps,
+            ),
+        )
+        bitrate = b
+        src.setFrameRate(newPlan.fps)
+        src.setBitrate(b.appliedBps)
+        video?.setSendBufferBytes(sendBufferFor(b.appliedBps))
+        sendOffThread { sendStreamConfig(newPlan) }
     }
 
     /** Tahtada "Yansıtma duraklatıldı" gösterilir; çağıran kareleri durdurmalıdır (VirtualDisplay.setSurface(null)). */
@@ -284,6 +331,7 @@ class MirrorSession(
         val src = source ?: return
         try {
             src.start(p, { frame -> queue.offer(frame, MonotonicClock.nowUs()) }, ::onSourceError)
+            ramp?.let { src.setFrameRate(it.fps) }
         } catch (e: Exception) {
             onSourceError(e)
         }
@@ -489,6 +537,12 @@ class MirrorSession(
         }
     }
 
+    private fun captureReady(): Boolean {
+        val now = MonotonicClock.nowUs()
+        val sending = video != null && linkState == LinkState.CONNECTED && drainUntilUs == 0L && !paused
+        return captureGate.ready(now, queue.depth(), queue.oldestAgeUs(now), sending)
+    }
+
     private fun withCodec(p: StreamPlan, config: ByteArray) = byteArrayOf(p.codec.toByte()) + config
 
     private fun sendStreamConfig(p: StreamPlan) {
@@ -498,7 +552,7 @@ class MirrorSession(
                 codec = p.codec,
                 width = p.width,
                 height = p.height,
-                fps = p.fps,
+                fps = ramp?.fps ?: p.fps,
                 bitrateBps = bitrate?.appliedBps ?: p.startBps,
             ),
         )
@@ -561,7 +615,18 @@ class MirrorSession(
             source?.setBitrate(bps)
             video?.setSendBufferBytes(sendBufferFor(bps))
         }
+        rampTick(nowMs, b)
         qualityTick(nowMs, b)
+    }
+
+    private fun rampTick(nowMs: Long, b: BitrateController) {
+        val r = ramp ?: return
+        val p = plan ?: return
+        val fps = r.tick(nowMs, b.appliedBps, p.startBps) ?: return
+        if (ramp !== r) return // a quality step came in between
+        ramp = null
+        source?.setFrameRate(fps)
+        if (linkState == LinkState.CONNECTED) trySend { sendStreamConfig(p) }
     }
 
     private fun qualityTick(nowMs: Long, b: BitrateController) {

@@ -267,6 +267,8 @@ struct Encoder {
         if (m.keyId)
             w.raw(0x0C, *m.keyId);
         w.boolean(0x0D, m.audioEnabled);
+        if (m.rotatedFrames)
+            w.boolean(0x0E, true);
         return w.take();
     }
     Bytes operator()(const Reject& m) const {
@@ -416,6 +418,7 @@ ControlMessage decodeControl(ByteView payload) {
         m.pairKey = r.arr<32>(0x0B, false);
         m.keyId = r.arr<16>(0x0C, false);
         m.audioEnabled = *r.boolean(0x0D, true);
+        m.rotatedFrames = r.boolean(0x0E, false).value_or(false);
         return m;
     }
     case MsgType::Reject:

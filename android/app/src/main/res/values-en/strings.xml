@@ -122,6 +122,7 @@
     <string name="quality_fair">Connection: fair</string>
     <string name="quality_poor">Connection: poor</string>
     <string name="quality_auto_lowered">Weak network: quality lowered automatically</string>
+    <string name="quality_hint_24ghz">The tablet is on 2.4 GHz Wi-Fi. A 5 GHz network, or a phone hotspot set to 5 GHz, gives smoother mirroring.</string>
     <string name="settings_latency">Latency measurement</string>
     <string name="settings_latency_desc">Open this screen while mirroring: the receiver shows the time between the tablet drawing a frame and the screen displaying it.</string>
     <string name="settings_latency_open">Open measurement screen</string>
