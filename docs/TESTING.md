@@ -184,11 +184,14 @@ dar bant, kalıcı eşleştirme); burada yalnız gerçek donanımın davranış�
 | 10 | Tablet ve tahta farklı Wi-Fi ağlarındayken bağlanın | "Tablet ve tahta farklı ağlarda" + hotspot adımları | ☐ |
 | 11 | Hotspot adımlarını uygulayın (tablet hotspot, tahta ona bağlı) | Yeni QR ile bağlantı kurulur | ☐ |
 | 12 | Kalabalık/2,4 GHz bir ağda 5 dk yansıtın | Görüntü zaman zaman kalitesini düşürür ama gecikme birikmez (kartta gecikme < 300 ms civarı) | ☐ |
-| 13 | Ağı bit hızı tabana inecek kadar zayıflatın (uzaklaşın veya ağı yükleyin), 10 sn bekleyin | Tablette "Ağ zayıf: kalite otomatik düşürüldü"; tahtada çözünürlük düşer, oturum kopmaz, görüntü siyah kalmaz | ☐ |
+| 13 | Ağı bit hızı tabana inecek kadar zayıflatın (uzaklaşın veya ağı yükleyin), 5 sn bekleyin | Tablette "Ağ zayıf: kalite otomatik düşürüldü"; tahtada çözünürlük düşer, oturum kopmaz, görüntü siyah kalmaz | ☐ |
 | 14 | Geçiş anındaki görüntü kesintisini ölçün | Kısa kesinti; süreyi not edin (eşikler tasarım tahmini, ayar gerekebilir) | ☐ |
 | 15 | Kalite düşükken tableti döndürün | Görüntü döner, kalite seçili ön ayara dönmez | ☐ |
 | 16 | Ağı düzeltip en az 70 sn bekleyin | Kalite kendiliğinden bir basamak yükselir, uyarı kalkar; seçilen ön ayarı aşmaz | ☐ |
 | 17 | Ayarlar → Gelişmiş'te elle değer verip 13. adımı tekrarlayın | Ön ayar değişmez, yalnız bit hızı düşer | ☐ |
+| 18 | Okulun yavaş Wi-Fi'ında **En iyi kalite** ile yansıtmayı başlatın | Donma en çok ~10 sn sürer; kalite Zayıf ağ'a kadar iner; logcat'te `kalite:` satırları 5 sn arayla | ☐ |
+| 19 | 18'den sonra durdurup aynı tahtaya yeniden bağlanın | Yansıtma son inilen ön ayardan başlar (logcat `yansıtma: … WEAK_NETWORK`), başta donma olmaz | ☐ |
+| 20 | Telefonun hotspot'una geçip aynı tahtaya bağlanın, 2–3 dk bekleyin | Kalite dakikada bir basamak yükselir, seçilen ön ayarı aşmaz; sonraki bağlantı yükselen ön ayardan başlar | ☐ |
 
 **Sonuç bildirimi:** `adb logcat -s YansitMirror YansitEncoder YansitService` çıktısı ve alıcının `--verbose`
 günlüğü; 1 ve 3. adımlarda ölçülen süreler.
@@ -407,6 +410,7 @@ cd apple && xcodegen generate && open CastHop.xcodeproj
 | 11 | Wi-Fi'ı 20 sn kesin | Yayın anlaşılır hatayla biter; uygulamada neden yazar | ☐ |
 | 12 | Yayını Denetim Merkezi'nden durdurun | Alıcı bekleme ekranına döner; uygulama "Hazır" durumuna geçer | ☐ |
 | 13 | Tıkalı ağda yayın (Network Link Conditioner ile 3 Mbps) | Gecikme birikmez; Network.framework gönderim tamponu kuyruğu büyütmüyor | ☐ |
+| 14 | 13'teki ağda yayını durdurup aynı alıcıya yeniden başlatın | Yayın son inilen ön ayardan başlar, başta donma olmaz; ağ açılınca dakikada bir basamak yükselir | ☐ |
 
 ### Alıcı
 

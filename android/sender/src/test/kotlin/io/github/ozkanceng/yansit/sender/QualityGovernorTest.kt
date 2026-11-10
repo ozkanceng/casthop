@@ -20,18 +20,18 @@ class QualityGovernorTest {
     }
 
     @Test
-    fun `eight seconds at the floor steps down`() {
+    fun `three seconds at the floor steps down`() {
         val g = QualityGovernor()
-        assertNull(g.run(min, 0, 7_750))
-        assertEquals(QualityStep.DOWN, g.tick(8_000, min, min, max))
+        assertNull(g.run(min, 0, 2_750))
+        assertEquals(QualityStep.DOWN, g.tick(3_000, min, min, max))
     }
 
     @Test
     fun `leaving the floor restarts the wait`() {
         val g = QualityGovernor()
-        assertNull(g.run(min, 0, 7_000))
-        assertNull(g.tick(7_250, middle, min, max))
-        assertNull(g.run(min, 7_500, 7_750))
+        assertNull(g.run(min, 0, 2_000))
+        assertNull(g.tick(2_250, middle, min, max))
+        assertNull(g.run(min, 2_500, 2_750))
     }
 
     @Test
@@ -48,18 +48,25 @@ class QualityGovernorTest {
     @Test
     fun `no second step while the first is pending`() {
         val g = QualityGovernor()
-        g.run(min, 0, 8_000)
-        assertNull(g.run(min, 8_250, 60_000))
+        g.run(min, 0, 3_000)
+        assertNull(g.run(min, 3_250, 60_000))
     }
 
     @Test
-    fun `switches keep a minimum gap`() {
+    fun `falls keep a short gap`() {
         val g = QualityGovernor()
-        val (_, at) = g.run(min, 0, 8_000)!!
+        val (_, at) = g.run(min, 0, 3_000)!!
         g.onSwitched(at, QualityStep.DOWN)
         val next = g.run(min, at + 250, 20_000)!!
         assertEquals(QualityStep.DOWN, next.first)
-        assertEquals(at + 15_000, next.second)
+        assertEquals(at + 5_000, next.second)
+    }
+
+    @Test
+    fun `rises keep a long gap`() {
+        val g = QualityGovernor(QualityGovernor.Config(upAfterMs = 1_000))
+        g.onSwitched(0, QualityStep.DOWN)
+        assertEquals(QualityStep.UP to 15_000L, g.run(max, 250, 20_000))
     }
 
     @Test
@@ -91,17 +98,17 @@ class QualityGovernorTest {
     @Test
     fun `a rejected step waits a full period`() {
         val g = QualityGovernor()
-        g.run(min, 0, 8_000)
+        g.run(min, 0, 3_000)
         g.onRejected()
-        assertNull(g.run(min, 8_250, 7_750))
-        assertEquals(QualityStep.DOWN, g.tick(16_250, min, min, max))
+        assertNull(g.run(min, 3_250, 2_750))
+        assertEquals(QualityStep.DOWN, g.tick(6_250, min, min, max))
     }
 
     @Test
     fun `cleared timers forget time spent paused`() {
         val g = QualityGovernor()
-        assertNull(g.run(min, 0, 7_000))
+        assertNull(g.run(min, 0, 2_000))
         g.clearTimers()
-        assertNull(g.run(min, 7_250, 7_750))
+        assertNull(g.run(min, 2_250, 2_750))
     }
 }

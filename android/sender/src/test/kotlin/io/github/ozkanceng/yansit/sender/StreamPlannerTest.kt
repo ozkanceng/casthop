@@ -159,4 +159,12 @@ class PresetLadderTest {
         org.junit.jupiter.api.Assertions.assertEquals(Preset.BALANCED, Preset.WEAK_NETWORK.higher)
         org.junit.jupiter.api.Assertions.assertNull(Preset.BEST.higher)
     }
+
+    @Test
+    fun `a session starts where the network last settled but never above the chosen preset`() {
+        assertEquals(Preset.BEST, Preset.start(Preset.BEST, null))
+        assertEquals(Preset.WEAK_NETWORK, Preset.start(Preset.BEST, Preset.WEAK_NETWORK))
+        assertEquals(Preset.BALANCED, Preset.start(Preset.BALANCED, Preset.BEST))
+        assertEquals(Preset.WEAK_NETWORK, Preset.start(Preset.WEAK_NETWORK, Preset.BALANCED))
+    }
 }

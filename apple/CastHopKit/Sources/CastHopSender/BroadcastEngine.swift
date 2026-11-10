@@ -40,6 +40,8 @@ public final class BroadcastEngine: @unchecked Sendable {
     // Owned by `queue`.
     private var mirror: MirrorSession?
     private var preset: Preset
+    /// The receiver of this session; keys the remembered preset.
+    private var fingerprint: Data?
     private var plan: StreamPlan?
     private var videoStarting = false
     private var finished = false
@@ -80,6 +82,7 @@ public final class BroadcastEngine: @unchecked Sendable {
                 finish(.noTarget)
                 return
             }
+            fingerprint = target.fingerprint
             publish {
                 $0 = BroadcastStatus()
                 $0.phase = .connecting
@@ -131,10 +134,17 @@ public final class BroadcastEngine: @unchecked Sendable {
                 // Advanced settings are the teacher's own choice.
                 guard self.settings.overrides == StreamOverrides(), let next = self.step(step, avoiding: self.plan) else { return false }
                 self.mirror?.reconfigure(next)
+                if let fingerprint = self.fingerprint {
+                    self.store.savePreset(self.preset == self.settings.preset ? nil : self.preset, fingerprint: fingerprint)
+                }
                 return true
             }
         }
         self.mirror = mirror
+        // Advanced settings fix the stream; otherwise start where the network last settled with this receiver.
+        if settings.overrides == StreamOverrides(), let fingerprint {
+            preset = Preset.start(chosen: settings.preset, remembered: store.preset(fingerprint: fingerprint))
+        }
         mirror.start()
         publish {
             $0.phase = .starting

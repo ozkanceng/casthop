@@ -52,6 +52,31 @@ final class SharedStateTests: XCTestCase {
         XCTAssertNil(s.selectedReceiver)
     }
 
+    func testPresetIsRememberedPerReceiver() {
+        let s = store()
+        let r = receiver(1, usedAt: 1)
+        XCTAssertNil(s.preset(fingerprint: r.fingerprint))
+        s.savePreset(.weakNetwork, fingerprint: r.fingerprint)
+        XCTAssertNil(s.preset(fingerprint: r.fingerprint), "an unknown receiver keeps no entry")
+        s.save(r)
+        s.savePreset(.weakNetwork, fingerprint: r.fingerprint)
+        XCTAssertEqual(s.preset(fingerprint: r.fingerprint), .weakNetwork)
+        XCTAssertNil(s.preset(fingerprint: receiver(2, usedAt: 2).fingerprint))
+        s.savePreset(nil, fingerprint: r.fingerprint)
+        XCTAssertNil(s.preset(fingerprint: r.fingerprint))
+        s.savePreset(.balanced, fingerprint: r.fingerprint)
+        s.remove(fingerprint: r.fingerprint)
+        s.save(r)
+        XCTAssertNil(s.preset(fingerprint: r.fingerprint), "removing a receiver forgets its preset")
+    }
+
+    func testASessionStartsWhereTheNetworkLastSettled() {
+        XCTAssertEqual(Preset.start(chosen: .best, remembered: nil), .best)
+        XCTAssertEqual(Preset.start(chosen: .best, remembered: .weakNetwork), .weakNetwork)
+        XCTAssertEqual(Preset.start(chosen: .balanced, remembered: .best), .balanced)
+        XCTAssertEqual(Preset.start(chosen: .weakNetwork, remembered: .balanced), .weakNetwork)
+    }
+
     func testSoundIsOffUntilTurnedOn() {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }

@@ -314,10 +314,12 @@ her 250 ms:
 Bit hızı tek başına yetmezse S ön ayarı da değiştirebilir. Bu geçiş yeni bir STREAM_CONFIG ve CONFIG ile bildirilir; tel formatı değişmez:
 
 ```
-bitrate ≤ floor × 1.05 iken 8 sn tıkanıklık sürerse:  bir alt ön ayar
+bitrate ≤ floor × 1.05 iken 3 sn tıkanıklık sürerse:  bir alt ön ayar
 bitrate ≥ ceiling × 0.9 iken N sn kararlı kalırsa:    bir üst ön ayar (seçilen ön ayarı aşmaz)
 N = 60 sn; yükseldikten sonra 30 sn içinde inerse N iki katına çıkar (en çok 480 sn)
-iki geçiş arasında en az 15 sn; elle verilen akış değerleri varsa geçiş yapılmaz
+son geçişten sonra inmek için en az 5 sn, çıkmak için en az 15 sn
+elle verilen akış değerleri varsa geçiş yapılmaz
+oturum, bu alıcıyla son inilen ön ayardan başlar (seçilen ön ayarı aşmaz)
 ```
 
 ## 8. Keşif ve QR

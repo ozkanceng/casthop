@@ -226,8 +226,31 @@ public final class SharedStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         write(receivers().filter { $0.fingerprint != fingerprint }, "receivers.json")
+        writePreset(nil, fingerprint: fingerprint)
         if selectedFingerprint == fingerprint { selectedFingerprint = nil }
     }
+
+    /// The preset the network last settled on with this receiver; nil when it kept the chosen one.
+    public func preset(fingerprint: Data) -> Preset? {
+        read([String: Preset].self, "presets.json")?[Self.hex(fingerprint)]
+    }
+
+    /// Nil forgets it. Only receivers still remembered keep an entry.
+    public func savePreset(_ preset: Preset?, fingerprint: Data) {
+        lock.lock()
+        defer { lock.unlock() }
+        writePreset(preset, fingerprint: fingerprint)
+    }
+
+    private func writePreset(_ preset: Preset?, fingerprint: Data) {
+        let known = Set(receivers().map { Self.hex($0.fingerprint) })
+        var all = (read([String: Preset].self, "presets.json") ?? [:]).filter { known.contains($0.key) }
+        let key = Self.hex(fingerprint)
+        all[key] = known.contains(key) ? preset : nil
+        write(all, "presets.json")
+    }
+
+    private static func hex(_ data: Data) -> String { data.map { String(format: "%02x", $0) }.joined() }
 
     /// The receiver the next broadcast goes to.
     public var selectedFingerprint: Data? {

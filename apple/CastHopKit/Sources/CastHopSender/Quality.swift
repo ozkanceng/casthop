@@ -50,12 +50,15 @@ public enum QualityStep: Sendable {
 /// near the ceiling means the link has room for more.
 public final class QualityGovernor: @unchecked Sendable {
     public struct Config: Sendable {
-        public var downAfterMs: Int64 = 8_000
+        public var downAfterMs: Int64 = 3_000
         public var upAfterMs: Int64 = 60_000
         public var maxUpAfterMs: Int64 = 480_000
         /// A fall this soon after a rise means the rise failed, so the next one waits twice as long.
         public var relapseWindowMs: Int64 = 30_000
+        /// Least time after any switch before a rise.
         public var minGapMs: Int64 = 15_000
+        /// Least time after any switch before a fall: a slow link must reach a working preset within seconds.
+        public var minGapDownMs: Int64 = 5_000
         public var floorMargin = 1.05
         public var ceilingRatio = 0.9
 
@@ -83,11 +86,11 @@ public final class QualityGovernor: @unchecked Sendable {
         if busy { return nil }
         atFloorSinceMs = Double(bitrateBps) <= Double(minBps) * config.floorMargin ? atFloorSinceMs ?? nowMs : nil
         nearCeilingSinceMs = Double(bitrateBps) >= Double(maxBps) * config.ceilingRatio ? nearCeilingSinceMs ?? nowMs : nil
-        if let last = lastSwitchMs, nowMs - last < config.minGapMs { return nil }
+        let sinceSwitchMs = lastSwitchMs.map { nowMs - $0 } ?? .max
         let step: QualityStep
-        if let since = atFloorSinceMs, nowMs - since >= config.downAfterMs {
+        if sinceSwitchMs >= config.minGapDownMs, let since = atFloorSinceMs, nowMs - since >= config.downAfterMs {
             step = .down
-        } else if let since = nearCeilingSinceMs, nowMs - since >= upAfterMs {
+        } else if sinceSwitchMs >= config.minGapMs, let since = nearCeilingSinceMs, nowMs - since >= upAfterMs {
             step = .up
         } else {
             return nil

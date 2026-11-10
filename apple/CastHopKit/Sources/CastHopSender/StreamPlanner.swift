@@ -32,6 +32,13 @@ public enum Preset: String, CaseIterable, Codable, Sendable {
     public var lower: Preset? { index + 1 < Self.allCases.count ? Self.allCases[index + 1] : nil }
     /// The next preset towards better quality.
     public var higher: Preset? { index > 0 ? Self.allCases[index - 1] : nil }
+
+    /// The preset a session starts at: the one the network last settled on for this receiver, so a slow link does not
+    /// freeze again while the governor steps down. Never better than the one the teacher chose.
+    public static func start(chosen: Preset, remembered: Preset?) -> Preset {
+        guard let remembered, remembered.index > chosen.index else { return chosen }
+        return remembered
+    }
 }
 
 /// Advanced settings. Nil means the preset's value.

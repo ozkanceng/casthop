@@ -138,17 +138,17 @@ final class QualityGovernorTests: XCTestCase {
         return nil
     }
 
-    func testEightSecondsAtTheFloorStepsDown() {
+    func testThreeSecondsAtTheFloorStepsDown() {
         let g = QualityGovernor()
-        XCTAssertNil(run(g, lo, from: 0, forMs: 7_750))
-        XCTAssertEqual(g.tick(nowMs: 8_000, bitrateBps: lo, minBps: lo, maxBps: hi), .down)
+        XCTAssertNil(run(g, lo, from: 0, forMs: 2_750))
+        XCTAssertEqual(g.tick(nowMs: 3_000, bitrateBps: lo, minBps: lo, maxBps: hi), .down)
     }
 
     func testLeavingTheFloorRestartsTheWait() {
         let g = QualityGovernor()
-        XCTAssertNil(run(g, lo, from: 0, forMs: 7_000))
-        XCTAssertNil(g.tick(nowMs: 7_250, bitrateBps: middle, minBps: lo, maxBps: hi))
-        XCTAssertNil(run(g, lo, from: 7_500, forMs: 7_750))
+        XCTAssertNil(run(g, lo, from: 0, forMs: 2_000))
+        XCTAssertNil(g.tick(nowMs: 2_250, bitrateBps: middle, minBps: lo, maxBps: hi))
+        XCTAssertNil(run(g, lo, from: 2_500, forMs: 2_750))
     }
 
     func testAMinuteNearTheCeilingStepsUp() {
@@ -163,17 +163,27 @@ final class QualityGovernorTests: XCTestCase {
 
     func testNoSecondStepWhileTheFirstIsPending() {
         let g = QualityGovernor()
-        _ = run(g, lo, from: 0, forMs: 8_000)
-        XCTAssertNil(run(g, lo, from: 8_250, forMs: 60_000))
+        _ = run(g, lo, from: 0, forMs: 3_000)
+        XCTAssertNil(run(g, lo, from: 3_250, forMs: 60_000))
     }
 
-    func testSwitchesKeepAMinimumGap() throws {
+    func testFallsKeepAShortGap() throws {
         let g = QualityGovernor()
-        let at = try XCTUnwrap(run(g, lo, from: 0, forMs: 8_000)).1
+        let at = try XCTUnwrap(run(g, lo, from: 0, forMs: 3_000)).1
         g.onSwitched(nowMs: at, step: .down)
         let next = try XCTUnwrap(run(g, lo, from: at + 250, forMs: 20_000))
         XCTAssertEqual(next.0, .down)
-        XCTAssertEqual(next.1, at + 15_000)
+        XCTAssertEqual(next.1, at + 5_000)
+    }
+
+    func testRisesKeepALongGap() {
+        var config = QualityGovernor.Config()
+        config.upAfterMs = 1_000
+        let g = QualityGovernor(config: config)
+        g.onSwitched(nowMs: 0, step: .down)
+        let r = run(g, hi, from: 250, forMs: 20_000)
+        XCTAssertEqual(r?.0, .up)
+        XCTAssertEqual(r?.1, 15_000)
     }
 
     func testAFailedRiseDoublesTheNextWaitUpToTheLimit() throws {
@@ -204,17 +214,17 @@ final class QualityGovernorTests: XCTestCase {
 
     func testARejectedStepWaitsAFullPeriod() {
         let g = QualityGovernor()
-        _ = run(g, lo, from: 0, forMs: 8_000)
+        _ = run(g, lo, from: 0, forMs: 3_000)
         g.onRejected()
-        XCTAssertNil(run(g, lo, from: 8_250, forMs: 7_750))
-        XCTAssertEqual(g.tick(nowMs: 16_250, bitrateBps: lo, minBps: lo, maxBps: hi), .down)
+        XCTAssertNil(run(g, lo, from: 3_250, forMs: 2_750))
+        XCTAssertEqual(g.tick(nowMs: 6_250, bitrateBps: lo, minBps: lo, maxBps: hi), .down)
     }
 
     func testClearedTimersForgetTimeSpentPaused() {
         let g = QualityGovernor()
-        XCTAssertNil(run(g, lo, from: 0, forMs: 7_000))
+        XCTAssertNil(run(g, lo, from: 0, forMs: 2_000))
         g.clearTimers()
-        XCTAssertNil(run(g, lo, from: 7_250, forMs: 7_750))
+        XCTAssertNil(run(g, lo, from: 2_250, forMs: 2_750))
     }
 }
 

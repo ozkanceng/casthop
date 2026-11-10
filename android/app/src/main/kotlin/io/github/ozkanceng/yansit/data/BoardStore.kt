@@ -3,6 +3,7 @@ package io.github.ozkanceng.yansit.data
 import android.content.Context
 import androidx.core.content.edit
 import io.github.ozkanceng.yansit.protocol.Bytes
+import io.github.ozkanceng.yansit.sender.Preset
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -42,7 +43,32 @@ class BoardStore(context: Context) {
         store(all.map { if (it.fingerprint == fingerprint) it.copy(lastUsedMs = nowMs) else it })
     }
 
-    fun remove(fingerprint: Bytes) = store(load().filterNot { it.fingerprint == fingerprint })
+    fun remove(fingerprint: Bytes) {
+        store(load().filterNot { it.fingerprint == fingerprint })
+        savePreset(fingerprint, null)
+    }
+
+    /** The preset the network last settled on with this board; `null` when it kept the chosen one. */
+    fun preset(fingerprint: Bytes): Preset? = loadPresets().optString(fingerprint.toHex()).let { name ->
+        Preset.entries.firstOrNull { it.name == name }
+    }
+
+    /** `null` forgets it. Only boards still remembered keep an entry. */
+    fun savePreset(fingerprint: Bytes, preset: Preset?) {
+        val known = load().map { it.fingerprint.toHex() }.toSet()
+        val old = loadPresets()
+        val presets = JSONObject()
+        for (key in old.keys()) if (key in known) presets.put(key, old.getString(key))
+        val key = fingerprint.toHex()
+        if (preset != null && key in known) presets.put(key, preset.name) else presets.remove(key)
+        prefs.edit { putString(KEY_PRESETS, presets.toString()) }
+    }
+
+    private fun loadPresets(): JSONObject = try {
+        JSONObject(prefs.getString(KEY_PRESETS, null) ?: "{}")
+    } catch (_: JSONException) {
+        JSONObject()
+    }
 
     private fun load(): List<RememberedBoard> {
         val raw = prefs.getString(KEY, null) ?: return emptyList()
@@ -90,6 +116,7 @@ class BoardStore(context: Context) {
 
     private companion object {
         const val KEY = "boards"
+        const val KEY_PRESETS = "presets"
         const val MAX_BOARDS = 8
     }
 }

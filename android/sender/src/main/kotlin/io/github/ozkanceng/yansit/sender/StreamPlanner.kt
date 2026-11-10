@@ -41,6 +41,13 @@ enum class Preset(
     companion object {
         /** En iyi kalitede alıcı 4K ise ve kodlayıcı izin verirse uzun kenar tavanı. */
         const val BEST_4K_LONG_SIDE: Int = 2560
+
+        /**
+         * The preset a session starts at: the one the network last settled on for this receiver, so a slow link does
+         * not freeze again while the governor steps down. Never better than the one the teacher chose.
+         */
+        fun start(chosen: Preset, remembered: Preset?): Preset =
+            if (remembered != null && remembered > chosen) remembered else chosen
     }
 }
 

@@ -14,17 +14,20 @@ enum class QualityStep { DOWN, UP }
  */
 class QualityGovernor(private val config: Config = Config()) {
     data class Config(
-        val downAfterMs: Long = 8_000,
+        val downAfterMs: Long = 3_000,
         val upAfterMs: Long = 60_000,
         val maxUpAfterMs: Long = 480_000,
         /** A fall this soon after a rise means the rise failed, so the next one waits twice as long. */
         val relapseWindowMs: Long = 30_000,
+        /** Least time after any switch before a rise. */
         val minGapMs: Long = 15_000,
+        /** Least time after any switch before a fall: a slow link must reach a working preset within seconds. */
+        val minGapDownMs: Long = 5_000,
         val floorMargin: Double = 1.05,
         val ceilingRatio: Double = 0.9,
     ) {
         init {
-            require(downAfterMs > 0 && upAfterMs in 1..maxUpAfterMs && minGapMs >= 0)
+            require(downAfterMs > 0 && upAfterMs in 1..maxUpAfterMs && minGapMs >= 0 && minGapDownMs >= 0)
         }
     }
 
@@ -41,10 +44,12 @@ class QualityGovernor(private val config: Config = Config()) {
         if (busy) return null
         atFloorSinceMs = if (bitrateBps <= minBps * config.floorMargin) atFloorSinceMs ?: nowMs else null
         nearCeilingSinceMs = if (bitrateBps >= maxBps * config.ceilingRatio) nearCeilingSinceMs ?: nowMs else null
-        if (lastSwitchMs?.let { nowMs - it < config.minGapMs } == true) return null
+        val sinceSwitchMs = lastSwitchMs?.let { nowMs - it } ?: Long.MAX_VALUE
         val step = when {
-            atFloorSinceMs?.let { nowMs - it >= config.downAfterMs } == true -> QualityStep.DOWN
-            nearCeilingSinceMs?.let { nowMs - it >= upAfterMs } == true -> QualityStep.UP
+            sinceSwitchMs >= config.minGapDownMs &&
+                atFloorSinceMs?.let { nowMs - it >= config.downAfterMs } == true -> QualityStep.DOWN
+            sinceSwitchMs >= config.minGapMs &&
+                nearCeilingSinceMs?.let { nowMs - it >= upAfterMs } == true -> QualityStep.UP
             else -> return null
         }
         busy = true

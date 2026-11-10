@@ -19,6 +19,7 @@ import io.github.ozkanceng.yansit.data.AppSettings
 import io.github.ozkanceng.yansit.data.BoardStore
 import io.github.ozkanceng.yansit.data.RememberedBoard
 import io.github.ozkanceng.yansit.protocol.ByeReason
+import io.github.ozkanceng.yansit.protocol.Bytes
 import io.github.ozkanceng.yansit.protocol.Codec
 import io.github.ozkanceng.yansit.protocol.ControlMessage
 import io.github.ozkanceng.yansit.protocol.ProtocolException
@@ -129,6 +130,8 @@ object MirrorController {
     private var capture: Capture? = null
     private var board: String = ""
     private var target: ConnectTarget? = null
+    /** Certificate fingerprint of the board in the current session; keys the remembered preset. */
+    private var boardFingerprint: Bytes? = null
     /** Her bağlantı denemesi ve durdurma bir artırır; eski denemenin geç gelen sonucu yok sayılır. */
     private var generation = 0
     private lateinit var appContext: Context
@@ -196,6 +199,7 @@ object MirrorController {
                         return@launch
                     }
                     board = result.session.welcome.receiverName
+                    boardFingerprint = result.session.fingerprint
                     val s = newMirrorSession(result.session)
                     synchronized(lock) { session = s }
                     s.start()
@@ -441,8 +445,17 @@ object MirrorController {
         return hevc + AndroidEncoderCaps.h264Encoders()
     }
 
+    /** Where the network last settled with this board, unless advanced settings fix the stream. */
+    private fun startPreset(context: Context): Preset {
+        val settings = AppSettings(context)
+        if (settings.overrides != StreamOverrides()) return settings.preset
+        val remembered = boardFingerprint?.let { BoardStore(context).preset(it) }
+        return Preset.start(settings.preset, remembered)
+    }
+
     private fun startCapture(service: MirrorService, projection: MediaProjection, s: MirrorSession) {
-        val plan = currentPlan(service, s)
+        val start = startPreset(service)
+        val plan = currentPlan(service, s, start)
         if (plan == null) {
             Log.e(TAG, "uygun kodlayıcı yok: ${encodersFor(AppSettings(service), s.welcome).map { it.name }}")
             fail(MirrorError.NO_ENCODER)
@@ -461,12 +474,13 @@ object MirrorController {
                 capture?.display = display
                 capture?.encoder = encoder
                 capture?.plan = plan
+                capture?.preset = start
             }
             s.startVideo(plan, encoder)
             display?.surface = encoder.inputSurface
             watchRotation(service)
             _state.value = MirrorState.Mirroring(board, null, audio = startAudio(service, projection, s))
-            Log.i(TAG, "yansıtma: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName})")
+            Log.i(TAG, "yansıtma: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName}), $start")
         } catch (e: IOException) {
             Log.w(TAG, "video bağlantısı kurulamadı", e)
             s.stop(ByeReason.ERROR)
@@ -581,6 +595,7 @@ object MirrorController {
             c.preset = next
         }
         s.reconfigure(plan)
+        boardFingerprint?.let { BoardStore(c.service).savePreset(it, next.takeIf { p -> p != settings.preset }) }
         return true
     }
 
