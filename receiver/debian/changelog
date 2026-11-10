@@ -1,3 +1,9 @@
+casthop (0.3.9) unstable; urgency=medium
+
+  * Release 0.3.9 (sender: Balanced is the default quality).
+
+ -- CastHop Authors <casthop@users.noreply.github.com>  Tue, 10 Nov 2026 16:30:00 +0300
+
 casthop (0.3.8) unstable; urgency=medium
 
   * Release 0.3.8 (sender: encoder capped at 1920, no crash after session end).

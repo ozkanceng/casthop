@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 project(casthop
-    VERSION 0.3.8
+    VERSION 0.3.9
     DESCRIPTION "CastHop — Pardus ETAP akıllı tahta alıcısı"
     HOMEPAGE_URL "https://github.com/ozkanceng/casthop"
     LANGUAGES CXX)
