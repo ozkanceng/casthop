@@ -1,0 +1,3 @@
+İlk sürüm: iPhone ve iPad ekranınızı (ve kameranızı) Pardus ETAP akıllı tahtaya, Android TV'ye, Windows ve Mac'e kablosuz yansıtın.
+
+Android sürümü Google Play'de yayında: https://play.google.com/store/apps/details?id=com.sorumatik.casthop

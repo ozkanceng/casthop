@@ -4,8 +4,14 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+### Eklendi / Added
+- iPhone ve iPad göndericisi App Store Connect'e yüklendi (`CastHop: Ekran Yansıtma`); mağaza metinleri (Türkçe ve İngilizce) ve ekran görüntüleri `apple/store/` altında.
+
 ### Düzeltildi / Fixed
 - Daha önce Yansıt kurulmuş tahtalarda menüde hâlâ "Yansıt Alıcı" görünüyordu ve bu kısayol eski programı (ör. 0.1.2) açıyordu. Menü kaydının adı `io.github.ozkanceng.casthop.receiver` oldu. `.deb` kurulurken tahtadaki kullanıcıların eski taşınabilir kurulumu (`~/.local/opt/yansit`) ve menü kaydı kendiliğinden silinir; çalışıyorsa eski program kapatılır; açık olan otomatik başlatma yeni programa yönlendirilir, kapatılmışsa kapalı kalır. CastHop da ilk açılışta aynı kayıtları denetler.
+
+### Değiştirildi / Changed
+- **iOS göndericisinin kimlikleri değişti:** uygulama `com.sorumatik.casthop`, yayın uzantısı `com.sorumatik.casthop.broadcast`, App Group `group.com.sorumatik.casthop`. Uygulama henüz yayımlanmadığından eşleşme kaybı yoktur.
 
 ## [0.3.3] - 2026-11-05
 

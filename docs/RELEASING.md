@@ -68,7 +68,14 @@ gh secret set CASTHOP_ASC_KEY_ID --repo ozkanceng/casthop
 gh secret set CASTHOP_ASC_ISSUER_ID --repo ozkanceng/casthop
 ```
 
-App Store Connect'te `io.github.ozkanceng.casthop` altındaki uygulamaları ve App Group'u oluşturun. Yayın adımı `apple.yml`'e üyelik açıldığında eklenir.
+iPhone ve iPad göndericisi (`SenderApp`) App Store'da `com.sorumatik.casthop` (uzantı `com.sorumatik.casthop.broadcast`, App Group `group.com.sorumatik.casthop`) kimliğiyle yayımlanır; kimlikler kalıcıdır. Yayın adımı `apple.yml`'e henüz eklenmedi; sürüm el ile yapılır:
+
+1. Geliştirici portalında App ID'leri ve App Group'u kaydedin, App Group'u iki App ID'ye atayın.
+2. `apple/` içinde `xcodegen generate`, sonra `xcodebuild archive -scheme SenderApp -destination generic/platform=iOS DEVELOPMENT_TEAM=<takım> CURRENT_PROJECT_VERSION=<yapı no> -allowProvisioningUpdates -authenticationKeyPath ...` ile arşivleyin.
+3. `xcodebuild -exportArchive` ile (`method: app-store-connect`) dışa aktarın. API anahtarı `App Manager` rolündeyse bulut imzalama izni vermez; bu durumda Apple Distribution sertifikasını ve iki App Store profilini portaldan elle oluşturup `signingStyle: manual` kullanın.
+4. IPA'yı `xcrun altool --upload-app` (olmazsa `iTMSTransporter -m upload`) ile `--apiKey/--apiIssuer` vererek yükleyin.
+
+Sertifika, `.p8` anahtarı ve profiller repoya girmez; yerelde `~/.appstoreconnect` altında tutun. Mağaza metinleri ve ekran görüntüleri `apple/store/` altındadır.
 
 Üyelik açılana dek `release.yml` Mac alıcısını `apple/ci/build-dmg.sh` ile geçici imzalı (`-`) `casthop-mac.dmg` olarak yayımlar. Secret gerekmez; Gatekeeper ilk açılışta uyarır. iPhone, iPad ve Apple TV sürümleri üyelik olmadan dağıtılamaz.
 

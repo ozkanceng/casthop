@@ -149,7 +149,7 @@ public struct BroadcastStatus: Codable, Equatable, Sendable {
 /// State shared by the app and the Broadcast Upload Extension, in JSON files in the App Group container. The app writes
 /// everything except the status, which the extension writes. Pairing keys are covered by file protection.
 public final class SharedStore: @unchecked Sendable {
-    public static let appGroup = "group.io.github.ozkanceng.casthop"
+    public static let appGroup = "group.com.sorumatik.casthop"
     private static let maxReceivers = 20
 
     private let directory: URL

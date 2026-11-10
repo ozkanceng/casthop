@@ -4,7 +4,7 @@ import SwiftUI
 
 /// The system's start button. Only it may open the broadcast sheet. It covers the styled label, which stays visible.
 private struct BroadcastPicker: UIViewRepresentable {
-    static let extensionId = "io.github.ozkanceng.casthop.sender.broadcast"
+    static let extensionId = "com.sorumatik.casthop.broadcast"
 
     func makeUIView(context: Context) -> RPSystemBroadcastPickerView {
         let picker = RPSystemBroadcastPickerView(frame: .zero)

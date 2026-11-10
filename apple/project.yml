@@ -60,7 +60,7 @@ targets:
       base:
         PRODUCT_NAME: CastHop
         PRODUCT_MODULE_NAME: CastHopSenderApp
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.ozkanceng.casthop.sender
+        PRODUCT_BUNDLE_IDENTIFIER: com.sorumatik.casthop
         INFOPLIST_FILE: Sender/Info.plist
         CODE_SIGN_ENTITLEMENTS: Sender/Sender.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
@@ -82,7 +82,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: CastHopBroadcast
-        PRODUCT_BUNDLE_IDENTIFIER: io.github.ozkanceng.casthop.sender.broadcast
+        PRODUCT_BUNDLE_IDENTIFIER: com.sorumatik.casthop.broadcast
         INFOPLIST_FILE: Broadcast/Info.plist
         CODE_SIGN_ENTITLEMENTS: Broadcast/Broadcast.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"

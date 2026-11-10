@@ -386,7 +386,7 @@ yalnız **gerçek cihazda ve imzalı derlemede** denetlenebilir. Takım kimliği
 cd apple && xcodegen generate && open CastHop.xcodeproj
 ```
 
-`SenderApp` ve `BroadcastExtension` hedeflerine aynı takımı ve `group.io.github.ozkanceng.casthop` App Group'unu verin.
+`SenderApp` ve `BroadcastExtension` hedeflerine aynı takımı ve `group.com.sorumatik.casthop` App Group'unu verin.
 
 ### Gönderici
 

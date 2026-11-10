@@ -1,0 +1,42 @@
+CastHop is a free, open-source screen mirroring app that casts your iPhone or iPad screen wirelessly to Pardus ETAP smart boards, Android TV, Windows and Mac computers. Built for teachers: run your lesson from anywhere in the classroom with no cables, no account and no internet connection.
+
+SMART BOARD SCREEN MIRRORING IN TWO STEPS
+1. Install the CastHop receiver on the board (a one-click setup guide is at ozkanceng.github.io/casthop).
+2. On your iPhone or iPad, tap "Connect to a screen" and scan the QR code shown on the board. Start mirroring. Done.
+
+CastHop remembers every screen you have connected to, so next lesson you reconnect with a single tap.
+
+WHAT YOU CAN DO
+• Show your iPhone or iPad screen and app audio on the smart board: PDFs, slides, videos, digital notebooks and drawing apps.
+• Mirror the camera: send a book, notebook or worksheet to the board and use the device as a document camera.
+• Hold the device in landscape or portrait; the picture follows the rotation without interruption.
+• If the network slows down, picture quality adjusts automatically so delay does not build up.
+• Can't scan the QR code? Connect with the 6-digit code shown on the screen.
+
+WHERE YOU CAN MIRROR
+• Pardus ETAP 23 smart boards
+• Android TV, Google TV and Fire TV
+• Windows 10 and later computers
+• macOS 14 and later Macs
+All receiver apps are free and available at ozkanceng.github.io/casthop.
+
+THE ANDROID APP IS LIVE TOO
+CastHop for Android tablets and phones is on Google Play: play.google.com/store/apps/details?id=com.sorumatik.casthop
+
+NO CABLES, NO ACCOUNT, NO ADS
+• The device and the screen must be on the same Wi-Fi network. Mirroring stays on your local network; your screen is never sent over the internet.
+• Connections are encrypted with TLS 1.3. Each screen is paired by QR code or a single-use PIN, so an unknown device cannot cast without permission.
+• No sign-up, no accounts, no ads and no tracking.
+
+OPEN SOURCE
+The source code is published under the Apache-2.0 license at github.com/ozkanceng/casthop. Visit the page to report issues or contribute.
+
+PERMISSIONS
+• Screen recording (broadcast): only to mirror the screen when you start it.
+• Camera: to scan the QR code and for optional camera mirroring.
+• Local network: to find and connect to the screen on the same network.
+
+GOOD TO KNOW
+• DRM-protected content (some streaming services) cannot be mirrored; this is an iOS restriction.
+• Requires iOS or iPadOS 17 or later.
+• CastHop is an independent open-source project and is not affiliated with Pardus, TÜBİTAK, the Turkish Ministry of National Education or any other trademark owner.

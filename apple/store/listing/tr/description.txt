@@ -1,0 +1,42 @@
+CastHop, iPhone ve iPad ekranınızı Pardus ETAP akıllı tahtaya, Android TV'ye, Windows ve Mac bilgisayara kablosuz yansıtan ücretsiz ve açık kaynaklı bir ekran yansıtma uygulamasıdır. Öğretmenler için tasarlandı: tahtaya kablo çekmeden, hesap açmadan, internet gerektirmeden dersinizi sınıfın her yerinden yönetin.
+
+AKILLI TAHTADA EKRAN YANSITMA, İKİ ADIMDA
+1. Tahtaya CastHop alıcısını kurun (ozkanceng.github.io/casthop adresinde tek tıkla kurulum rehberi var).
+2. iPhone ya da iPad'de "Ekrana Bağlan"a dokunun, tahtadaki QR kodu okutun. Yansıtmayı başlatın. Bitti.
+
+Bir kez bağlandığınız ekranı uygulama hatırlar; sonraki derslerde tek dokunuşla yeniden bağlanırsınız.
+
+NELER YAPABİLİRSİNİZ
+• iPhone veya iPad ekranını ve uygulama sesini akıllı tahtada gösterin: PDF, sunum, video, EBA, dijital defter ve çizim uygulamaları.
+• Kamerayı yansıtın: kitap, defter veya belgeyi kamerayla tahtaya aktarın; belge kamerası gibi kullanın.
+• Cihazı yatay ya da dikey tutun; görüntü yönü kesintisiz uyum sağlar.
+• Ağ yavaşlarsa görüntü kalitesi kendiliğinden ayarlanır, gecikme birikmez.
+• QR kodu okutamıyorsanız ekrandaki 6 haneli kodla bağlanın.
+
+NEREYE YANSITABİLİRSİNİZ
+• Pardus ETAP 23 akıllı tahtalar
+• Android TV, Google TV ve Fire TV
+• Windows 10 ve üstü bilgisayarlar
+• macOS 14 ve üstü Mac bilgisayarlar
+Alıcı uygulamaların tamamı ücretsizdir ve ozkanceng.github.io/casthop adresinden indirilir.
+
+ANDROID SÜRÜMÜ DE YAYINDA
+CastHop Android tablet ve telefonlar için Google Play'de: play.google.com/store/apps/details?id=com.sorumatik.casthop
+
+KABLO YOK, HESAP YOK, REKLAM YOK
+• Cihaz ve ekran aynı Wi-Fi ağında olmalıdır; yansıtma yerel ağda kalır, görüntünüz internete gönderilmez.
+• Bağlantılar TLS 1.3 ile şifrelenir. Her ekran QR kod veya tek kullanımlık PIN ile eşleştirilir; yabancı bir cihaz izinsiz yansıtamaz.
+• Kayıt, hesap, reklam ve izleme yoktur.
+
+AÇIK KAYNAK
+Kaynak kodu Apache-2.0 lisansıyla GitHub'da yayımlanır: github.com/ozkanceng/casthop. Hata bildirimi ve katkılar için sayfayı ziyaret edin.
+
+İZİNLER
+• Ekran kaydı (yayın): yalnız siz başlattığınızda ekranı yansıtmak için.
+• Kamera: QR kod okumak ve isteğe bağlı kamera yansıtma için.
+• Yerel ağ: aynı ağdaki ekranı bulmak ve bağlanmak için.
+
+BİLMENİZ GEREKENLER
+• DRM korumalı içerikler (bazı akış hizmetleri) yansıtılamaz; bu iOS'un kısıtıdır.
+• iOS 17 veya iPadOS 17 ve üstü gerekir.
+• CastHop bağımsız bir açık kaynak projedir; Pardus, TÜBİTAK, MEB ve diğer marka sahipleriyle bağlantısı yoktur.

@@ -4,7 +4,7 @@
 <dict>
   <key>com.apple.security.application-groups</key>
   <array>
-    <string>group.io.github.ozkanceng.casthop</string>
+    <string>group.com.sorumatik.casthop</string>
   </array>
 </dict>
 </plist>
