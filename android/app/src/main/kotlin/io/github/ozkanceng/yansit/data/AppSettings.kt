@@ -31,7 +31,7 @@ class AppSettings(context: Context) {
             ?.takeIf { it.isNotBlank() } ?: Build.MODEL
 
     var preset: Preset
-        get() = prefs.getString(KEY_PRESET, null)?.let { runCatching { Preset.valueOf(it) }.getOrNull() } ?: Preset.BEST
+        get() = prefs.getString(KEY_PRESET, null)?.let { runCatching { Preset.valueOf(it) }.getOrNull() } ?: DEFAULT_PRESET
         set(value) = prefs.edit { putString(KEY_PRESET, value.name) }
 
     /** Send the tablet's sound to the board (AudioPlaybackCapture). Off by default: classrooms mostly share the picture. */
@@ -64,6 +64,8 @@ class AppSettings(context: Context) {
     private companion object {
         const val KEY_DEVICE_ID = "device_id"
         const val KEY_PRESET = "preset"
+        /** Balanced: school Wi-Fi rarely carries the best preset without freezes. A choice the teacher saved stays. */
+        val DEFAULT_PRESET = Preset.BALANCED
         const val KEY_AUDIO = "audio"
         const val KEY_CAMERA_MODE = "camera_mode"
         const val KEY_HEVC = "hevc"

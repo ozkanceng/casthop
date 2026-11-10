@@ -27,7 +27,8 @@ public struct RememberedReceiver: Codable, Equatable, Identifiable, Sendable {
 }
 
 public struct SenderSettings: Codable, Equatable, Sendable {
-    public var preset = Preset.best
+    /// Balanced by default: school Wi-Fi rarely carries the best preset without freezes.
+    public var preset = Preset.balanced
     /// Off by default: classrooms mostly share the picture, and the board's speakers may be loud.
     public var audioEnabled = false
     public var hevcEnabled = false

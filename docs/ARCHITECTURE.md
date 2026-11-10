@@ -53,7 +53,7 @@ Tek dinleme portu, üç TLS bağlantısı (CONTROL, VIDEO, AUDIO). İlk bağlant
 - Yetenek sorgusu: `MediaCodecList(REGULAR_CODECS)` → `isEncoder && isHardwareAccelerated` → `VideoCapabilities.areSizeAndRateSupported`, `bitrateRange`, `profileLevels`, `widthAlignment/heightAlignment`. Arayüz yalnız desteklenen kombinasyonları gösterir.
 - Çözünürlük: alıcının bildirdiği ekran boyutuna ve ön ayar tavanına sığacak şekilde en-boy korunarak ölçeklenir, hizalamaya yuvarlanır.
 
-**Ön ayarlar** (cihaz/alıcı yeteneğiyle kırpılır)
+**Ön ayarlar** (cihaz/alıcı yeteneğiyle kırpılır; varsayılan Dengeli, okul Wi-Fi'ı En iyi kaliteyi çoğu zaman donmadan taşıyamaz)
 
 | Ön ayar | Çözünürlük tavanı | FPS | Bit hızı başlangıç / tavan / taban |
 |---|---|---|---|

@@ -77,6 +77,11 @@ final class SharedStateTests: XCTestCase {
         XCTAssertEqual(Preset.start(chosen: .weakNetwork, remembered: .balanced), .weakNetwork)
     }
 
+    func testQualityIsBalancedUntilChosen() {
+        XCTAssertEqual(SenderSettings().preset, .balanced)
+        XCTAssertEqual(store().settings.preset, .balanced)
+    }
+
     func testSoundIsOffUntilTurnedOn() {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }

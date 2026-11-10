@@ -189,11 +189,12 @@ dar bant, kalıcı eşleştirme); burada yalnız gerçek donanımın davranış�
 | 15 | Kalite düşükken tableti döndürün | Görüntü döner, kalite seçili ön ayara dönmez | ☐ |
 | 16 | Ağı düzeltip en az 70 sn bekleyin | Kalite kendiliğinden bir basamak yükselir, uyarı kalkar; seçilen ön ayarı aşmaz | ☐ |
 | 17 | Ayarlar → Gelişmiş'te elle değer verip 13. adımı tekrarlayın | Ön ayar değişmez, yalnız bit hızı düşer | ☐ |
-| 18 | Okulun yavaş Wi-Fi'ında **En iyi kalite** ile yansıtmayı başlatın | Donma en çok ~10 sn sürer; kalite Zayıf ağ'a kadar iner; logcat'te `kalite:` satırları 5 sn arayla | ☐ |
+| 18 | Ayarlar'dan **En iyi kalite**'yi seçip okulun yavaş Wi-Fi'ında yansıtmayı başlatın | Donma en çok ~10 sn sürer; kalite Zayıf ağ'a kadar iner; logcat'te `kalite:` satırları 5 sn arayla | ☐ |
 | 19 | 18'den sonra durdurup aynı tahtaya yeniden bağlanın | Yansıtma son inilen ön ayardan başlar (logcat `yansıtma: … WEAK_NETWORK`), başta donma olmaz | ☐ |
 | 20 | Telefonun hotspot'una geçip aynı tahtaya bağlanın, 2–3 dk bekleyin | Kalite dakikada bir basamak yükselir, seçilen ön ayarı aşmaz; sonraki bağlantı yükselen ön ayardan başlar | ☐ |
 | 21 | Samsung Exynos tablette (ör. SM-X610) **En iyi kalite** ile 4K alıcıya (Mac, 4K tahta) 10 kez bağlanıp durdurun | Tablet yeniden başlamaz; logcat `yansıtma: 1920x1200@…`, 2560 görünmez | ☐ |
 | 22 | Ağ koparken (Wi-Fi'ı 3 sn kapatıp açın) hemen **Durdur**'a basın, 5 kez tekrarlayın | Uygulama kapanmaz (`RejectedExecutionException` yok) | ☐ |
+| 23 | Uygulamayı kaldırıp yeniden kurun, Ayarlar'ı açın | Görüntü kalitesinde **Dengeli** seçili | ☐ |
 
 **Sonuç bildirimi:** `adb logcat -s YansitMirror YansitEncoder YansitService` çıktısı ve alıcının `--verbose`
 günlüğü; 1 ve 3. adımlarda ölçülen süreler.

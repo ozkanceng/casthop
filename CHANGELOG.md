@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+### Değiştirildi / Changed
+- **Varsayılan görüntü kalitesi Dengeli (Android ve iPhone/iPad):** Kalabalık okul Wi-Fi'ında En iyi kalite sık donuyordu. Ayarlar'dan kaliteyi daha önce kendisi seçmiş olanların seçimi korunur. En iyi kalite Ayarlar'dan seçilebilir.
+
 ## [0.3.8] - 2026-11-10
 
 ### Düzeltildi / Fixed
