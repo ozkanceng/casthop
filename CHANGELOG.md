@@ -4,6 +4,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+## [0.3.10] - 2026-11-10
+
 ### Düzeltildi / Fixed
 - **Durağan slaytta kalite kendiliğinden düşmez (Android ve iPhone/iPad):** Ekran değişmezken saniyede 2 küçük kare gider. Bunlardan birinin biraz geç gelmesi ağ tıkanıklığı sanılıyor, veri hızı yarım dakikada birkaç kez düşüyor, kalite Zayıf ağ'a inip ancak bir dakika sonra dönüyordu. Artık az kare taşıyan ölçümler tıkanıklık sayılmaz; slayt değişince görüntü tam kaliteyle gelir.
 - **Samsung tabletin kendiliğinden yeniden başlaması giderildi (Android):** Ağ yavaşlayıp kalite bir basamak düştüğünde yeni görüntü kodlayıcısı eski, daha büyük bir kare alabiliyordu. Samsung'un Exynos kodlayıcı sürücüsü bu durumda tableti çökertiyordu. Ekran artık kodlayıcıya OpenGL üzerinden çizilir ve her kare tam kodlayıcının boyutunda olur; başka boyutta kare ona ulaşamaz.

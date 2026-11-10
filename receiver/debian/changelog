@@ -1,3 +1,10 @@
+casthop (0.3.10) unstable; urgency=medium
+
+  * Release 0.3.10 (sender: H.265 by default, GL screen path, rotated
+    portrait frames; receivers show rotated frames).
+
+ -- CastHop Authors <casthop@users.noreply.github.com>  Tue, 10 Nov 2026 22:59:44 +0300
+
 casthop (0.3.9) unstable; urgency=medium
 
   * Release 0.3.9 (sender: Balanced is the default quality).
