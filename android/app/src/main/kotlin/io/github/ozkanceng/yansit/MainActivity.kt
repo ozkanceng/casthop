@@ -1,7 +1,9 @@
 package io.github.ozkanceng.yansit
 
+import android.Manifest
 import android.app.Activity
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionConfig
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -21,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.ozkanceng.yansit.data.AppSettings
 import io.github.ozkanceng.yansit.data.BoardStore
@@ -116,6 +119,8 @@ private fun YansitApp() {
             else -> permissionsDenied = true
         }
     }
+    // Sound is off by default, so its permission is asked for when the user turns it on.
+    val audioPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val consentLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         consentInFlight = false
         MirrorController.onConsentResult(context, result.resultCode == Activity.RESULT_OK, result.resultCode, result.data)
@@ -193,12 +198,12 @@ private fun YansitApp() {
         )
         Screen.GUIDE -> GuideScreen(onScan = ::startScan, onCode = ::startCode, onBack = { screen = Screen.HOME })
         Screen.PERMISSIONS -> PermissionScreen(
-            missing = AppPermissions.missing(context).filter {
+            missing = AppPermissions.missing(context, settings.audioEnabled).filter {
                 (pendingBoard == null && !pendingCode) || it.permission == AppPermissions.ACCESS_LOCAL_NETWORK
             },
             deniedBefore = permissionsDenied,
             onRequest = {
-                val wanted = AppPermissions.missing(context).filter {
+                val wanted = AppPermissions.missing(context, settings.audioEnabled).filter {
                     (pendingBoard == null && !pendingCode) || it.permission == AppPermissions.ACCESS_LOCAL_NETWORK
                 }
                 permissionLauncher.launch(wanted.map { it.permission }.toTypedArray())
@@ -262,7 +267,14 @@ private fun YansitApp() {
                     settings.preset = p
                     settings.overrides = o
                 },
-                onAudioChange = { settings.audioEnabled = it },
+                onAudioChange = { on ->
+                    settings.audioEnabled = on
+                    if (on && ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) !=
+                        PackageManager.PERMISSION_GRANTED
+                    ) {
+                        audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                },
                 onBack = { screen = Screen.HOME },
             )
         }

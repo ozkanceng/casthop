@@ -28,7 +28,8 @@ public struct RememberedReceiver: Codable, Equatable, Identifiable, Sendable {
 
 public struct SenderSettings: Codable, Equatable, Sendable {
     public var preset = Preset.best
-    public var audioEnabled = true
+    /// Off by default: classrooms mostly share the picture, and the board's speakers may be loud.
+    public var audioEnabled = false
     public var hevcEnabled = false
     public var overrides = StreamOverrides()
 

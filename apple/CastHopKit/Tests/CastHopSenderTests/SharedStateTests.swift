@@ -52,6 +52,13 @@ final class SharedStateTests: XCTestCase {
         XCTAssertNil(s.selectedReceiver)
     }
 
+    func testSoundIsOffUntilTurnedOn() {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        XCTAssertFalse(SenderSettings().audioEnabled)
+        XCTAssertFalse(SharedStore(directory: dir).settings.audioEnabled)
+    }
+
     func testSettingsAndStatusSurviveAReload() {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }

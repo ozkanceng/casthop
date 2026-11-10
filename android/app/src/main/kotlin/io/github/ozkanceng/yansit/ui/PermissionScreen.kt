@@ -45,7 +45,8 @@ object AppPermissions {
         val required: Boolean,
     )
 
-    fun all(): List<Item> = buildList {
+    /** @param audio whether sound is shared: the audio permission is asked for only then. */
+    fun all(audio: Boolean = false): List<Item> = buildList {
         add(Item(Manifest.permission.CAMERA, R.string.perm_camera, R.string.perm_camera_reason, Icons.Rounded.CameraAlt, required = true))
         if (Build.VERSION.SDK_INT >= API_LOCAL_NETWORK) {
             add(Item(ACCESS_LOCAL_NETWORK, R.string.perm_local_network, R.string.perm_local_network_reason, Icons.Rounded.Wifi, required = true))
@@ -53,11 +54,13 @@ object AppPermissions {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(Item(Manifest.permission.POST_NOTIFICATIONS, R.string.perm_notifications, R.string.perm_notifications_reason, Icons.Rounded.Notifications, required = false))
         }
-        add(Item(Manifest.permission.RECORD_AUDIO, R.string.perm_audio, R.string.perm_audio_reason, Icons.AutoMirrored.Rounded.VolumeUp, required = false))
+        if (audio) {
+            add(Item(Manifest.permission.RECORD_AUDIO, R.string.perm_audio, R.string.perm_audio_reason, Icons.AutoMirrored.Rounded.VolumeUp, required = false))
+        }
     }
 
-    fun missing(context: Context): List<Item> =
-        all().filter { ContextCompat.checkSelfPermission(context, it.permission) != PackageManager.PERMISSION_GRANTED }
+    fun missing(context: Context, audio: Boolean = false): List<Item> =
+        all(audio).filter { ContextCompat.checkSelfPermission(context, it.permission) != PackageManager.PERMISSION_GRANTED }
 
     fun requiredGranted(context: Context): Boolean = missing(context).none { it.required }
 

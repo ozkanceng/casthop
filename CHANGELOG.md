@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+### Değiştirildi / Changed
+- **Ses aktarımı varsayılan olarak kapalı:** Android ve iPhone/iPad'de yalnız görüntü aktarılır. Ses, Ayarlar → "Sesi ekrana aktar" ile açılır. Android ilk açılışta ses iznini artık sormuyor; izin, ayar açılınca istenir. Ayarı daha önce kendisi açmış ya da kapatmış olanların seçimi korunur.
+
 ## [0.3.4] - 2026-11-10
 
 ### Eklendi / Added

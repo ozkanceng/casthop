@@ -34,9 +34,9 @@ class AppSettings(context: Context) {
         get() = prefs.getString(KEY_PRESET, null)?.let { runCatching { Preset.valueOf(it) }.getOrNull() } ?: Preset.BEST
         set(value) = prefs.edit { putString(KEY_PRESET, value.name) }
 
-    /** Tabletin sesini tahtaya aktar (AudioPlaybackCapture). */
+    /** Send the tablet's sound to the board (AudioPlaybackCapture). Off by default: classrooms mostly share the picture. */
     var audioEnabled: Boolean
-        get() = prefs.getBoolean(KEY_AUDIO, true)
+        get() = prefs.getBoolean(KEY_AUDIO, false)
         set(value) = prefs.edit { putBoolean(KEY_AUDIO, value) }
 
     /** Send the camera instead of the screen, for showing books and papers. */
