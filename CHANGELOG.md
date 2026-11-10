@@ -4,6 +4,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+## [0.3.7] - 2026-11-10
+
 ### Değiştirildi / Changed
 - **Yavaş ağda daha kısa donma (Android ve iPhone/iPad):** Ağ görüntüyü taşıyamazsa kalite artık 8 yerine 3 saniyede bir basamak iner; iki düşüş arasındaki bekleme 15 yerine 5 saniye. Kalite yükselişi eskisi gibi temkinli.
 - **Her tahta için son kalite hatırlanır:** Bir tahtada kalite Dengeli ya da Zayıf ağ'a inmişse sonraki yansıtma oradan başlar, başta donma olmaz. Ağ iyiyse kalite dakikada bir basamak yükselerek seçilen ayara döner. Gelişmiş ayarlarda elle değer verilmişse kalite değişmez.
