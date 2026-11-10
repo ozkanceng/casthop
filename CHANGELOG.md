@@ -4,6 +4,10 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+### Düzeltildi / Fixed
+- **Samsung tabletin kendiliğinden yeniden başlaması (Android):** En iyi kalitede 4K alıcıya bağlanınca uygulama 2560×1600 görüntü istiyordu; Samsung Exynos kodlayıcı sürücüsü bu boyutu kurarken çöktü ve tablet yeniden başladı. Görüntü genişliği gelişmiş ayarlar dahil en çok 1920 piksel oldu; tahtada fark görülmez, ağ yükü de azalır.
+- **Yansıtma biterken uygulamanın kapanması (Android):** Bağlantı yeniden kurulurken yansıtma durdurulursa uygulama hata verip kapanabiliyordu.
+
 ## [0.3.7] - 2026-11-10
 
 ### Değiştirildi / Changed

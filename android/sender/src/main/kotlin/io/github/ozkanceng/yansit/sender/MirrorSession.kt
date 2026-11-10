@@ -16,8 +16,9 @@ import io.github.ozkanceng.yansit.protocol.client.SenderClient
 import io.github.ozkanceng.yansit.protocol.client.Session
 import java.io.IOException
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
@@ -98,9 +99,15 @@ class MirrorSession(
     @Volatile private var session: Session = initial
     private val clock = ClockSync()
     private val ended = AtomicBoolean(false)
-    private val scheduler: ScheduledExecutorService = Executors.newScheduledThreadPool(2) { r ->
-        Thread(r, "mirror-ticker").apply { isDaemon = true }
-    }
+    /**
+     * Work handed in after [end] shut it down is dropped, not thrown: a RESUME or an encoder callback can race the
+     * end of the session, and the default policy crashed the app with RejectedExecutionException.
+     */
+    private val scheduler: ScheduledExecutorService = ScheduledThreadPoolExecutor(
+        2,
+        { r -> Thread(r, "mirror-ticker").apply { isDaemon = true } },
+        ThreadPoolExecutor.DiscardPolicy(),
+    )
     @Volatile private var video: MediaChannel? = null
     @Volatile private var source: VideoSource? = null
     @Volatile private var audio: MediaChannel? = null

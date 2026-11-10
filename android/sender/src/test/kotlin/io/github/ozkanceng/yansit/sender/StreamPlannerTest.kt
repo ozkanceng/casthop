@@ -121,11 +121,14 @@ class StreamPlannerTest {
     }
 
     @Test
-    fun uses2560OnlyFor4kBoardWithCapableEncoder() {
+    fun neverGoesAbove1920EvenForA4kBoardOrAnOverride() {
         val big = FakeEncoder(maxW = 4096, maxH = 2304, maxPixelsPerSec = 4096L * 2304 * 30)
         val board4k = ReceiverDisplay(3840, 2160, 60)
         val plan = StreamPlanner.plan(2560, 1600, Preset.BEST, board4k, listOf(big))!!
-        assertEquals(2560, plan.width)
+        assertEquals(1920, plan.width)
+        val forced = StreamPlanner.plan(2560, 1600, Preset.BEST, board4k, listOf(big), StreamOverrides(longSide = 2560))!!
+        assertEquals(1920, forced.width)
+        assertEquals(listOf(1280, 1600, 1920), StreamPlanner.supportedLongSides(listOf(big), 2560, 1600))
         val planHd = StreamPlanner.plan(2560, 1600, Preset.BEST, board4k, listOf(FakeEncoder()))!!
         assertEquals(1728, planHd.width)
     }

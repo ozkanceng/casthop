@@ -39,8 +39,12 @@ enum class Preset(
     val higher: Preset? get() = entries.getOrNull(ordinal - 1)
 
     companion object {
-        /** En iyi kalitede alıcı 4K ise ve kodlayıcı izin verirse uzun kenar tavanı. */
-        const val BEST_4K_LONG_SIDE: Int = 2560
+        /**
+         * Hard limit for the encoder's long side, advanced settings included. Samsung's Exynos encoder driver
+         * (`exynos_mfc`) crashed the whole tablet (kernel panic) while setting up a 2560x1600 H.264 encoder; from a
+         * board 2-5 m away 1920 looks the same and needs less of the network.
+         */
+        const val MAX_LONG_SIDE: Int = 1920
 
         /**
          * The preset a session starts at: the one the network last settled on for this receiver, so a slow link does
@@ -97,7 +101,7 @@ object StreamPlanner {
         val ordered = encoders.sortedByDescending { it.hardware } // donanım önce, aynı türde sıra korunur
         val fpsWanted = min(overrides.fps ?: preset.fps, receiver?.refreshHz?.coerceAtLeast(30) ?: 60)
         for (enc in ordered) {
-            val longCap = longSideCap(preset, receiver, enc, overrides)
+            val longCap = longSideCap(preset, overrides)
             val high = largestSupportedSize(sourceWidth, sourceHeight, longCap, receiver, enc, fpsWanted)
             val low = if (fpsWanted > 30) largestSupportedSize(sourceWidth, sourceHeight, longCap, receiver, enc, 30) else null
             // Yüksek kare hızı ancak çözünürlükten fazla ödün vermiyorsa seçilir (metin okunurluğu önce gelir).
@@ -127,7 +131,7 @@ object StreamPlanner {
 
     /** Ayarlar ekranında gösterilecek uzun kenar seçenekleri: kodlayıcının 30 fps'te desteklediği. */
     fun supportedLongSides(encoders: List<VideoEncoderCaps>, sourceWidth: Int, sourceHeight: Int): List<Int> =
-        listOf(1280, 1600, 1920, 2560).filter { side ->
+        listOf(1280, 1600, 1920).filter { side ->
             val (w, h) = fit(sourceWidth, sourceHeight, side, null)
             encoders.any { enc ->
                 val aw = alignDown(w, enc.widthAlignment)
@@ -136,15 +140,8 @@ object StreamPlanner {
             }
         }
 
-    private fun longSideCap(preset: Preset, receiver: ReceiverDisplay?, enc: VideoEncoderCaps, o: StreamOverrides): Int {
-        o.longSide?.let { return it }
-        if (preset == Preset.BEST && receiver != null && max(receiver.width, receiver.height) >= 3840 &&
-            enc.isSupported(Preset.BEST_4K_LONG_SIDE, Preset.BEST_4K_LONG_SIDE * 9 / 16, 30)
-        ) {
-            return Preset.BEST_4K_LONG_SIDE
-        }
-        return preset.longSideCap
-    }
+    private fun longSideCap(preset: Preset, o: StreamOverrides): Int =
+        min(o.longSide ?: preset.longSideCap, Preset.MAX_LONG_SIDE)
 
     private fun largestSupportedSize(
         sw: Int,

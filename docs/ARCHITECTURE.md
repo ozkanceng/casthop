@@ -57,7 +57,7 @@ Tek dinleme portu, üç TLS bağlantısı (CONTROL, VIDEO, AUDIO). İlk bağlant
 
 | Ön ayar | Çözünürlük tavanı | FPS | Bit hızı başlangıç / tavan / taban |
 |---|---|---|---|
-| En iyi kalite | 1920 uzun kenar (alıcı 4K + kodlayıcı izin verirse 2560) | 60 | 16 / 24 / 4 Mbps |
+| En iyi kalite | 1920 uzun kenar (Android'de gelişmiş ayar dahil üst sınır; iOS'ta alıcı 4K + kodlayıcı izin verirse 2560) | 60 | 16 / 24 / 4 Mbps |
 | Dengeli | 1600 | 60 | 8 / 12 / 2 Mbps |
 | Zayıf ağ | 1280 | 30 | 3 / 5 / 0,8 Mbps |
 
