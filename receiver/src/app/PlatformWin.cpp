@@ -153,4 +153,6 @@ bool setAutostartEnabled(bool on, const QString& command) {
     return true;
 }
 
+void migrateLegacyEntries(const QString&) {}
+
 } // namespace yansit::platform

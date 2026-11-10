@@ -1,0 +1,57 @@
+#!/bin/sh
+# Clears what portable installs (Yansıt 0.1, CastHop up to 0.3.3) left in local users' homes. Their menu entry hid this
+# package's entry and started the old program, and their autostart entry started it at login. A portable copy next to
+# this package is never wanted: both would take port 47800.
+set -e
+
+# Runs as each user (runuser), so nothing in a home is followed or written with root's rights. $1 is the home.
+CLEANUP='
+home=$1
+opt="$home/.local/opt/yansit"
+apps="$home/.local/share/applications"
+auto="$home/.config/autostart"
+old=io.github.ozkanceng.yansit.receiver.desktop
+new=io.github.ozkanceng.casthop.receiver.desktop
+portable() { grep -q "^Exec=\"\{0,1\}$opt/" "$1" 2>/dev/null; }
+
+# Menu: any entry under the old name, and a portable install'\''s entry under the new one.
+rm -f "$apps/$old"
+if portable "$apps/$new"; then rm -f "$apps/$new"; fi
+
+# Autostart: kept on, now starting this package; dropped when the user had turned it off.
+for f in "$auto/$old" "$auto/$new"; do
+    [ -f "$f" ] || continue
+    if [ "$f" = "$auto/$new" ] && ! portable "$f"; then continue; fi
+    if grep -qE "^(Hidden=true|X-GNOME-Autostart-enabled=false)" "$f"; then
+        rm -f "$f"
+        continue
+    fi
+    sed -e "s|^Exec=.*|Exec=\"/usr/bin/casthop\"|" -e "s|^Name=.*|Name=CastHop|" \
+        -e "s|^Name\[en\]=.*|Name[en]=CastHop|" "$f" >"$f.tmp" && mv "$f.tmp" "$auto/$new"
+    if [ "$f" != "$auto/$new" ]; then rm -f "$f"; fi
+done
+
+# The portable program itself, stopped first if it is running.
+if [ -x "$opt/casthop" ] || [ -x "$opt/yansit-receiver" ]; then
+    pkill -f "$opt/" 2>/dev/null || true
+    rm -rf "$opt"
+fi
+'
+
+clean_homes() {
+    command -v runuser >/dev/null 2>&1 || return 0
+    # Local accounts only: a directory service may list thousands of users.
+    while IFS=: read -r user _ uid _ _ home _; do
+        case "$uid" in '' | *[!0-9]*) continue ;; esac
+        [ "$uid" -ge 1000 ] && [ "$uid" -lt 60000 ] && [ -d "$home" ] || continue
+        runuser -u "$user" -- sh -c "$CLEANUP" sh "$home" || true
+    done </etc/passwd
+}
+
+if [ "$1" = "configure" ]; then
+    clean_homes || true
+fi
+
+#DEBHELPER#
+
+exit 0

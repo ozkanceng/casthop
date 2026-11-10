@@ -25,9 +25,41 @@ void onSignal(int) {
     [[maybe_unused]] const auto n = ::write(g_signalPipe[1], &c, 1);
 }
 
+const QString kLegacyEntry = QStringLiteral("io.github.ozkanceng.yansit.receiver.desktop");
+
+QString entryName() { return QLatin1String(kDesktopId) + QStringLiteral(".desktop"); }
+
+QString autostartFile(const QString& configHome) { return configHome + QStringLiteral("/autostart/") + entryName(); }
+
 QString autostartFile() {
-    return QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation) +
-           QStringLiteral("/autostart/io.github.ozkanceng.yansit.receiver.desktop");
+    return autostartFile(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation));
+}
+
+bool writeAutostart(const QString& path, const QString& command) {
+    QDir().mkpath(QFileInfo(path).absolutePath());
+    QSaveFile f(path);
+    if (!f.open(QIODevice::WriteOnly)) {
+        qCWarning(lcPlatform) << "otomatik başlatma dosyası yazılamadı:" << path;
+        return false;
+    }
+    f.write("[Desktop Entry]\nType=Application\nName=CastHop\nName[en]=CastHop\n"
+            "Icon=io.github.ozkanceng.yansit.receiver\nExec=\"" + command.toUtf8() + "\"\n"
+            "X-GNOME-Autostart-enabled=true\nNoDisplay=false\n");
+    if (!f.commit()) {
+        qCWarning(lcPlatform) << "otomatik başlatma dosyası yazılamadı:" << path;
+        return false;
+    }
+    return true;
+}
+
+/// An autostart entry the user turned off in the desktop's startup settings.
+bool turnedOff(const QByteArray& entry) {
+    for (const QByteArray& line : entry.split('\n')) {
+        const QByteArray l = line.trimmed();
+        if (l == "Hidden=true" || l == "X-GNOME-Autostart-enabled=false")
+            return true;
+    }
+    return false;
 }
 
 } // namespace
@@ -70,20 +102,42 @@ bool setAutostartEnabled(bool on, const QString& command) {
         qCWarning(lcPlatform) << "otomatik başlatma dosyası silinemedi:" << path;
         return false;
     }
-    QDir().mkpath(QFileInfo(path).absolutePath());
-    QSaveFile f(path);
-    if (!f.open(QIODevice::WriteOnly)) {
-        qCWarning(lcPlatform) << "otomatik başlatma dosyası yazılamadı:" << path;
-        return false;
+    return writeAutostart(path, command);
+}
+
+bool migrateLegacyEntries(const QString& dataHome, const QStringList& dataDirs, const QString& configHome,
+                          const QString& command) {
+    bool changed = false;
+    const QString legacyMenu = dataHome + QStringLiteral("/applications/") + kLegacyEntry;
+    if (QFile::exists(legacyMenu)) {
+        // Without a CastHop entry, the old one is the only way to start the program from the menu.
+        bool replaced = QFile::exists(dataHome + QStringLiteral("/applications/") + entryName());
+        for (const QString& dir : dataDirs)
+            replaced = replaced || QFile::exists(dir + QStringLiteral("/applications/") + entryName());
+        if (replaced && QFile::remove(legacyMenu)) {
+            qCInfo(lcPlatform) << "eski menü kaydı kaldırıldı:" << legacyMenu;
+            changed = true;
+        }
     }
-    f.write("[Desktop Entry]\nType=Application\nName=CastHop\nName[en]=CastHop\n"
-            "Icon=io.github.ozkanceng.yansit.receiver\nExec=\"" + command.toUtf8() + "\"\n"
-            "X-GNOME-Autostart-enabled=true\nNoDisplay=false\n");
-    if (!f.commit()) {
-        qCWarning(lcPlatform) << "otomatik başlatma dosyası yazılamadı:" << path;
-        return false;
+    const QString legacyAutostart = configHome + QStringLiteral("/autostart/") + kLegacyEntry;
+    QFile old(legacyAutostart);
+    if (old.open(QIODevice::ReadOnly)) {
+        const bool on = !turnedOff(old.readAll());
+        old.close();
+        if ((!on || writeAutostart(autostartFile(configHome), command)) && QFile::remove(legacyAutostart)) {
+            qCInfo(lcPlatform) << "eski otomatik başlatma kaydı taşındı:" << legacyAutostart;
+            changed = true;
+        }
     }
-    return true;
+    return changed;
+}
+
+void migrateLegacyEntries(const QString& command) {
+    const QString dataHome = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    QStringList dataDirs = QStandardPaths::standardLocations(QStandardPaths::GenericDataLocation);
+    dataDirs.removeAll(dataHome);
+    migrateLegacyEntries(dataHome, dataDirs, QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation),
+                         command);
 }
 
 } // namespace yansit::platform

@@ -29,4 +29,20 @@ QStringList defaultGstPluginDirs();
 bool autostartEnabled();
 bool setAutostartEnabled(bool on, const QString& command);
 
+/// Name of the desktop entry, without ".desktop": the menu entry, the autostart entry and the window's app id.
+inline constexpr char kDesktopId[] = "io.github.ozkanceng.casthop.receiver";
+
+/// Up to 0.3.3 the desktop entry was named "io.github.ozkanceng.yansit.receiver". A user-level menu entry under that
+/// name, left by a Yansıt 0.1 portable install, hid the system entry: the menu kept the old name and could start the
+/// old program. Removes that menu entry once a CastHop entry is installed, and moves an enabled autostart entry to the
+/// new name, pointing at `command`. Does nothing on Windows.
+void migrateLegacyEntries(const QString& command);
+
+#ifndef _WIN32
+/// migrateLegacyEntries() with the XDG directories given: `dataHome` is the user's, `dataDirs` the system's.
+/// Returns whether anything changed.
+bool migrateLegacyEntries(const QString& dataHome, const QStringList& dataDirs, const QString& configHome,
+                          const QString& command);
+#endif
+
 } // namespace yansit::platform

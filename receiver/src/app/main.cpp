@@ -234,7 +234,7 @@ int runGui(int argc, char* argv[]) {
     yansit::installDiagnosticLog();
     logEnvironment();
     QGuiApplication::setApplicationDisplayName(QStringLiteral("CastHop"));
-    QGuiApplication::setDesktopFileName(QStringLiteral("io.github.ozkanceng.yansit.receiver"));
+    QGuiApplication::setDesktopFileName(QLatin1String(yansit::platform::kDesktopId));
 
     QCommandLineParser parser;
     parser.setApplicationDescription(QStringLiteral("CastHop — akıllı tahta alıcısı / whiteboard receiver"));
@@ -249,6 +249,7 @@ int runGui(int argc, char* argv[]) {
         return 2;
     // Kalıcı ayarlar; komut satırı seçenekleri bu çalışma için önceliklidir.
     yansit::ReceiverSettings settings;
+    settings.migrateLegacyEntries();
     // The UI never uses a sink that draws nothing: without GL, frames are drawn on the CPU.
     bool gl = glPlugin && !settings.compatibleVideo() && qEnvironmentVariable("YANSIT_RENDERER") != QLatin1String("cpu");
     if (gl && !loadGlSink()) {

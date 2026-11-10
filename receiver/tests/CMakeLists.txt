@@ -16,6 +16,7 @@ add_executable(yansit_tests
     test_mdns.cpp
     test_media.cpp
     test_pairing.cpp
+    test_platform.cpp
     test_session.cpp
     test_vectors.cpp
 )

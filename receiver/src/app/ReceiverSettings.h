@@ -45,10 +45,14 @@ public:
     bool compatibleVideo() const;
     void setCompatibleVideo(bool on);
 
+    /// Moves menu and autostart entries left by earlier versions (platform::migrateLegacyEntries).
+    void migrateLegacyEntries();
+
 signals:
     void changed();
 
 private:
+    static QString launchCommand();
     void write(const QString& key, const QVariant& value);
     QSettings m_settings;
 };

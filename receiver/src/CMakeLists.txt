@@ -133,7 +133,7 @@ if(WIN32)
 else()
     include(GNUInstallDirs)
     install(TARGETS casthop RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-    install(FILES ${PROJECT_SOURCE_DIR}/data/io.github.ozkanceng.yansit.receiver.desktop
+    install(FILES ${PROJECT_SOURCE_DIR}/data/io.github.ozkanceng.casthop.receiver.desktop
         DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
     install(FILES ${PROJECT_SOURCE_DIR}/data/icons/io.github.ozkanceng.yansit.receiver.svg
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)

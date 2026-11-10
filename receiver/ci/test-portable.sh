@@ -41,15 +41,22 @@ QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QT_FATAL_WARNINGS=1 XDG_RUNT
 # The GL sink must load from the bundle; a plugin that fails to load quietly costs GPU rendering.
 grep -q "qml6glsink eklentisi: var" "$WORK/gui.log" || { cat "$WORK/gui.log"; exit 1; }
 
-# Upgrade from an earlier portable install: the autostart entry must keep working.
+# Upgrade from an earlier portable install: the autostart entry must keep working, under the new name, and the old
+# menu entry must not stay next to the new one.
 HOME_DIR="$WORK/home"
-ENTRY="$HOME_DIR/.config/autostart/io.github.ozkanceng.yansit.receiver.desktop"
-mkdir -p "$(dirname "$ENTRY")"
+OLD_ENTRY="$HOME_DIR/.config/autostart/io.github.ozkanceng.yansit.receiver.desktop"
+ENTRY="$HOME_DIR/.config/autostart/io.github.ozkanceng.casthop.receiver.desktop"
+OLD_MENU="$HOME_DIR/.local/share/applications/io.github.ozkanceng.yansit.receiver.desktop"
+mkdir -p "$(dirname "$OLD_ENTRY")" "$(dirname "$OLD_MENU")"
 printf '[Desktop Entry]\nType=Application\nName=Yansıt Alıcı\nName[en]=Yansıt Receiver\nExec="%s"\n' \
-    "$HOME_DIR/.local/opt/yansit/bin/yansit-receiver" >"$ENTRY"
+    "$HOME_DIR/.local/opt/yansit/bin/yansit-receiver" >"$OLD_ENTRY"
+printf '[Desktop Entry]\nType=Application\nName=Yansıt Alıcı\nExec=%s\n' \
+    "$HOME_DIR/.local/opt/yansit/yansit-receiver" >"$OLD_MENU"
 HOME="$HOME_DIR" XDG_CONFIG_HOME="" sh "$DIR/install-user.sh"
 grep -qx "Exec=\"$HOME_DIR/.local/opt/yansit/casthop\"" "$ENTRY" || { cat "$ENTRY"; exit 1; }
 grep -qx "Name=CastHop" "$ENTRY" || { cat "$ENTRY"; exit 1; }
+[ ! -e "$OLD_ENTRY" ] && [ ! -e "$OLD_MENU" ]
+grep -qx "Name=CastHop" "$HOME_DIR/.local/share/applications/io.github.ozkanceng.casthop.receiver.desktop"
 [ -x "$HOME_DIR/.local/opt/yansit/casthop" ]
 [ -x "$HOME_DIR/.local/opt/yansit/yansit-receiver" ]
 echo "taşınabilir paket temiz sistemde çalışıyor"

@@ -96,13 +96,20 @@ mkdir -p "$DEST" "$HOME/.local/share/applications" "$HOME/.local/share/icons/hic
 cp -r "$HERE"/. "$DEST"/
 cp "$HERE/share/icons/hicolor/scalable/apps/io.github.ozkanceng.yansit.receiver.svg" \
     "$HOME/.local/share/icons/hicolor/scalable/apps/"
-sed "s|^Exec=.*|Exec=$DEST/casthop|" "$HERE/share/applications/io.github.ozkanceng.yansit.receiver.desktop" \
-    > "$HOME/.local/share/applications/io.github.ozkanceng.yansit.receiver.desktop"
-# Earlier versions pointed this entry at the bare binary, which is gone and needs the launcher anyway.
-AUTOSTART="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/io.github.ozkanceng.yansit.receiver.desktop"
-if grep -q "^Exec=\"\?$DEST/" "$AUTOSTART" 2>/dev/null; then
-    sed -i -e "s|^Exec=.*|Exec=\"$DEST/casthop\"|" -e "s|^Name=.*|Name=CastHop|" \
-        -e "s|^Name\[en\]=.*|Name[en]=CastHop|" "$AUTOSTART"
+sed "s|^Exec=.*|Exec=$DEST/casthop|" "$HERE/share/applications/io.github.ozkanceng.casthop.receiver.desktop" \
+    > "$HOME/.local/share/applications/io.github.ozkanceng.casthop.receiver.desktop"
+# Up to 0.3.3 the entries had another name. The old menu entry would show twice, under the old name.
+rm -f "$HOME/.local/share/applications/io.github.ozkanceng.yansit.receiver.desktop"
+# An old autostart entry of this install moves to the new name, pointing at the launcher: earlier versions pointed it
+# at the bare binary, which is gone and needs the launcher anyway. One the user turned off is dropped.
+AUTOSTART_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/autostart"
+OLD_AUTOSTART="$AUTOSTART_DIR/io.github.ozkanceng.yansit.receiver.desktop"
+if grep -q "^Exec=\"\?$DEST/" "$OLD_AUTOSTART" 2>/dev/null; then
+    if ! grep -qE "^(Hidden=true|X-GNOME-Autostart-enabled=false)" "$OLD_AUTOSTART"; then
+        printf '[Desktop Entry]\nType=Application\nName=CastHop\nName[en]=CastHop\nIcon=io.github.ozkanceng.yansit.receiver\nExec="%s"\nX-GNOME-Autostart-enabled=true\nNoDisplay=false\n' \
+            "$DEST/casthop" >"$AUTOSTART_DIR/io.github.ozkanceng.casthop.receiver.desktop"
+    fi
+    rm -f "$OLD_AUTOSTART"
 fi
 echo "Kuruldu: $DEST — menüde 'CastHop'."
 INSTALL

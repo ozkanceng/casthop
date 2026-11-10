@@ -63,6 +63,17 @@ alıcıyı `casthop --pairing-file ~/yansit-pairing.json` ile başlatıp dosyada
 | 9 | 7'yi tekrarlayıp **Reddet** | Diyalog kapanır, eski akış sürer; ikinci gönderici `BUSY_DENIED` | ☐ |
 | 10 | Alıcı açıkken menüden ikinci kez açın | "Port 47800 kullanımda" uyarısı (çökme yok) | ☐ |
 
+### Eski Yansıt kurulumundan yükseltme
+
+Daha önce Yansıt 0.1 (`.deb` ya da taşınabilir paket) kurulmuş bir tahtada:
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Eski Yansıt açıkken yeni `.deb`'i kurun | Eski program kapanır; `~/.local/opt/yansit` silinir | ☐ |
+| 2 | Menüyü açın (gerekirse oturumu kapatıp açın) | Menüde yalnız **CastHop**; "Yansıt Alıcı" yok | ☐ |
+| 3 | Menüden **CastHop**'u açın | Pencerenin altında yeni sürüm numarası (0.1.2 değil) | ☐ |
+| 4 | Eskiden otomatik başlatma açıksa tahtayı yeniden başlatın | Yeni CastHop kendiliğinden açılır | ☐ |
+
 ### Sonuç bildirimi
 
 - "Hazırlık 3" komutlarının çıktısı

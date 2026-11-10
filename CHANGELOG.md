@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+### Düzeltildi / Fixed
+- Daha önce Yansıt kurulmuş tahtalarda menüde hâlâ "Yansıt Alıcı" görünüyordu ve bu kısayol eski programı (ör. 0.1.2) açıyordu. Menü kaydının adı `io.github.ozkanceng.casthop.receiver` oldu. `.deb` kurulurken tahtadaki kullanıcıların eski taşınabilir kurulumu (`~/.local/opt/yansit`) ve menü kaydı kendiliğinden silinir; çalışıyorsa eski program kapatılır; açık olan otomatik başlatma yeni programa yönlendirilir, kapatılmışsa kapalı kalır. CastHop da ilk açılışta aynı kayıtları denetler.
+
 ## [0.3.3] - 2026-11-05
 
 ### Eklendi / Added

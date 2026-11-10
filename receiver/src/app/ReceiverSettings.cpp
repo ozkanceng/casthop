@@ -66,12 +66,16 @@ bool ReceiverSettings::autostart() const { return platform::autostartEnabled(); 
 void ReceiverSettings::setAutostart(bool on) {
     if (on == autostart())
         return;
-    // The portable binary cannot start without the environment its launcher sets up.
-    QString command = qEnvironmentVariable("YANSIT_LAUNCHER");
-    if (command.isEmpty())
-        command = QCoreApplication::applicationFilePath();
-    if (platform::setAutostartEnabled(on, command))
+    if (platform::setAutostartEnabled(on, launchCommand()))
         emit changed();
+}
+
+void ReceiverSettings::migrateLegacyEntries() { platform::migrateLegacyEntries(launchCommand()); }
+
+QString ReceiverSettings::launchCommand() {
+    // The portable binary cannot start without the environment its launcher sets up.
+    const QString launcher = qEnvironmentVariable("YANSIT_LAUNCHER");
+    return launcher.isEmpty() ? QCoreApplication::applicationFilePath() : launcher;
 }
 
 } // namespace yansit
