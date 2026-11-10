@@ -52,6 +52,7 @@ fun SettingsScreen(
     onHevcChange: (Boolean) -> Unit,
     onLatency: () -> Unit,
     onBack: () -> Unit,
+    mirroring: Boolean = false,
 ) {
     var audio by remember { mutableStateOf(audioEnabled) }
     var hevc by remember { mutableStateOf(hevcEnabled) }
@@ -64,6 +65,14 @@ fun SettingsScreen(
     }
 
     SubScreen(stringResource(R.string.action_settings), onBack) {
+        if (mirroring) {
+            // Settings are read when mirroring starts.
+            Text(
+                stringResource(R.string.settings_next_session),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+        }
         SectionCard(stringResource(R.string.settings_quality), Modifier.fillMaxWidth()) {
             Column(Modifier.selectableGroup()) {
                 PresetRow(Preset.BEST, R.string.preset_best, R.string.preset_best_desc, current) { update(p = it) }

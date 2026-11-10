@@ -283,6 +283,12 @@ private struct SessionView: View {
                 .buttonStyle(OutlineButtonStyle())
             }
             stopButton
+            Button {
+                model.path.append(.settings)
+            } label: {
+                Label("Settings", systemImage: "gearshape")
+            }
+            .buttonStyle(OutlineButtonStyle())
         }
     }
 

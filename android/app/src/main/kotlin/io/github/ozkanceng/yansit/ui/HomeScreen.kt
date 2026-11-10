@@ -312,6 +312,9 @@ private fun SessionView(state: MirrorState, actions: HomeActions) {
                     }
                 }
                 BigButton(R.string.action_stop_mirroring, Icons.Rounded.Stop, actions.onStop, width, destructive = true)
+                OutlinedButton(onClick = actions.onSettings, modifier = width.heightIn(min = 56.dp)) {
+                    ButtonLabel(R.string.action_settings, Icons.Rounded.Settings)
+                }
             }
             MirrorState.Idle, is MirrorState.Ended -> Unit
         }

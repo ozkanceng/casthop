@@ -392,6 +392,23 @@
         }
       }
     },
+    "Changes take effect the next time you mirror.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changes take effect the next time you mirror."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Değişiklikler bir sonraki yansıtmada geçerli olur."
+          }
+        }
+      }
+    },
     "Check that \"Play sound on the board\" is on in Settings. Some apps do not allow their audio to be shared.": {
       "extractionState": "manual",
       "localizations": {

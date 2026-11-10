@@ -276,6 +276,7 @@ private fun YansitApp() {
                     }
                 },
                 onBack = { screen = Screen.HOME },
+                mirroring = state is MirrorState.Mirroring,
             )
         }
     }

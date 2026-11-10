@@ -4,6 +4,9 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+### Eklendi / Added
+- Yansıtma sırasındaki ekrana **Ayarlar** düğmesi eklendi (Android ve iPhone/iPad). Yansıtma sürerken ayarlar açılırsa değişikliklerin bir sonraki yansıtmada geçerli olacağı yazılır.
+
 ## [0.3.5] - 2026-11-10
 
 ### Değiştirildi / Changed

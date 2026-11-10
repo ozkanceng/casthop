@@ -418,6 +418,13 @@ struct SettingsView: View {
     var body: some View {
         let options = model.encoderOptions
         SubScreen(title: "Settings") {
+            if case .broadcast = model.phase {
+                // Settings are read when a broadcast starts.
+                Text("Changes take effect the next time you mirror.")
+                    .font(.body)
+                    .foregroundStyle(Tokens.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             SectionCard(title: "Picture quality") {
                 presetRow(.best, "Best quality", "1080p, 60 fps. 5 GHz Wi-Fi recommended.")
                 presetRow(.balanced, "Balanced", "Lower bitrate, smooth motion.")

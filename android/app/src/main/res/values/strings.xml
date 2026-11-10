@@ -105,6 +105,7 @@
     <string name="audio_off_permission">Ses aktarılmıyor: ses izni verilmedi.</string>
     <string name="audio_unsupported">Bu tablet ile ekran arasında ses aktarılamıyor.</string>
     <string name="audio_failed">Ses aktarılamadı; görüntü sürüyor.</string>
+    <string name="settings_next_session">Değişiklikler bir sonraki yansıtmada geçerli olur.</string>
     <string name="settings_audio">Sesi ekrana aktar</string>
     <string name="settings_audio_desc">Video ve uygulama sesleri ekranın hoparlöründen çalar. Bazı uygulamalar (ör. telefon görüşmeleri, bazı video uygulamaları) sesini paylaşmaya izin vermez.</string>
     <string name="action_code">Kodla bağlan (QR olmadan)</string>

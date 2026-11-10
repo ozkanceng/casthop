@@ -153,6 +153,7 @@ ayarların yalnız desteklenen değerleri gösterdiğini doğrulamak.
 | 13 | **Ayarlar** → Gelişmiş | Yalnız tabletin desteklediği çözünürlük/fps/bit hızı seçenekleri görünür | ☐ |
 | 14 | **Zayıf ağ** seçip bağlanın | Kartta ≈ 30 fps ve ≤ 5 Mbps | ☐ |
 | 15 | Yansıtırken ekranı kilitleyin (Android 15+) | Yansıtma durur; uygulamada "Yansıtma durdu" mesajı, tahta bekleme ekranında | ☐ |
+| 16 | Yansıtırken **Ayarlar**'a dokunun, sonra geri dönün | Ayarlar açılır, üstte "Değişiklikler bir sonraki yansıtmada geçerli olur."; yansıtma kesilmez; geri dönünce yansıtma ekranı | ☐ |
 
 ### Sonuç bildirimi
 
