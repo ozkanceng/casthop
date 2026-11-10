@@ -4,6 +4,8 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+## [0.3.4] - 2026-11-10
+
 ### Eklendi / Added
 - iPhone ve iPad göndericisi App Store Connect'e yüklendi (`CastHop: Ekran Yansıtma`); mağaza metinleri (Türkçe ve İngilizce) ve ekran görüntüleri `apple/store/` altında.
 

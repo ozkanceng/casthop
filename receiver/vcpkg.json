@@ -1,6 +1,6 @@
 {
   "name": "casthop-receiver",
-  "version-string": "0.3.3",
+  "version-string": "0.3.4",
   "description": "Windows build dependencies. Linux uses Debian 12 packages and ignores this file.",
   "dependencies": [
     "gtest",
