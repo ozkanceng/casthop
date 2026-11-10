@@ -1,3 +1,9 @@
+casthop (0.3.8) unstable; urgency=medium
+
+  * Release 0.3.8 (sender: encoder capped at 1920, no crash after session end).
+
+ -- CastHop Authors <casthop@users.noreply.github.com>  Tue, 10 Nov 2026 16:00:00 +0300
+
 casthop (0.3.7) unstable; urgency=medium
 
   * Release 0.3.7 (sender: faster quality step-down, last quality per board).
