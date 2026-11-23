@@ -1,3 +1,12 @@
+casthop (0.4.0) unstable; urgency=medium
+
+  * Release 0.4.0 (hotspot & weak-network streaming stability across
+    Pardus/Windows/macOS/Android/iOS, generic "etap" board disambiguation
+    with #XXXX badge, 6-cell OTP & Manual IP flows, nicknames/favorites,
+    and cross-platform UI polish).
+
+ -- CastHop Authors <casthop@users.noreply.github.com>  Tue, 24 Nov 2026 01:30:00 +0300
+
 casthop (0.3.10) unstable; urgency=medium
 
   * Release 0.3.10 (sender: H.265 by default, GL screen path, rotated

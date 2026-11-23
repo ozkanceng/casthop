@@ -4,6 +4,27 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+## [0.4.0] - 2026-11-24
+
+### Düzeltildi / Fixed
+- **Mobil hotspot ve zayıf ağda donma/takılma giderildi (Pardus ETAP, Windows, Android, iOS):**
+  - Pardus ETAP / Windows alıcısında çözücü ile çizim arasına sızıntılı kuyruk (`queue leaky=downstream max-size-buffers=2`) ve `config-interval=-1` eklendi; çözücü/renk dönüşümü iş parçacıkları çekirdek sayısına uyarlandı; normal yansıtmada her kare YUV taraması (`handleDecodedProbe`) 15 karede bire indirildi; medya soketi okuma tamponu (`512 KiB`) ve ana döngü okuma dilimi sınırlandı.
+  - Android ve iOS (`CastHopKit`) göndericilerinde `CaptureGate` boşaltma ve yeniden bağlanma sırasında kodlayıcıyı bekleterek sahte IDR fırtınasını önler; `checkLatencyBudget` tek raporda 1 sn tam duraklama yerine önce bit hızı düşürüp en fazla `250 ms` boşaltma uygular; `BitrateController` artık mutlak yüksek gecikme platosunu ve `PING/PONG` RTT sıçramalarını algılar.
+  - Android `PinnedTls` soket gönderim tamponları (`SO_SNDBUF`) `connect()` öncesinde akış türüne ve bit hızına göre (`32–256 KiB`) ayarlanır; iOS `BroadcastEngine` `NWPathMonitor` ile ağ değişimlerini yakalar ve kesintisiz yeniden bağlanır.
+- **Aynı adlı `"etap"` tahtaları artık karışmıyor (Pardus ETAP, Windows, macOS, iPad, Apple TV, Android, iOS):** Varsayılan genel hostname'lerde (`etap`, `pardus` vb.) Pardus/Windows alıcı otomatik olarak sertifika parmak izinin ilk 4 hex karakteriyle (`etap-A4F2`) yayın yapar; tüm alıcı bekleme ekranları `#XXXX` kimlik rozetini ve port bilgisini gösterir. Android ve iOS keşif/hatırlanan tahta listeleri `IP .xxx · #XXXX` bilgisiyle her tahtayı net ayırt eder.
+- **Hotspot alt ağ teşhisi ve arka plan kararlılığı (Android):** `NetworkDiagnostics` telefonun hotspot arayüzlerini (`ap0`, `swlan0`, `wlan1`) tanır; yansıtma sırasında `PARTIAL_WAKE_LOCK`, keşif sırasında `MulticastLock` alınır; `ConnectivityManager.NetworkCallback` ağ değişimlerini anında yakalar; uzun kopmada tahtanın yeni IP'si mDNS ile bulunur.
+
+### Eklendi / Added
+- **Yeniden tasarlanan bağlantı akışları (Android ve iOS):**
+  - **6 haneli OTP kod girişi (`PinScreen` / `PinView`):** `3 + 3` ayrı hücre, aktif vurgu animasyonu, haptic geri bildirim, hata titreşimi, yapıştırma/autofill, 6. hanede otomatik bağlanma, ekran içi 3 adımlı ilerleme kartı ve tahta kod illüstrasyonu.
+  - **IP adresi ile bağlan (`ManualIpScreen` / `ManualIpView`):** mDNS engelli hotspot ve okul ağları için IPv4 doğrulamalı, son kullanılan IP çipli, katlanabilir portlu (`47800`) doğrudan bağlantı ekranı; keşif ekranında 5 sn sonunda otomatik yedek kartı ve iskelet yükleme görünümü.
+  - **Tahta takma adları, favoriler ve güvenli saklama:** Hatırlanan tahtalara kalıcı özel ad verme, favori yıldızı (favoriler ve son bağlanılanlar üstte); Android'de Keystore `AES/GCM` ile şifreli `pairKey` saklama.
+  - **4. kalite basamağı (`Çok zayıf ağ / Hotspot` — 540p, 24 fps, 400 kbps taban):** Android ve iOS'ta hotspot/2,4 GHz ağ için güvenli başlangıç ve çözünürlük/FPS/bit hızı tam uyarlama merdiveni; Android'de donanım→yazılım H.264 güvenli geri dönüşü.
+  - **Canlı bağlantı kalitesi ve pil yönlendirmesi:** Yansıtma kartında canlı yayın rozeti, Ping (ms), Kayıp (%), FPS, Bit hızı, Çözünürlük, zayıf bağlantı/5 GHz hotspot uyarısı ve Android pil optimizasyonu ayar kısayolu; QR tarayıcıda animasyonlu tarama çizgisi, fener düğmesi ve Kod/IP geçişleri.
+
+### Değiştirildi / Changed
+- **Tüm platformlarda görsel tasarım yenilendi:** Pardus/Windows (QML) ve macOS/iPad/Apple TV (SwiftUI) alıcı bekleme ekranlarına canlı durum rozeti, çerçeveli QR kartı, `3 + 3` ayrı PIN hücreleri, `#XXXX` kimlik rozeti ve gecikme rengine duyarlı akış çubuğu eklendi. Android ve iOS ana ekranları gradyan vurgulu üst kart, yan yana Kod/IP düğmeleri ve canlı yayın göstergesiyle sadeleştirildi; kurulum web sayfası (`site/index.html`) modern kart derinliği ve çoklu bağlantı açıklamasıyla güncellendi.
+
 ## [0.3.10] - 2026-11-10
 
 ### Düzeltildi / Fixed
