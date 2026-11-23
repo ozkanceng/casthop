@@ -191,6 +191,8 @@ private:
     int m_height = 0;
     std::atomic<int> m_decodedLuma{-1};
     std::uint32_t m_lumaCountdown = 0;
+    std::uint32_t m_decodedFrames = 0;
+    std::uint32_t m_patternActiveFrames = 0;
 
     // Gecikme deseni (akış iş parçacıkları; m_mutex ile).
     GstVideoInfo* m_decodedInfo = nullptr;

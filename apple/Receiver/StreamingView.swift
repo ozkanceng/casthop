@@ -145,9 +145,16 @@ struct StreamingView: View {
                         .foregroundStyle(theme.text)
                         .lineLimit(1)
                 }
-                Text(verbatim: statsLine)
-                    .font(.system(size: theme.fontLabel).monospacedDigit())
-                    .foregroundStyle(theme.textMuted)
+                HStack(spacing: theme.space1) {
+                    if let latency = snapshot.stats.latencyMs {
+                        Circle()
+                            .fill(latency <= 120 ? theme.success : (latency <= 250 ? theme.warning : theme.danger))
+                            .frame(width: max(8, 12 * theme.scale), height: max(8, 12 * theme.scale))
+                    }
+                    Text(verbatim: statsLine)
+                        .font(.system(size: theme.fontLabel, design: .monospaced))
+                        .foregroundStyle(theme.textMuted)
+                }
             }
             Spacer()
             Button("Settings") { model.showingSettings = true }
@@ -158,6 +165,7 @@ struct StreamingView: View {
         }
         .padding(theme.space3)
         .background(theme.scrim, in: RoundedRectangle(cornerRadius: theme.radius))
+        .overlay(RoundedRectangle(cornerRadius: theme.radius).stroke(theme.border, lineWidth: 1))
         .padding(theme.space3)
         .defaultFocus($stopFocused, true)
         .task {

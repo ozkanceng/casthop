@@ -195,6 +195,14 @@
         <source>Settings</source>
         <translation>Settings</translation>
     </message>
+    <message>
+        <source>Ready to connect</source>
+        <translation>Ready to connect</translation>
+    </message>
+    <message>
+        <source>Offline</source>
+        <translation>Offline</translation>
+    </message>
 </context>
 <context>
     <name>yansit::ReceiverService</name>

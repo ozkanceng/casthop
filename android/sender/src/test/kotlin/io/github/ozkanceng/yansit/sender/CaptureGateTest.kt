@@ -47,10 +47,10 @@ class CaptureGateTest {
     }
 
     @Test
-    fun withNothingGoingOutTheQueueDecidesAsBefore() {
-        // Reconnecting, draining or paused: the gate stays open and does not count.
-        assertTrue(gate.ready(0, 2, 500_000, sending = false))
-        assertTrue(gate.ready(100_000, 2, 600_000, sending = false))
+    fun whenNotSendingCaptureIsHeldWithoutCountingCongestion() {
+        // Reconnecting, draining or paused: hold capture so encoder does not waste CPU/bandwidth and trigger IDR storms.
+        assertFalse(gate.ready(0, 2, 500_000, sending = false))
+        assertFalse(gate.ready(100_000, 0, 0, sending = false))
         assertEquals(0, congestion)
     }
 }

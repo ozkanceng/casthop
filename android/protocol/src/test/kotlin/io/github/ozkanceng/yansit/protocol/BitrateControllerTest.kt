@@ -178,4 +178,40 @@ class BitrateControllerTest {
         assertEquals(8_000_000, c.appliedBps)
         assertNull(c.tick(10_000))
     }
+
+    @Test
+    fun `flat high delay plateau holds bitrate without bufferbloat ramp`() {
+        val c = BitrateController(config)
+        var t = 0L
+        while (t <= 10_000) {
+            c.onReceiverReport(t, report(185_000)) // above 160 ms hold threshold, below 240 ms backoff
+            c.tick(t)
+            t += 250
+        }
+        assertEquals(16_000_000, c.appliedBps)
+    }
+
+    @Test
+    fun `very high flat delay backs off gently by mild factor`() {
+        val c = BitrateController(config)
+        c.onReceiverReport(0, report(260_000)) // above 240 ms backoff threshold
+        assertEquals(13_600_000, c.tick(0))    // 16M * 0.85
+    }
+
+    @Test
+    fun `rtt spike triggers mild backoff and recovers when latency normalizes`() {
+        val c = BitrateController(config)
+        c.tick(0)
+        c.onRttSample(0, 15_000)               // 15 ms clean baseline
+        c.onRttSample(1_000, 140_000)          // 140 ms spike (> 100 ms & > 2x baseline)
+        val afterSpike = c.tick(1_000)
+        assertEquals(13_600_000, afterSpike)
+        var t = 1_250L
+        while (t <= 8_000) {
+            if (t % 1_000L == 0L) c.onRttSample(t, 16_000)
+            c.tick(t)
+            t += 250
+        }
+        assertTrue(c.appliedBps > 13_600_000, "should recover after RTT normalizes, got ${c.appliedBps}")
+    }
 }

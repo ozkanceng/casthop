@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Design tokens for the receiver, the same values as `receiver/src/qml/Theme.qml`. Sized for a 1920×1080 canvas read from
+/// Design tokens for the receiver, aligned with `receiver/src/qml/Theme.qml`. Sized for a 1920×1080 canvas read from
 /// 2–5 m and scaled to the window. Colours meet WCAG AA (text on background ≥ 4.5:1) in both themes.
 struct Theme: Equatable {
     var dark = true
@@ -8,16 +8,20 @@ struct Theme: Equatable {
 
     private func pick(_ d: UInt32, _ l: UInt32) -> Color { Color(hex: dark ? d : l) }
 
-    var background: Color { pick(0x0F1720, 0xF4F6F9) }
-    var surface: Color { pick(0x18222E, 0xFFFFFF) }
-    var surfaceRaised: Color { pick(0x223040, 0xE3E9F0) }
-    var primary: Color { pick(0x4DA3FF, 0x0B5CAD) }
+    var background: Color { pick(0x0C131C, 0xF4F6FA) }
+    var surface: Color { pick(0x151F2B, 0xFFFFFF) }
+    var surfaceRaised: Color { pick(0x1E2C3C, 0xE6ECF3) }
+    var border: Color { pick(0x2A3A4D, 0xCFD7E3) }
+    var primary: Color { pick(0x5AA9FF, 0x0B5CAD) }
+    var primarySubtle: Color { pick(0x162B44, 0xDCEAFF) }
     var primaryForeground: Color { pick(0x04172B, 0xFFFFFF) }
+    var success: Color { pick(0x4ADE80, 0x006A60) }
+    var successSubtle: Color { pick(0x113026, 0xD3F7EE) }
     var text: Color { pick(0xF2F5F8, 0x0F1720) }
     var textMuted: Color { pick(0xA9B6C4, 0x4A5868) }
     var warning: Color { pick(0xFFB86E, 0x8A4B00) }
-    var danger: Color { pick(0xFF7A7A, 0xB3261E) }
-    var scrim: Color { (dark ? Color(hex: 0x0F1720) : Color(hex: 0xF4F6F9)).opacity(0.85) }
+    var danger: Color { pick(0xF87171, 0xBA1A1A) }
+    var scrim: Color { (dark ? Color(hex: 0x0C131C) : Color(hex: 0xFFFFFF)).opacity(0.88) }
 
     var space1: CGFloat { (8 * scale).rounded() }
     var space2: CGFloat { (16 * scale).rounded() }
@@ -27,10 +31,10 @@ struct Theme: Equatable {
 
     /// Never below 72 px, however small the window.
     var touchTarget: CGFloat { max(72, (88 * scale).rounded()) }
-    var radius: CGFloat { (16 * scale).rounded() }
+    var radius: CGFloat { (18 * scale).rounded() }
 
-    var fontDisplay: CGFloat { (96 * scale).rounded() }
-    var fontTitle: CGFloat { (48 * scale).rounded() }
+    var fontDisplay: CGFloat { (84 * scale).rounded() }
+    var fontTitle: CGFloat { (46 * scale).rounded() }
     var fontBody: CGFloat { (30 * scale).rounded() }
     var fontLabel: CGFloat { (24 * scale).rounded() }
     var fontCaption: CGFloat { (20 * scale).rounded() }
@@ -105,7 +109,8 @@ struct BoardButtonStyle: ButtonStyle {
                 .background(fill, in: RoundedRectangle(cornerRadius: theme.radius))
                 .overlay {
                     RoundedRectangle(cornerRadius: theme.radius)
-                        .stroke(focusRing, lineWidth: max(4, 6 * theme.scale))
+                        .stroke(focusRing != .clear ? focusRing : (kind == .plain ? theme.border : .clear),
+                                lineWidth: focusRing != .clear ? max(4, 6 * theme.scale) : 1)
                 }
                 .scaleEffect(focusScale)
                 .opacity(configuration.isPressed ? 0.8 : 1)

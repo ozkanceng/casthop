@@ -71,6 +71,17 @@ class StreamPlannerTest {
     }
 
     @Test
+    fun ultraLowPresetUses540p24FpsAnd400KbpsFloor() {
+        val plan = StreamPlanner.plan(1920, 1080, Preset.ULTRA_LOW, board1080, listOf(FakeEncoder()))!!
+        assertEquals(24, plan.fps)
+        assertEquals(960, plan.width)
+        assertEquals(528, plan.height) // 540 aligned down to 16
+        assertEquals(1_200_000, plan.startBps)
+        assertEquals(2_000_000, plan.maxBps)
+        assertEquals(400_000, plan.minBps)
+    }
+
+    @Test
     fun receiverRefreshLimitsFps() {
         val plan = StreamPlanner.plan(2560, 1600, Preset.BEST, ReceiverDisplay(1920, 1080, 30), listOf(FakeEncoder()))!!
         assertEquals(30, plan.fps)
@@ -243,7 +254,9 @@ class PresetLadderTest {
     fun `presets step one at a time and stop at the ends`() {
         org.junit.jupiter.api.Assertions.assertEquals(Preset.BALANCED, Preset.BEST.lower)
         org.junit.jupiter.api.Assertions.assertEquals(Preset.WEAK_NETWORK, Preset.BALANCED.lower)
-        org.junit.jupiter.api.Assertions.assertNull(Preset.WEAK_NETWORK.lower)
+        org.junit.jupiter.api.Assertions.assertEquals(Preset.ULTRA_LOW, Preset.WEAK_NETWORK.lower)
+        org.junit.jupiter.api.Assertions.assertNull(Preset.ULTRA_LOW.lower)
+        org.junit.jupiter.api.Assertions.assertEquals(Preset.WEAK_NETWORK, Preset.ULTRA_LOW.higher)
         org.junit.jupiter.api.Assertions.assertEquals(Preset.BALANCED, Preset.WEAK_NETWORK.higher)
         org.junit.jupiter.api.Assertions.assertNull(Preset.BEST.higher)
     }
@@ -252,6 +265,7 @@ class PresetLadderTest {
     fun `a session starts where the network last settled but never above the chosen preset`() {
         assertEquals(Preset.BEST, Preset.start(Preset.BEST, null))
         assertEquals(Preset.WEAK_NETWORK, Preset.start(Preset.BEST, Preset.WEAK_NETWORK))
+        assertEquals(Preset.ULTRA_LOW, Preset.start(Preset.BEST, Preset.ULTRA_LOW))
         assertEquals(Preset.BALANCED, Preset.start(Preset.BALANCED, Preset.BEST))
         assertEquals(Preset.WEAK_NETWORK, Preset.start(Preset.WEAK_NETWORK, Preset.BALANCED))
     }

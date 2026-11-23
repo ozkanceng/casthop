@@ -37,6 +37,56 @@ public final class KeyframeGate: @unchecked Sendable {
     }
 }
 
+/// Decides whether the encoder may start another frame (mirrors Android `CaptureGate`).
+/// When `sending` is false (draining, reconnecting, paused) capture is held without raising false congestion,
+/// eliminating wasted encoding and IDR storms.
+public final class CaptureGate: @unchecked Sendable {
+    public static let maxQueuedAgeUs: Int64 = 15_000
+    public static let congestionAfterUs: UInt64 = 50_000
+
+    private let maxQueuedAgeUs: Int64
+    private let congestionAfterUs: UInt64
+    private let onCongestion: () -> Void
+    private let lock = NSLock()
+    private var closedSinceUs: UInt64?
+    private var reported = false
+
+    public init(maxQueuedAgeUs: Int64 = CaptureGate.maxQueuedAgeUs,
+                congestionAfterUs: UInt64 = CaptureGate.congestionAfterUs,
+                onCongestion: @escaping () -> Void = {}) {
+        self.maxQueuedAgeUs = maxQueuedAgeUs
+        self.congestionAfterUs = congestionAfterUs
+        self.onCongestion = onCongestion
+    }
+
+    public func ready(nowUs: UInt64, depth: Int, oldestAgeUs: Int64, sending: Bool) -> Bool {
+        var trigger = false
+        let open: Bool
+        lock.lock()
+        if !sending {
+            closedSinceUs = nil
+            reported = false
+            open = false
+        } else {
+            open = depth == 0 || (depth == 1 && oldestAgeUs < maxQueuedAgeUs)
+            if open {
+                closedSinceUs = nil
+                reported = false
+            } else {
+                let since = closedSinceUs ?? nowUs
+                closedSinceUs = since
+                if !reported && nowUs >= since + congestionAfterUs {
+                    reported = true
+                    trigger = true
+                }
+            }
+        }
+        lock.unlock()
+        if trigger { onCongestion() }
+        return open
+    }
+}
+
 /// Direction of an automatic quality change.
 public enum QualityStep: Sendable {
     case down

@@ -3,14 +3,17 @@
 Gönderici ↔ alıcı TCP bağlantılarını aktarır ve şunları uygular:
   --rate-kbps N   gönderici → alıcı yönünde bant genişliği sınırı (0 = sınırsız)
   --delay-ms N    iki yönde sabit gecikme
+  --jitter-ms N   gecikmeye ± rastgele salınım (hotspot/Wi-Fi titreşimi)
+  --loss-pct P    TCP paket kaybı yeniden iletim duraklaması olasılığı (%0–50)
   SIGUSR1         "Wi-Fi kopması": --blackout-ms boyunca hiçbir veri aktarılmaz ve yeni bağlantılar
                   reddedilir; süre sonunda açık bağlantılar RST ile düşürülür (gönderici RESUME etmeli)
 
 Küçük soket tamponları kullanılır ki gecikme vekilde birikmesin; geri basınç göndericiye ulaşsın.
-Kullanım: netsim.py --listen 47820 --target 127.0.0.1:47810 [--rate-kbps 2500] [--delay-ms 20]
+Kullanım: netsim.py --listen 47820 --target 127.0.0.1:47810 [--rate-kbps 2500] [--delay-ms 20] [--jitter-ms 15] [--loss-pct 5]
 """
 import argparse
 import asyncio
+import random
 import signal
 import socket
 import sys
@@ -29,6 +32,7 @@ class Sim:
         self.args = args
         self.blackout_until = 0.0
         self.transports = set()
+        self.rng = random.Random(args.seed)
 
     def in_blackout(self):
         return time.monotonic() < self.blackout_until
@@ -64,12 +68,18 @@ class Sim:
 
         async def write_side():
             next_send = time.monotonic()
+            jitter = self.args.jitter_ms / 1000
+            loss_prob = max(0.0, min(0.5, self.args.loss_pct / 100.0))
             while True:
                 item = await queue.get()
                 if item is None:
                     break
                 t, data = item
-                wait = t + delay - time.monotonic()
+                extra = self.rng.uniform(0.0, jitter) if jitter > 0 else 0.0
+                if loss_prob > 0 and rate_kbps > 0 and self.rng.random() < loss_prob:
+                    # Simulate a TCP packet-loss fast-retransmit / RTO stall (≈ 1 RTT + 40 ms).
+                    extra += max(0.04, 2.0 * delay + 0.03)
+                wait = t + delay + extra - time.monotonic()
                 if wait > 0:
                     await asyncio.sleep(wait)
                 while self.in_blackout():
@@ -128,6 +138,9 @@ async def main():
     p.add_argument("--target", required=True)
     p.add_argument("--rate-kbps", type=int, default=0)
     p.add_argument("--delay-ms", type=int, default=0)
+    p.add_argument("--jitter-ms", type=int, default=0)
+    p.add_argument("--loss-pct", type=float, default=0.0)
+    p.add_argument("--seed", type=int, default=42)
     p.add_argument("--blackout-ms", type=int, default=1500)
     args = p.parse_args()
     sim = Sim(args)
@@ -136,7 +149,10 @@ async def main():
     stop = asyncio.Event()
     loop.add_signal_handler(signal.SIGTERM, stop.set)
     server = await asyncio.start_server(sim.handle, "127.0.0.1", args.listen)
-    log(f"dinleniyor {args.listen} → {args.target} (rate={args.rate_kbps} kbps, delay={args.delay_ms} ms)")
+    log(
+        f"dinleniyor {args.listen} → {args.target} "
+        f"(rate={args.rate_kbps} kbps, delay={args.delay_ms} ms, jitter={args.jitter_ms} ms, loss={args.loss_pct}%)"
+    )
     async with server:
         await stop.wait()
 

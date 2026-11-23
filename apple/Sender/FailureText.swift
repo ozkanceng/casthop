@@ -7,6 +7,7 @@ extension MirrorFailure {
     var title: String {
         switch self {
         case .unreachable: return String(localized: "Cannot reach the board")
+        case .clientIsolation: return String(localized: "Network may be isolating devices")
         case .refused: return String(localized: "CastHop is not running on the board")
         case .wrongReceiver: return String(localized: "Security check failed")
         case .authFailed: return String(localized: "The QR code is no longer valid")
@@ -36,6 +37,8 @@ extension MirrorFailure {
         switch self {
         case .unreachable:
             return String(localized: "The tablet and the board must be on the same Wi-Fi network. The school network may block devices from seeing each other: try turning on the tablet's hotspot and connecting the board to it.")
+        case .clientIsolation:
+            return String(localized: "The connection timed out on the local network. Client isolation (AP Isolation) or a firewall may be blocking port 47800. Verify CastHop is open on the board or try the hotspot / QR code.")
         case .refused: return String(localized: "Open the CastHop app on the board and scan the new QR code.")
         case .wrongReceiver:
             return String(localized: "This QR code belongs to another board or a device on the network is intercepting the connection. Scan the current QR code on the board.")

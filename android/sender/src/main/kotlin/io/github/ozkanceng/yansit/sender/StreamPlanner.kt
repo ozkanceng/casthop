@@ -31,6 +31,8 @@ enum class Preset(
     BEST(1920, 60, 16_000_000, 24_000_000, 4_000_000),
     BALANCED(1600, 60, 8_000_000, 12_000_000, 2_000_000),
     WEAK_NETWORK(1280, 30, 3_000_000, 5_000_000, 800_000),
+    /** Extreme congestion / noisy mobile hotspot tier: 540p @ 24 fps, floor 400 kbps. */
+    ULTRA_LOW(960, 24, 1_200_000, 2_000_000, 400_000),
     ;
 
     /** The next preset towards a weaker network; `null` at the end. */
@@ -105,7 +107,7 @@ object StreamPlanner {
     ): StreamPlan? {
         require(sourceWidth > 0 && sourceHeight > 0)
         val ordered = encoders.sortedByDescending { it.hardware } // donanım önce, aynı türde sıra korunur
-        val fpsWanted = min(overrides.fps ?: preset.fps, receiver?.refreshHz?.coerceAtLeast(30) ?: 60)
+        val fpsWanted = min(overrides.fps ?: preset.fps, receiver?.refreshHz?.coerceAtLeast(24) ?: 60)
         for (enc in ordered) {
             val longCap = longSideCap(preset, overrides)
             val high = largestSupportedSize(sourceWidth, sourceHeight, longCap, receiver, enc, fpsWanted)
@@ -137,8 +139,8 @@ object StreamPlanner {
         enc: VideoEncoderCaps,
         overrides: StreamOverrides = StreamOverrides(),
     ): StreamPlan? {
-        val fpsWanted = min(overrides.fps ?: preset.fps, receiver?.refreshHz?.coerceAtLeast(30) ?: 60)
-        val fps = listOf(fpsWanted, 30).firstOrNull { enc.isSupported(base.width, base.height, it) } ?: return null
+        val fpsWanted = min(overrides.fps ?: preset.fps, receiver?.refreshHz?.coerceAtLeast(24) ?: 60)
+        val fps = listOf(fpsWanted, 30, 24).distinct().firstOrNull { enc.isSupported(base.width, base.height, it) } ?: return null
         val (startBps, minBps, maxBps) = bitrates(preset, enc, overrides, base.width, base.height, fps)
         return base.copy(fps = fps, startBps = startBps, minBps = minBps, maxBps = maxBps)
     }

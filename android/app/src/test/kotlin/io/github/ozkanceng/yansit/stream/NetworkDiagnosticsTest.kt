@@ -33,4 +33,29 @@ class NetworkDiagnosticsTest {
         assertFalse(NetworkDiagnostics.is24GHz(5180))
         assertFalse(NetworkDiagnostics.is24GHz(5955)) // 6 GHz
     }
+
+    @Test
+    fun detectsHotspotInterfacesAndValidatesIpv4() {
+        assertTrue(NetworkDiagnostics.isValidIpv4("192.168.43.102"))
+        assertFalse(NetworkDiagnostics.isValidIpv4("192.168.43.300"))
+        assertFalse(NetworkDiagnostics.isValidIpv4("etap.local"))
+
+        assertTrue(NetworkDiagnostics.isHotspotInterfaceName("ap0"))
+        assertTrue(NetworkDiagnostics.isHotspotInterfaceName("swlan0"))
+        assertTrue(NetworkDiagnostics.isHotspotInterfaceName("wlan1"))
+        assertTrue(NetworkDiagnostics.isHotspotInterfaceName("rndis0"))
+        assertFalse(NetworkDiagnostics.isHotspotInterfaceName("wlan0"))
+        assertFalse(NetworkDiagnostics.isHotspotInterfaceName("rmnet_data0"))
+
+        val hotspotIfaces = listOf(
+            NetworkDiagnostics.LocalInterface("rmnet_data0", ip("100.64.1.2"), 24),
+            NetworkDiagnostics.LocalInterface("swlan0", ip("192.168.43.1"), 24),
+        )
+        assertTrue(NetworkDiagnostics.hasHotspotInterface(hotspotIfaces))
+        assertFalse(
+            NetworkDiagnostics.hasHotspotInterface(
+                listOf(NetworkDiagnostics.LocalInterface("wlan0", ip("192.168.1.50"), 24)),
+            ),
+        )
+    }
 }

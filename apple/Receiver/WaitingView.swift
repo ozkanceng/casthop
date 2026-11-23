@@ -17,35 +17,35 @@ enum QrImage {
     }
 }
 
-/// The large QR, the 6-digit code and where this receiver is. Readable from the back of a room.
+/// The large QR, 6-box (3+3) connection code, and board identity/IP card. Readable from the back of a room.
 struct WaitingView: View {
     @EnvironmentObject private var model: ReceiverModel
     @Environment(\.theme) private var theme
 
     private var snapshot: ReceiverSnapshot { model.snapshot }
     private var connecting: Bool { snapshot.state == .connecting }
-    private var pinText: String {
-        snapshot.pin.count == 6 ? "\(snapshot.pin.prefix(3)) \(snapshot.pin.suffix(3))" : snapshot.pin
+    private var hasQr: Bool { !snapshot.qrUri.isEmpty }
+    private var pinDigits: [Character] {
+        let chars = Array(snapshot.pin)
+        return chars.count == 6 ? chars : Array("------")
     }
 
     var body: some View {
         GeometryReader { geometry in
             let wide = geometry.size.width >= geometry.size.height
             VStack(spacing: theme.space3) {
-                Text(verbatim: "CastHop")
-                    .font(.system(size: theme.fontTitle, weight: .bold))
-                    .foregroundStyle(theme.primary)
+                header
                 Spacer(minLength: 0)
                 if let failure = snapshot.failure {
                     FailureCard(failure: failure)
                 } else if wide {
                     HStack(spacing: theme.space5) {
-                        qrCard(side: min(geometry.size.height * 0.62, geometry.size.width * 0.42))
-                        details.frame(maxWidth: geometry.size.width * 0.42)
+                        qrCard(side: min(geometry.size.height * 0.60, geometry.size.width * 0.40))
+                        details.frame(maxWidth: geometry.size.width * 0.44)
                     }
                 } else {
                     VStack(spacing: theme.space4) {
-                        qrCard(side: min(geometry.size.width * 0.7, geometry.size.height * 0.42))
+                        qrCard(side: min(geometry.size.width * 0.7, geometry.size.height * 0.40))
                         details
                     }
                 }
@@ -56,6 +56,30 @@ struct WaitingView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(theme.background.ignoresSafeArea())
+    }
+
+    private var header: some View {
+        HStack(spacing: theme.space3) {
+            Text(verbatim: "CastHop")
+                .font(.system(size: theme.fontTitle, weight: .bold))
+                .foregroundStyle(theme.primary)
+
+            if snapshot.failure == nil {
+                HStack(spacing: theme.space1) {
+                    Circle()
+                        .fill(connecting ? theme.primary : (hasQr ? theme.success : theme.warning))
+                        .frame(width: max(8, 12 * theme.scale), height: max(8, 12 * theme.scale))
+                    Text(connecting ? "Connecting…" : (hasQr ? "Ready to connect" : "Offline"))
+                        .font(.system(size: theme.fontCaption, weight: .semibold))
+                        .foregroundStyle(theme.text)
+                }
+                .padding(.horizontal, theme.space2)
+                .padding(.vertical, theme.space1)
+                .background(connecting ? theme.primarySubtle : (hasQr ? theme.successSubtle : theme.surfaceRaised),
+                            in: Capsule())
+                .overlay(Capsule().stroke(theme.border, lineWidth: 1))
+            }
+        }
     }
 
     private func qrCard(side: CGFloat) -> some View {
@@ -76,11 +100,41 @@ struct WaitingView: View {
             }
         }
         .frame(width: side, height: side)
-        .background(snapshot.qrUri.isEmpty ? theme.surface : .white, in: RoundedRectangle(cornerRadius: theme.radius))
+        .background(snapshot.qrUri.isEmpty ? theme.surface : .white, in: RoundedRectangle(cornerRadius: theme.radius + 4))
+        .overlay(
+            RoundedRectangle(cornerRadius: theme.radius + 4)
+                .stroke(snapshot.qrUri.isEmpty ? theme.border : theme.primarySubtle, lineWidth: max(2, 2 * theme.scale))
+        )
+    }
+
+    private var pinCells: some View {
+        HStack(spacing: max(6, 10 * theme.scale)) {
+            ForEach(0..<6, id: \.self) { index in
+                if index == 3 {
+                    Capsule()
+                        .fill(theme.border)
+                        .frame(width: max(10, 16 * theme.scale), height: max(3, 4 * theme.scale))
+                }
+                Text(String(pinDigits[index]))
+                    .font(.system(size: theme.fontDisplay, weight: .bold, design: .monospaced))
+                    .foregroundStyle(theme.text)
+                    .minimumScaleFactor(0.45)
+                    .lineLimit(1)
+                    .frame(minWidth: max(40, 82 * theme.scale), maxWidth: max(56, 94 * theme.scale),
+                           minHeight: max(56, 108 * theme.scale))
+                    .background(theme.surface, in: RoundedRectangle(cornerRadius: theme.radius))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: theme.radius)
+                            .stroke(theme.primary, lineWidth: max(2, 2 * theme.scale))
+                    )
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("Connection code \(snapshot.pin)"))
     }
 
     private var details: some View {
-        VStack(alignment: .leading, spacing: theme.space2) {
+        VStack(alignment: .leading, spacing: theme.space3) {
             Text(connecting ? "Connecting…" : "Scan the code with the CastHop app on your tablet")
                 .font(.system(size: theme.fontTitle, weight: .semibold))
                 .foregroundStyle(theme.text)
@@ -91,27 +145,39 @@ struct WaitingView: View {
                 Text("or enter this code:")
                     .font(.system(size: theme.fontBody))
                     .foregroundStyle(theme.textMuted)
-                Text(verbatim: pinText)
-                    .font(.system(size: theme.fontDisplay, weight: .bold, design: .monospaced))
-                    .foregroundStyle(theme.text)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                    .accessibilityLabel(Text("Connection code \(snapshot.pin)"))
+                pinCells
             }
             VStack(alignment: .leading, spacing: theme.space1) {
-                Text("Board: \(snapshot.name)")
-                    .font(.system(size: theme.fontLabel, weight: .semibold))
-                    .foregroundStyle(theme.text)
-                    .lineLimit(1)
+                HStack(spacing: theme.space2) {
+                    Text("Board: \(snapshot.name)")
+                        .font(.system(size: theme.fontLabel, weight: .semibold))
+                        .foregroundStyle(theme.text)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    if !snapshot.shortId.isEmpty {
+                        Text(verbatim: "#\(snapshot.shortId)")
+                            .font(.system(size: theme.fontCaption, weight: .bold, design: .monospaced))
+                            .foregroundStyle(theme.primary)
+                            .padding(.horizontal, theme.space2)
+                            .padding(.vertical, max(4, theme.space1 / 2))
+                            .background(theme.primarySubtle, in: RoundedRectangle(cornerRadius: theme.radius / 2))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: theme.radius / 2)
+                                    .stroke(theme.primary, lineWidth: 1)
+                            )
+                    }
+                }
                 if !snapshot.addresses.isEmpty {
-                    Text("Address: \(snapshot.addresses.joined(separator: ", "))")
-                        .font(.system(size: theme.fontLabel))
+                    let portSuffix = snapshot.port > 0 ? " :\(snapshot.port)" : ""
+                    Text("Address: \(snapshot.addresses.joined(separator: ", "))\(portSuffix)")
+                        .font(.system(size: theme.fontLabel, design: .monospaced))
                         .foregroundStyle(theme.textMuted)
                 }
             }
             .padding(theme.space3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.surface, in: RoundedRectangle(cornerRadius: theme.radius))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius).stroke(theme.border, lineWidth: 1))
         }
     }
 
@@ -161,5 +227,6 @@ private struct FailureCard: View {
         .padding(theme.space4)
         .frame(maxWidth: 1100 * theme.scale, alignment: .leading)
         .background(theme.surface, in: RoundedRectangle(cornerRadius: theme.radius))
+        .overlay(RoundedRectangle(cornerRadius: theme.radius).stroke(theme.danger, lineWidth: 1))
     }
 }

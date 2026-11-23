@@ -74,13 +74,19 @@ public class MediaChannel internal constructor(private val tls: PinnedSocket, pu
         seq = (seq + 1) and 0xFFFFFFFFL
     }
 
+    private var lastSendBufBytes: Int = 0
+
     /**
-     * Çekirdek gönderim tamponu. Bit hızına göre küçük tutulur (≈ 100 ms veri) ki tıkanıklıkta gecikme
+     * Çekirdek gönderim tamponu. Bit hızına göre küçük tutulur (≈ 80–100 ms veri) ki tıkanıklıkta gecikme
      * tamponda birikmek yerine gönderici kuyruğunda görülsün ve kare atılabilsin.
      */
     public fun setSendBufferBytes(bytes: Int) {
+        val bounded = bytes.coerceIn(32 * 1024, 256 * 1024)
+        val prev = lastSendBufBytes
+        if (prev > 0 && kotlin.math.abs(bounded - prev) < prev / 5) return
         try {
-            tls.socket.sendBufferSize = bytes
+            tls.socket.sendBufferSize = bounded
+            lastSendBufBytes = bounded
         } catch (_: java.net.SocketException) {
         }
     }

@@ -34,3 +34,20 @@ TEST(Mdns, PublisherWithoutDaemonDoesNotFail) {
     p.publish("Tahta 2", 47800, fp);
     p.stop();
 }
+
+TEST(Mdns, DefaultBoardNameDisambiguatesGenericEtapHostnames) {
+    yansit::protocol::Key32 fp{};
+    fp[0] = 0xA4;
+    fp[1] = 0xF2;
+    EXPECT_EQ(shortBoardId(fp), "A4F2");
+    EXPECT_TRUE(isGenericHostName("etap"));
+    EXPECT_TRUE(isGenericHostName("ETAP"));
+    EXPECT_TRUE(isGenericHostName("  pardus  "));
+    EXPECT_TRUE(isGenericHostName(""));
+    EXPECT_FALSE(isGenericHostName("9B-Matematik"));
+
+    EXPECT_EQ(defaultBoardName("etap", fp), "etap-A4F2");
+    EXPECT_EQ(defaultBoardName("pardus", fp), "pardus-A4F2");
+    EXPECT_EQ(defaultBoardName("", fp), "CastHop-A4F2");
+    EXPECT_EQ(defaultBoardName("Lab-3-Tahta", fp), "Lab-3-Tahta");
+}

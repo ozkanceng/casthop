@@ -66,6 +66,7 @@ public struct ReceiverSnapshot: Equatable, Sendable {
     public var state = ReceiverState.starting
     public var failure: ReceiverFailure?
     public var name = ""
+    public var shortId = ""
     public var qrUri = ""
     public var pin = ""
     public var addresses: [String] = []
@@ -148,6 +149,9 @@ public final class ReceiverService: @unchecked Sendable {
         } catch {
             fail(.identity)
             return
+        }
+        if let fp = identity?.fingerprint, fp.count >= 2 {
+            snapshot.shortId = String(format: "%02X%02X", fp[fp.startIndex], fp[fp.index(after: fp.startIndex)])
         }
         let pairing = PairingManager(nowMs: Self.monotonicMs())
         self.pairing = pairing

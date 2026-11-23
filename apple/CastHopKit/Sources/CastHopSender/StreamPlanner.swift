@@ -17,14 +17,16 @@ public enum Preset: String, CaseIterable, Codable, Sendable {
     case best
     case balanced
     case weakNetwork
+    /// Extreme congestion / noisy mobile hotspot tier: 540p @ 24 fps, floor 400 kbps.
+    case ultraLow
 
     public static let best4kLongSide = 2560
 
-    public var longSideCap: Int { [1920, 1600, 1280][index] }
-    public var fps: Int { [60, 60, 30][index] }
-    public var startBps: Int64 { [16_000_000, 8_000_000, 3_000_000][index] }
-    public var maxBps: Int64 { [24_000_000, 12_000_000, 5_000_000][index] }
-    public var minBps: Int64 { [4_000_000, 2_000_000, 800_000][index] }
+    public var longSideCap: Int { [1920, 1600, 1280, 960][index] }
+    public var fps: Int { [60, 60, 30, 24][index] }
+    public var startBps: Int64 { [16_000_000, 8_000_000, 3_000_000, 1_200_000][index] }
+    public var maxBps: Int64 { [24_000_000, 12_000_000, 5_000_000, 2_000_000][index] }
+    public var minBps: Int64 { [4_000_000, 2_000_000, 800_000, 400_000][index] }
 
     var index: Int { Self.allCases.firstIndex(of: self)! }
 
@@ -105,7 +107,7 @@ public enum StreamPlanner {
         precondition(sourceWidth > 0 && sourceHeight > 0)
         // Hardware first, otherwise the given order.
         let ordered = encoders.filter(\.hardware) + encoders.filter { !$0.hardware }
-        let fpsWanted = min(overrides.fps ?? preset.fps, receiver.map { max($0.refreshHz, 30) } ?? 60)
+        let fpsWanted = min(overrides.fps ?? preset.fps, receiver.map { max($0.refreshHz, 24) } ?? 60)
         for enc in ordered {
             let longCap = longSideCap(preset, receiver, enc, overrides)
             let high = largestSupportedSize(sourceWidth, sourceHeight, longCap, receiver, enc, fpsWanted)

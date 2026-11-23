@@ -25,10 +25,18 @@ class CaptureGate(
     /**
      * @param depth frames waiting in the send queue
      * @param oldestAgeUs age of the oldest of them
-     * @param sending the link is up and frames are going out now
+     * @param sending the link is up and frames are going out now; when false (reconnecting, draining, paused),
+     *   capture is held without encoding wasted frames or counting false congestion.
      */
     fun ready(nowUs: Long, depth: Int, oldestAgeUs: Long, sending: Boolean): Boolean {
-        val open = !sending || depth == 0 || (depth == 1 && oldestAgeUs < freshUs)
+        if (!sending) {
+            synchronized(this) {
+                closedSinceUs = NONE
+                reported = false
+            }
+            return false
+        }
+        val open = depth == 0 || (depth == 1 && oldestAgeUs < freshUs)
         var report = false
         synchronized(this) {
             if (open) {

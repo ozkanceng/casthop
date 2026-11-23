@@ -2,7 +2,27 @@
 
 #include "protocol/Qr.h"
 
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <string_view>
+
 namespace yansit::net {
+
+namespace {
+
+std::string asciiLowerTrimmed(std::string_view s) {
+    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front())))
+        s.remove_prefix(1);
+    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back())))
+        s.remove_suffix(1);
+    std::string out(s.size(), '\0');
+    std::transform(s.begin(), s.end(), out.begin(),
+                   [](unsigned char c) { return char(std::tolower(c)); });
+    return out;
+}
+
+} // namespace
 
 std::vector<std::string> mdnsTxt(const std::string& name, const protocol::Key32& fingerprint) {
     const protocol::ByteView prefix(fingerprint.data(), 16);
@@ -23,6 +43,41 @@ std::string mdnsInstanceName(const std::string& name) {
     while (cut > 0 && (static_cast<unsigned char>(name[cut]) & 0xC0) == 0x80)
         --cut;
     return name.substr(0, cut);
+}
+
+std::string shortBoardId(const protocol::Key32& fingerprint) {
+    static constexpr char kHex[] = "0123456789ABCDEF";
+    std::string id(4, '0');
+    id[0] = kHex[(fingerprint[0] >> 4) & 0x0F];
+    id[1] = kHex[fingerprint[0] & 0x0F];
+    id[2] = kHex[(fingerprint[1] >> 4) & 0x0F];
+    id[3] = kHex[fingerprint[1] & 0x0F];
+    return id;
+}
+
+bool isGenericHostName(const std::string& hostName) {
+    const std::string lower = asciiLowerTrimmed(hostName);
+    if (lower.empty())
+        return true;
+    static constexpr std::array<std::string_view, 12> kGeneric = {
+        "etap",     "etap-pc",   "etap23",  "pardus", "pardus-etap", "localhost",
+        "debian",   "ubuntu",    "linux",   "pc",     "desktop",     "casthop",
+    };
+    return std::find(kGeneric.begin(), kGeneric.end(), lower) != kGeneric.end();
+}
+
+std::string defaultBoardName(const std::string& hostName, const protocol::Key32& fingerprint) {
+    std::string trimmed = hostName;
+    while (!trimmed.empty() && std::isspace(static_cast<unsigned char>(trimmed.front())))
+        trimmed.erase(trimmed.begin());
+    while (!trimmed.empty() && std::isspace(static_cast<unsigned char>(trimmed.back())))
+        trimmed.pop_back();
+    const std::string suffix = shortBoardId(fingerprint);
+    if (trimmed.empty())
+        return "CastHop-" + suffix;
+    if (isGenericHostName(trimmed))
+        return trimmed + "-" + suffix;
+    return trimmed;
 }
 
 } // namespace yansit::net

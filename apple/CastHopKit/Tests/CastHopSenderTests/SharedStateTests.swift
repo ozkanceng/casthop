@@ -136,4 +136,32 @@ final class SharedStateTests: XCTestCase {
         wait(for: [arrived], timeout: 5)
         withExtendedLifetime(observation) {}
     }
+
+    func testNicknamesFavoritesAndBoardIdentityDisambiguateEtapBoards() {
+        let s = store()
+        let b1 = RememberedReceiver(name: "etap", hosts: ["192.168.43.102"], port: 47800,
+                                    fingerprint: Data([0xA4, 0xF2] + Array(repeating: UInt8(0), count: 30)),
+                                    keyId: Data(repeating: 1, count: 16), pairKey: Data(repeating: 2, count: 32), lastUsedMs: 100)
+        let b2 = RememberedReceiver(name: "etap", hosts: ["192.168.43.118"], port: 47800,
+                                    fingerprint: Data([0x7C, 0x01] + Array(repeating: UInt8(0), count: 30)),
+                                    keyId: Data(repeating: 1, count: 16), pairKey: Data(repeating: 2, count: 32), lastUsedMs: 500)
+        s.save(b1)
+        s.save(b2)
+        s.setNickname("9-B Matematik", fingerprint: b1.fingerprint)
+        s.setFavorite(true, fingerprint: b1.fingerprint)
+        // Re-saving raw connection info must keep nickname & favorite intact.
+        s.save(b1)
+
+        let list = s.receivers()
+        XCTAssertEqual(list.map(\.shortId), ["A4F2", "7C01"])
+        XCTAssertEqual(list.first?.displayName, "9-B Matematik")
+        XCTAssertTrue(list.first?.favorite == true)
+        XCTAssertEqual(BoardIdentity.subtitle(hosts: b1.hosts, fingerprintOrPrefix: b1.fingerprint, rawName: b1.name,
+                                              nickname: list.first?.nickname), "etap · IP .102 · #A4F2")
+        XCTAssertEqual(BoardIdentity.subtitle(hosts: b2.hosts, fingerprintOrPrefix: b2.fingerprint, rawName: b2.name),
+                       "IP .118 · #7C01")
+        XCTAssertEqual(s.recentIps(), ["192.168.43.102", "192.168.43.118"])
+        XCTAssertEqual(BoardIdentity.sanitizeOtp("482 917"), "482917")
+        XCTAssertEqual(BoardIdentity.sanitizeOtp("Kod: 123-4567"), "123456")
+    }
 }

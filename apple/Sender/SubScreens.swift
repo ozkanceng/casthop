@@ -2,6 +2,7 @@ import AVFoundation
 import CastHopProtocol
 import CastHopSender
 import SwiftUI
+import UIKit
 
 /// Step lists shared by the guide and the error cards.
 enum GuideSteps {
@@ -25,6 +26,15 @@ enum GuideSteps {
         "On the board, join the tablet's network from the network icon.",
         "Scan the new QR code that appears on the board.",
     ]
+}
+
+func boardKindIcon(_ kind: String?) -> String {
+    switch kind {
+    case "pc": return "desktopcomputer"
+    case "tablet": return "ipad.landscape"
+    case "board": return "rectangle.inset.filled.and.person.filled"
+    default: return "tv"
+    }
 }
 
 struct GuideView: View {
@@ -117,12 +127,7 @@ struct PermissionsView: View {
 
     private func item(_ title: LocalizedStringKey, _ reason: LocalizedStringKey, icon: String) -> some View {
         HStack(alignment: .top, spacing: Tokens.space4) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(Tokens.primary)
-                .frame(width: 44, height: 44)
-                .background(Tokens.surfaceContainer, in: Circle())
-                .accessibilityHidden(true)
+            IconBadge(systemName: icon)
             VStack(alignment: .leading, spacing: Tokens.space1) {
                 Text(title)
                     .font(.headline)
@@ -136,8 +141,11 @@ struct PermissionsView: View {
 
     var body: some View {
         SubScreen(title: "A few permissions are needed first") {
-            item("Camera", "To read the QR code on the board. Nothing is recorded.", icon: "camera")
-            item("Local network", "To connect to the board on the same network.", icon: "wifi")
+            SectionCard(title: "Before you start", icon: "hand.raised") {
+                item("Camera", "To read the QR code on the board. Nothing is recorded.", icon: "camera")
+                Divider()
+                item("Local network", "To connect to the board on the same network.", icon: "wifi")
+            }
             Button("Continue") {
                 Task { await model.requestPermissions() }
             }
@@ -155,13 +163,26 @@ struct PermissionsView: View {
     }
 }
 
-/// Camera preview that reports each QR code it reads.
+/// Camera preview that reports each QR code it reads and supports toggling the torch in dark classrooms.
 private final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     var onCode: ((String) -> Void)?
     var onFailure: (() -> Void)?
+    var onTorchAvailability: ((Bool) -> Void)?
     private let session = AVCaptureSession()
     private let queue = DispatchQueue(label: "casthop.scanner")
     private var preview: AVCaptureVideoPreviewLayer?
+    private var captureDevice: AVCaptureDevice?
+
+    func setTorch(_ on: Bool) {
+        queue.async { [weak self] in
+            guard let device = self?.captureDevice, device.hasTorch else { return }
+            do {
+                try device.lockForConfiguration()
+                device.torchMode = on ? .on : .off
+                device.unlockForConfiguration()
+            } catch {}
+        }
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -172,6 +193,8 @@ private final class ScannerController: UIViewController, AVCaptureMetadataOutput
             DispatchQueue.main.async { [weak self] in self?.onFailure?() }
             return
         }
+        captureDevice = camera
+        DispatchQueue.main.async { [weak self] in self?.onTorchAvailability?(camera.hasTorch) }
         session.addInput(input)
         session.addOutput(output)
         output.setMetadataObjectsDelegate(self, queue: .main)
@@ -203,6 +226,7 @@ private final class ScannerController: UIViewController, AVCaptureMetadataOutput
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        setTorch(false)
         queue.async { [session] in session.stopRunning() }
     }
 
@@ -214,70 +238,166 @@ private final class ScannerController: UIViewController, AVCaptureMetadataOutput
 }
 
 private struct ScannerPreview: UIViewControllerRepresentable {
+    let torchOn: Bool
     let onCode: (String) -> Void
     let onFailure: () -> Void
+    let onTorchAvailability: (Bool) -> Void
 
     func makeUIViewController(context: Context) -> ScannerController {
         let controller = ScannerController()
         controller.onCode = onCode
         controller.onFailure = onFailure
+        controller.onTorchAvailability = onTorchAvailability
         return controller
     }
 
-    func updateUIViewController(_ controller: ScannerController, context: Context) {}
+    func updateUIViewController(_ controller: ScannerController, context: Context) {
+        controller.setTorch(torchOn)
+    }
 }
 
 struct ScannerView: View {
     @EnvironmentObject private var model: AppModel
     @State private var hint: LocalizedStringKey = "Point the camera at the QR code on the board"
     @State private var done = false
+    @State private var torchAvailable = false
+    @State private var torchOn = false
+    @State private var scanLineDown = false
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            ScannerPreview(onCode: { text in
+        ZStack {
+            ScannerPreview(torchOn: torchOn, onCode: { text in
                 guard !done else { return }
                 if let payload = try? QrPayload.parse(text) {
                     done = true
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
                     model.connect(qr: payload)
                 } else {
                     hint = "This is not a CastHop code. Scan the QR code on the board."
                 }
             }, onFailure: {
                 hint = "The camera could not be opened."
+            }, onTorchAvailability: { available in
+                torchAvailable = available
             })
             .ignoresSafeArea()
-            RoundedRectangle(cornerRadius: Tokens.radius)
-                .stroke(.white, lineWidth: 4)
-                .frame(width: 260, height: 260)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityHidden(true)
-            VStack(spacing: Tokens.space3) {
-                Text(hint)
-                    .font(.title3)
-                    .multilineTextAlignment(.center)
-                    .foregroundStyle(.white)
-                Button("Cancel") { model.path.removeLast() }
-                    .foregroundStyle(.white)
-                    .frame(minHeight: Tokens.targetSmall)
+
+            // Corner viewfinder + animated laser line
+            ZStack {
+                ScanFrameCorners()
+                Capsule()
+                    .fill(LinearGradient(colors: [.clear, Tokens.primary, .white, Tokens.primary, .clear],
+                                         startPoint: .leading, endPoint: .trailing))
+                    .frame(height: 3)
+                    .padding(.horizontal, 16)
+                    .offset(y: scanLineDown ? 105 : -105)
             }
-            .padding(Tokens.space5)
-            .frame(maxWidth: .infinity)
-            .background(.black.opacity(0.6))
+            .frame(width: 260, height: 260)
+            .accessibilityHidden(true)
+
+            VStack {
+                // Top bar: Back + Torch
+                HStack {
+                    Button {
+                        model.path.removeLast()
+                    } label: {
+                        Image(systemName: "chevron.backward")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 48, height: 48)
+                            .background(.black.opacity(0.55), in: Circle())
+                    }
+                    .accessibilityLabel(Text("Back"))
+                    Spacer()
+                    if torchAvailable {
+                        Button {
+                            torchOn.toggle()
+                        } label: {
+                            Image(systemName: torchOn ? "flashlight.on.fill" : "flashlight.off.fill")
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(torchOn ? Color.yellow : .white)
+                                .frame(width: 48, height: 48)
+                                .background(.black.opacity(0.55), in: Circle())
+                        }
+                        .accessibilityLabel(Text(torchOn ? "Turn flashlight off" : "Turn flashlight on"))
+                    }
+                }
+                .padding(.horizontal, Tokens.space4)
+                .padding(.top, Tokens.space2)
+
+                Spacer()
+
+                VStack(spacing: Tokens.space3) {
+                    Text(hint)
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
+                        .foregroundStyle(.white)
+                    HStack(spacing: Tokens.space3) {
+                        Button {
+                            model.path[model.path.count - 1] = .discover
+                        } label: {
+                            Label("With code", systemImage: "number")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity, minHeight: Tokens.targetSmall)
+                                .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: Tokens.radiusSmall))
+                                .overlay(RoundedRectangle(cornerRadius: Tokens.radiusSmall).stroke(.white.opacity(0.35), lineWidth: 1))
+                        }
+                        Button {
+                            model.path[model.path.count - 1] = .manualIp
+                        } label: {
+                            Label("With IP", systemImage: "network")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity, minHeight: Tokens.targetSmall)
+                                .background(.white.opacity(0.16), in: RoundedRectangle(cornerRadius: Tokens.radiusSmall))
+                                .overlay(RoundedRectangle(cornerRadius: Tokens.radiusSmall).stroke(.white.opacity(0.35), lineWidth: 1))
+                        }
+                    }
+                }
+                .padding(Tokens.space5)
+                .frame(maxWidth: .infinity)
+                .background(.black.opacity(0.72))
+            }
         }
         .navigationBarHidden(true)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.7).repeatForever(autoreverses: true)) {
+                scanLineDown = true
+            }
+        }
+    }
+}
+
+private struct ScanFrameCorners: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let arm = size.width * 0.18
+            let lineWidth: CGFloat = 5
+            let corners: [(CGPoint, CGPoint)] = [
+                (CGPoint(x: 0, y: 0), CGPoint(x: 1, y: 1)),
+                (CGPoint(x: size.width, y: 0), CGPoint(x: -1, y: 1)),
+                (CGPoint(x: 0, y: size.height), CGPoint(x: 1, y: -1)),
+                (CGPoint(x: size.width, y: size.height), CGPoint(x: -1, y: -1)),
+            ]
+            for (pt, dir) in corners {
+                var p = Path()
+                p.move(to: CGPoint(x: pt.x + arm * dir.x, y: pt.y))
+                p.addLine(to: pt)
+                p.addLine(to: CGPoint(x: pt.x, y: pt.y + arm * dir.y))
+                ctx.stroke(p, with: .color(.white), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round))
+            }
+        }
     }
 }
 
 struct DiscoverView: View {
     @EnvironmentObject private var model: AppModel
+    @State private var timedOut = false
+    @State private var searchGeneration = 0
 
-    private static func icon(_ kind: String?) -> String {
-        switch kind {
-        case "pc": return "desktopcomputer"
-        case "tablet": return "ipad.landscape"
-        case "board": return "rectangle.inset.filled.and.person.filled"
-        default: return "tv"
-        }
+    private var sorted: [DiscoveredReceiver] {
+        BoardIdentity.sortDiscovered(model.discovered, remembered: model.receivers)
     }
 
     var body: some View {
@@ -287,15 +407,94 @@ struct DiscoverView: View {
                 Text("Searching for boards on the same network…")
                     .font(.body)
                     .foregroundStyle(Tokens.onSurface)
+                Spacer()
+                Button {
+                    timedOut = false
+                    searchGeneration += 1
+                    model.refreshBrowsing()
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .frame(minHeight: Tokens.targetSmall)
             }
-            ForEach(model.discovered) { found in
-                NavigationCard(title: Text(verbatim: found.name), icon: Self.icon(found.kind)) { model.path.append(.pin(found.id)) }
+
+            if sorted.isEmpty {
+                if !timedOut && !model.discoveryFailed {
+                    BoardSkeletonList(count: 3)
+                }
+                if timedOut || model.discoveryFailed {
+                    VStack(alignment: .leading, spacing: Tokens.space3) {
+                        Text("No board appeared yet")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Tokens.onSurface)
+                        Text("Mobile hotspots or school networks may block automatic discovery (mDNS). You can connect directly using the IP address or QR code on the board.")
+                            .font(.body)
+                            .foregroundStyle(Tokens.onSurfaceVariant)
+                        Button {
+                            model.path.append(.manualIp)
+                        } label: {
+                            Label("Connect by IP address", systemImage: "network")
+                        }
+                        .buttonStyle(FilledButtonStyle())
+                        Button {
+                            model.openScanner()
+                        } label: {
+                            Label("Scan the QR code", systemImage: "qrcode.viewfinder")
+                        }
+                        .buttonStyle(OutlineButtonStyle())
+                    }
+                    .padding(Tokens.space4 + Tokens.space1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Tokens.surface, in: RoundedRectangle(cornerRadius: Tokens.radius))
+                    .overlay(RoundedRectangle(cornerRadius: Tokens.radius).stroke(Tokens.outlineVariant, lineWidth: 1))
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            } else {
+                VStack(spacing: Tokens.space3) {
+                    ForEach(sorted) { found in
+                        let saved = model.rememberedMatch(for: found)
+                        let title = saved?.displayName ?? found.name
+                        let subtitle = BoardIdentity.subtitle(hosts: saved?.hosts ?? [], fingerprintOrPrefix: found.fingerprintPrefix,
+                                                              rawName: found.name, nickname: saved?.nickname)
+                        NavigationCard(
+                            title: Text(verbatim: title),
+                            subtitle: Text(verbatim: subtitle),
+                            icon: boardKindIcon(found.kind ?? saved?.kind),
+                            badgeSystemName: saved?.favorite == true ? "star.fill" : nil
+                        ) {
+                            model.dismiss()
+                            model.path.append(.pin(found.id))
+                        }
+                    }
+                }
             }
+
+            NavigationCard(
+                title: Text("Not listed? Connect by IP address"),
+                subtitle: Text("Enter the IP address and 6-digit code shown on the board."),
+                icon: "network"
+            ) {
+                model.dismiss()
+                model.path.append(.manualIp)
+            }
+
             Text("Board not listed? Is CastHop open on the board and the tablet on the same network? School networks may block discovery; the QR code always works.")
                 .font(.subheadline)
                 .foregroundStyle(Tokens.onSurfaceVariant)
         }
         .onAppear { model.startBrowsing() }
+        .task(id: "\(searchGeneration)-\(model.discovered.isEmpty)") {
+            guard model.discovered.isEmpty else {
+                timedOut = false
+                return
+            }
+            timedOut = false
+            try? await Task.sleep(for: .seconds(5))
+            if !Task.isCancelled && model.discovered.isEmpty {
+                withAnimation { timedOut = true }
+            }
+        }
     }
 }
 
@@ -303,41 +502,330 @@ struct PinView: View {
     let id: String
     @EnvironmentObject private var model: AppModel
     @State private var pin = ""
-    @FocusState private var focused: Bool
+    @State private var errorSignal = 0
 
     private var found: DiscoveredReceiver? { model.discovered(id: id) }
+    private var remembered: RememberedReceiver? { found.flatMap { model.rememberedMatch(for: $0) } }
+    private var displayTitle: String { remembered?.displayName ?? found?.name ?? "" }
+    private var subtitle: String {
+        guard let found else { return "" }
+        return BoardIdentity.subtitle(hosts: remembered?.hosts ?? [], fingerprintOrPrefix: found.fingerprintPrefix,
+                                      rawName: found.name, nickname: remembered?.nickname)
+    }
+    private var failure: MirrorFailure? {
+        if case .ended(let f) = model.phase { return f }
+        return nil
+    }
+    private var visualState: OtpVisualState {
+        if model.phase.isConnectingFlow { return .submitting }
+        if failure == .wrongPin || failure == .lockedOut { return .error }
+        return .idle
+    }
 
     var body: some View {
-        SubScreen(title: "Connect with code (no QR)", maxWidth: 480) {
+        SubScreen(title: "Connect with code (no QR)", maxWidth: 520) {
             if let found {
-                Text(verbatim: found.name)
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(Tokens.onSurface)
-                    .frame(maxWidth: .infinity)
-            }
-            Text("Enter the 6-digit code shown on the board.")
-                .font(.body)
-                .foregroundStyle(Tokens.onSurface)
-                .frame(maxWidth: .infinity)
-            TextField("Code", text: $pin)
-                .keyboardType(.numberPad)
-                .textContentType(.oneTimeCode)
-                .font(.system(size: 40, weight: .semibold, design: .monospaced))
-                .multilineTextAlignment(.center)
-                .padding(Tokens.space3)
-                .background(Tokens.surface, in: RoundedRectangle(cornerRadius: Tokens.radius))
-                .focused($focused)
-                .onChange(of: pin) { _, value in
-                    let digits = String(value.filter(\.isNumber).prefix(6))
-                    if digits != value { pin = digits }
+                // Selected board identity summary card
+                HStack(spacing: Tokens.space4) {
+                    IconBadge(systemName: boardKindIcon(found.kind ?? remembered?.kind))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: displayTitle)
+                            .font(.headline)
+                            .foregroundStyle(Tokens.onSurface)
+                        Text(verbatim: subtitle)
+                            .font(.subheadline.monospaced())
+                            .foregroundStyle(Tokens.onSurfaceVariant)
+                    }
+                    Spacer()
                 }
-            Button("Connect to board") {
-                if let found { model.connect(found, pin: pin) }
+                .padding(Tokens.space4)
+                .background(Tokens.surface, in: RoundedRectangle(cornerRadius: Tokens.radius))
+                .overlay(RoundedRectangle(cornerRadius: Tokens.radius).stroke(Tokens.outlineVariant, lineWidth: 1))
             }
-            .buttonStyle(FilledButtonStyle())
-            .disabled(pin.count != 6 || found == nil)
+
+            if model.phase.isConnectingFlow {
+                let waiting = {
+                    if case .pairingApproval = model.phase { return true }
+                    return false
+                }()
+                ConnectionStepperCard(
+                    boardName: displayTitle,
+                    activeStep: 1,
+                    waitingApproval: waiting,
+                    onCancel: { model.dismiss() }
+                )
+            } else {
+                VStack(spacing: Tokens.space4) {
+                    Text("Enter the 6-digit code shown on the board.")
+                        .font(.headline)
+                        .foregroundStyle(Tokens.onSurface)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+
+                    OtpCodeInput(
+                        code: $pin,
+                        visualState: visualState,
+                        enabled: found != nil,
+                        errorSignal: errorSignal,
+                        autoFocus: true
+                    ) { code in
+                        if let found { model.connect(found, pin: code) }
+                    }
+
+                    HStack {
+                        Text("Connection starts automatically after the 6th digit.")
+                            .font(.subheadline)
+                            .foregroundStyle(Tokens.onSurfaceVariant)
+                        Spacer()
+                        if !pin.isEmpty {
+                            Button("Clear") { pin = "" }
+                                .font(.subheadline.weight(.semibold))
+                                .frame(minHeight: Tokens.targetSmall)
+                        }
+                    }
+
+                    if let failure {
+                        ConnectionErrorCard(
+                            failure: failure,
+                            onRetry: {
+                                if failure == .wrongPin {
+                                    pin = ""
+                                } else if let found, pin.count == 6 {
+                                    model.connect(found, pin: pin)
+                                } else {
+                                    model.retryLast()
+                                }
+                            },
+                            onManualIp: {
+                                model.dismiss()
+                                model.path.append(.manualIp)
+                            },
+                            onGuide: {
+                                model.dismiss()
+                                model.path.append(.guide)
+                            }
+                        )
+                    }
+
+                    Button("Connect to board") {
+                        if let found { model.connect(found, pin: pin) }
+                    }
+                    .buttonStyle(FilledButtonStyle())
+                    .disabled(pin.count != 6 || found == nil)
+
+                    BoardCodeIllustrationCard()
+                }
+            }
         }
-        .onAppear { focused = true }
+        .onChange(of: model.phase) { _, newPhase in
+            if case .ended(let err) = newPhase, let err {
+                errorSignal += 1
+                if err == .wrongPin {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(380))
+                        pin = ""
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            if model.phase.isConnectingFlow || failure != nil { model.dismiss() }
+        }
+    }
+}
+
+/// Direct IPv4 + 6-digit OTP connection screen for hotspots and mDNS-blocked school networks.
+struct ManualIpView: View {
+    @EnvironmentObject private var model: AppModel
+    @State private var host = ""
+    @State private var portText = "47800"
+    @State private var showPort = false
+    @State private var pin = ""
+    @State private var errorSignal = 0
+
+    private var cleanHost: String { host.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var hostValid: Bool { BoardIdentity.isValidIpv4(cleanHost) }
+    private var validPort: UInt16? { UInt16(portText.trimmingCharacters(in: .whitespacesAndNewlines)).flatMap { $0 > 0 ? $0 : nil } }
+    private var canEnterCode: Bool { hostValid && validPort != nil }
+    private var failure: MirrorFailure? {
+        if case .ended(let f) = model.phase { return f }
+        return nil
+    }
+
+    var body: some View {
+        SubScreen(title: "Connect by IP address", maxWidth: 520) {
+            if model.phase.isConnectingFlow {
+                let waiting = {
+                    if case .pairingApproval = model.phase { return true }
+                    return false
+                }()
+                ConnectionStepperCard(
+                    boardName: cleanHost,
+                    activeStep: 1,
+                    waitingApproval: waiting,
+                    onCancel: { model.dismiss() }
+                )
+            } else {
+                VStack(alignment: .leading, spacing: Tokens.space4) {
+                    Text("Enter the IP address and 6-digit code shown on the board.")
+                        .font(.body)
+                        .foregroundStyle(Tokens.onSurfaceVariant)
+
+                    VStack(alignment: .leading, spacing: Tokens.space2) {
+                        Text("Board IP address")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Tokens.onSurface)
+                        HStack {
+                            TextField("192.168.43.102", text: $host)
+                                .keyboardType(.decimalPad)
+                                .font(.title3.weight(.semibold).monospaced())
+                                .autocorrectionDisabled()
+                                .textInputAutocapitalization(.never)
+                                .onChange(of: host) { _, v in
+                                    let clean = String(v.filter { $0.isNumber || $0 == "." }.prefix(15))
+                                    if clean != v { host = clean }
+                                }
+                            if !host.isEmpty {
+                                Button {
+                                    host = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(Tokens.onSurfaceVariant)
+                                }
+                                .accessibilityLabel(Text("Clear"))
+                            }
+                        }
+                        .padding(Tokens.space3)
+                        .background(Tokens.surface, in: RoundedRectangle(cornerRadius: Tokens.radiusSmall))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Tokens.radiusSmall)
+                                .stroke(!host.isEmpty && !hostValid ? Tokens.error : Tokens.outlineVariant, lineWidth: 1.5)
+                        )
+                        if !host.isEmpty && !hostValid {
+                            Text("Enter a valid IPv4 address (e.g. 192.168.43.102).")
+                                .font(.caption)
+                                .foregroundStyle(Tokens.error)
+                        }
+                    }
+
+                    if !model.recentIps.isEmpty {
+                        VStack(alignment: .leading, spacing: Tokens.space2) {
+                            Text("Recent addresses")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Tokens.onSurfaceVariant)
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: Tokens.space2) {
+                                    ForEach(model.recentIps, id: \.self) { ip in
+                                        Button {
+                                            host = ip
+                                        } label: {
+                                            Text(verbatim: ip)
+                                                .font(.subheadline.monospaced())
+                                                .foregroundStyle(Tokens.onSurface)
+                                                .padding(.horizontal, 12)
+                                                .frame(minHeight: 40)
+                                                .background(Tokens.surfaceContainer, in: Capsule())
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    DisclosureGroup(isExpanded: $showPort) {
+                        VStack(alignment: .leading, spacing: Tokens.space1) {
+                            TextField("47800", text: $portText)
+                                .keyboardType(.numberPad)
+                                .font(.headline.monospaced())
+                                .padding(Tokens.space3)
+                                .background(Tokens.surface, in: RoundedRectangle(cornerRadius: Tokens.radiusSmall))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: Tokens.radiusSmall)
+                                        .stroke(validPort == nil ? Tokens.error : Tokens.outlineVariant, lineWidth: 1.5)
+                                )
+                                .onChange(of: portText) { _, v in
+                                    let clean = String(v.filter(\.isNumber).prefix(5))
+                                    if clean != v { portText = clean }
+                                }
+                            if validPort == nil {
+                                Text("Port must be between 1 and 65535.")
+                                    .font(.caption)
+                                    .foregroundStyle(Tokens.error)
+                            }
+                        }
+                        .padding(.top, Tokens.space2)
+                    } label: {
+                        Text("Change port (default 47800)")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Tokens.primary)
+                            .frame(minHeight: Tokens.targetSmall)
+                    }
+
+                    Text("6-digit code on the board")
+                        .font(.headline)
+                        .foregroundStyle(Tokens.onSurface)
+
+                    OtpCodeInput(
+                        code: $pin,
+                        visualState: failure == .wrongPin || failure == .lockedOut ? .error : .idle,
+                        enabled: canEnterCode,
+                        errorSignal: errorSignal,
+                        autoFocus: false
+                    ) { code in
+                        if let port = validPort, hostValid {
+                            model.connect(host: cleanHost, port: port, pin: code)
+                        }
+                    }
+
+                    if let failure {
+                        ConnectionErrorCard(
+                            failure: failure,
+                            onRetry: {
+                                if failure == .wrongPin {
+                                    pin = ""
+                                } else if let port = validPort, hostValid, pin.count == 6 {
+                                    model.connect(host: cleanHost, port: port, pin: pin)
+                                } else {
+                                    model.retryLast()
+                                }
+                            },
+                            onGuide: {
+                                model.dismiss()
+                                model.path.append(.guide)
+                            }
+                        )
+                    }
+
+                    Button("Connect to board") {
+                        if let port = validPort, hostValid {
+                            model.connect(host: cleanHost, port: port, pin: pin)
+                        }
+                    }
+                    .buttonStyle(FilledButtonStyle())
+                    .disabled(!canEnterCode || pin.count != 6)
+
+                    BoardCodeIllustrationCard()
+                }
+            }
+        }
+        .onAppear {
+            if host.isEmpty, let first = model.recentIps.first { host = first }
+        }
+        .onChange(of: model.phase) { _, newPhase in
+            if case .ended(let err) = newPhase, let err {
+                errorSignal += 1
+                if err == .wrongPin {
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(380))
+                        pin = ""
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            if model.phase.isConnectingFlow || failure != nil { model.dismiss() }
+        }
     }
 }
 
@@ -354,7 +842,7 @@ struct SettingsView: View {
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: Tokens.space1) {
                     Text(title)
-                        .font(.body)
+                        .font(.body.weight(.medium))
                         .foregroundStyle(Tokens.onSurface)
                     Text(detail)
                         .font(.subheadline)
@@ -373,7 +861,7 @@ struct SettingsView: View {
         Toggle(isOn: isOn) {
             VStack(alignment: .leading, spacing: Tokens.space1) {
                 Text(title)
-                    .font(.body)
+                    .font(.body.weight(.medium))
                     .foregroundStyle(Tokens.onSurface)
                 Text(detail)
                     .font(.subheadline)
@@ -425,16 +913,17 @@ struct SettingsView: View {
                     .foregroundStyle(Tokens.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            SectionCard(title: "Picture quality") {
+            SectionCard(title: "Picture quality", icon: "sparkles.tv") {
                 presetRow(.best, "Best quality", "1080p, 60 fps. 5 GHz Wi-Fi recommended.")
                 presetRow(.balanced, "Balanced", "Lower bitrate, smooth motion.")
                 presetRow(.weakNetwork, "Weak network", "720p, 30 fps for crowded or 2.4 GHz networks.")
+                presetRow(.ultraLow, "Very weak network / Hotspot", "540p, 24 fps. Smoothest choice on congested or slow mobile hotspots.")
                 Divider()
                 toggleRow("Play sound on the board",
                           "Video and app sounds play from the board's speakers. Some apps (e.g. calls, some video apps) do not allow their sound to be shared.",
                           isOn: $model.settings.audioEnabled)
             }
-            SectionCard(title: "Advanced") {
+            SectionCard(title: "Advanced", icon: "slider.horizontal.3") {
                 Text("Only values supported by this tablet are shown. The board and network may still lower them.")
                     .font(.subheadline)
                     .foregroundStyle(Tokens.onSurfaceVariant)

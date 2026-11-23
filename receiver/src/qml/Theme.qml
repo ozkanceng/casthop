@@ -10,18 +10,23 @@ QtObject {
     property real scale: 1.0
 
     // Renkler (WCAG AA: metin/arka plan kontrastı ≥ 4.5:1, her iki temada)
-    readonly property color background: dark ? "#0F1720" : "#F4F6F9"
+    readonly property color background: dark ? "#0C131C" : "#F4F6FA"
     readonly property color videoBackground: "#000000"
-    readonly property color surface: dark ? "#18222E" : "#FFFFFF"
-    readonly property color surfaceRaised: dark ? "#223040" : "#E3E9F0"
-    readonly property color primary: dark ? "#4DA3FF" : "#0B5CAD"
+    readonly property color surface: dark ? "#151F2B" : "#FFFFFF"
+    readonly property color surfaceRaised: dark ? "#1E2C3C" : "#E6ECF3"
+    readonly property color border: dark ? "#2A3A4D" : "#CFD7E3"
+    readonly property color primary: dark ? "#5AA9FF" : "#0B5CAD"
+    readonly property color primarySubtle: dark ? "#162B44" : "#DCEAFF"
     readonly property color primaryForeground: dark ? "#04172B" : "#FFFFFF"
+    readonly property color success: dark ? "#4ADE80" : "#006A60"
+    readonly property color successSubtle: dark ? "#113026" : "#D3F7EE"
     readonly property color text: dark ? "#F2F5F8" : "#0F1720"
     readonly property color textMuted: dark ? "#A9B6C4" : "#4A5868"
     readonly property color warning: dark ? "#FFB86E" : "#8A4B00"
-    readonly property color danger: dark ? "#FF7A7A" : "#B3261E"
-    // Video üstü katmanlar: arka plan rengi, %80 opak
-    readonly property color scrim: dark ? "#CC0F1720" : "#E6F4F6F9"
+    readonly property color danger: dark ? "#F87171" : "#BA1A1A"
+    readonly property color dangerForeground: dark ? "#2B0606" : "#FFFFFF"
+    // Video üstü katmanlar: arka plan rengi, %84 opak
+    readonly property color scrim: dark ? "#D60C131C" : "#EBFFFFFF"
 
     // Boşluk ölçeği (px, 1080p taban; [scale] ile çarpılır)
     readonly property int space1: Math.round(8 * scale)
@@ -32,13 +37,13 @@ QtObject {
 
     // Dokunma hedefi: tahtada parmakla rahat basım için en az 72 px
     readonly property int touchTarget: Math.round(88 * scale)
-    readonly property int radius: Math.round(16 * scale)
+    readonly property int radius: Math.round(18 * scale)
 
     // Tipografi
     readonly property string fontFamily: "Noto Sans"
     readonly property string fontMono: "Noto Sans Mono"
-    readonly property int fontDisplay: Math.round(96 * scale)
-    readonly property int fontTitle: Math.round(48 * scale)
+    readonly property int fontDisplay: Math.round(84 * scale)
+    readonly property int fontTitle: Math.round(46 * scale)
     readonly property int fontBody: Math.round(30 * scale)
     readonly property int fontLabel: Math.round(24 * scale)
     readonly property int fontCaption: Math.round(20 * scale)

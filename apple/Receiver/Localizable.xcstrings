@@ -426,6 +426,23 @@
         }
       }
     },
+    "Offline": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Offline"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çevrimdışı"
+          }
+        }
+      }
+    },
     "On": {
       "extractionState": "manual",
       "localizations": {
@@ -524,6 +541,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Bağlanmak için QR kodu"
+          }
+        }
+      }
+    },
+    "Ready to connect": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready to connect"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantıya hazır"
           }
         }
       }

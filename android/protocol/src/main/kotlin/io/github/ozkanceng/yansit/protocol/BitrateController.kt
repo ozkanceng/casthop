@@ -16,6 +16,8 @@ public class BitrateController(private val config: Config) {
         val minBps: Long,
         val maxBps: Long,
         val decreaseFactor: Double = 0.7,
+        /** Gentler decrease for elevated absolute delay plateau or RTT spike before frames are dropped. */
+        val mildDecreaseFactor: Double = 0.85,
         /** Her [tickMs]'de çarpan; 250 ms'de 1.02 ≈ saniyede %8. */
         val increaseFactor: Double = 1.02,
         /** Growth per tick while returning to the rate that worked before a congestion episode (≈ 31% per second). */
@@ -29,6 +31,13 @@ public class BitrateController(private val config: Config) {
         val delaySlopeThresholdUsPerSec: Long = 15_000,
         val slopeWindowMs: Long = 1000,
         val dropRatioThreshold: Double = 0.05,
+        /** Absolute capture→receive delay above which bitrate stops growing (prevents bufferbloat plateau ramps). */
+        val highDelayHoldUs: Long = 160_000,
+        /** Absolute capture→receive delay above which bitrate gently backs off even if slope is flat. */
+        val highDelayDecreaseUs: Long = 240_000,
+        /** RTT above this AND [rttSpikeFactor]× baseline signals link congestion (e.g. mobile hotspot contention). */
+        val highRttThresholdUs: Long = 100_000,
+        val rttSpikeFactor: Double = 2.0,
         /**
          * A report with fewer frames says nothing about the link: a still screen is redrawn twice a second, and one
          * late frame would read as a rising delay or a 100% drop.
@@ -39,7 +48,8 @@ public class BitrateController(private val config: Config) {
     ) {
         init {
             require(minBps in 1..maxBps && initialBps in minBps..maxBps)
-            require(decreaseFactor in 0.1..0.99 && increaseFactor in 1.0..1.5)
+            require(decreaseFactor in 0.1..0.99 && mildDecreaseFactor in decreaseFactor..0.99)
+            require(increaseFactor in 1.0..1.5)
             require(recoveryIncreaseFactor in increaseFactor..1.5 && recoveryTargetRatio in 0.1..1.0)
         }
     }
@@ -53,7 +63,11 @@ public class BitrateController(private val config: Config) {
     private var lastTickMs: Long? = null
     private var startMs: Long? = null
     private var queueDelayUs: Long = 0
-    private var pendingCongestion = false
+    private var pendingHardCongestion = false
+    private var pendingMildCongestion = false
+    private var lastReportC2rUs: Long = 0
+    private var lastReportAtMs: Long = Long.MIN_VALUE / 2
+    private var baselineRttUs: Long? = null
     private var recoveryTarget: Double = 0.0
     private var falling = false
     private val delayHistory = ArrayDeque<DelayPoint>()
@@ -70,26 +84,52 @@ public class BitrateController(private val config: Config) {
 
     /** Gönderici birikme yüzünden kare attı. */
     public fun onSenderDrop() {
-        pendingCongestion = true
+        pendingHardCongestion = true
+    }
+
+    /** PING/PONG RTT ölçümü: taban RTT'nin belirgin üstündeki sıçramalar yumuşak tıkanıklık sayılır. */
+    public fun onRttSample(nowMs: Long, rttUs: Long) {
+        if (rttUs <= 0) return
+        val base = baselineRttUs
+        if (base == null || rttUs < base) {
+            baselineRttUs = rttUs
+        } else {
+            // Very slow upward drift so a permanent route change does not lock an obsolete baseline forever.
+            baselineRttUs = (base * 0.99 + rttUs * 0.01).toLong()
+        }
+        val ref = baselineRttUs ?: rttUs
+        if (rttUs >= config.highRttThresholdUs && (rttUs >= ref * config.rttSpikeFactor || rttUs >= config.highRttThresholdUs * 2.5)) {
+            pendingMildCongestion = true
+            lastCongestionMs = max(lastCongestionMs, nowMs - config.stableMsBeforeIncrease / 2)
+        }
     }
 
     public fun onReceiverReport(nowMs: Long, report: ControlMessage.ReceiverReport) {
         if (report.framesReceived < config.minReportFrames) {
             // The delay trend starts again once the picture moves.
             delayHistory.clear()
+            lastReportC2rUs = 0
             return
         }
+        lastReportC2rUs = report.c2rAvgUs
+        lastReportAtMs = nowMs
         delayHistory.addLast(DelayPoint(nowMs, report.c2rAvgUs))
         while (delayHistory.size > 2 && nowMs - delayHistory[1].atMs >= config.slopeWindowMs) delayHistory.removeFirst()
 
         val total = report.framesReceived
-        if (total > 0 && report.framesDropped.toDouble() / total > config.dropRatioThreshold) pendingCongestion = true
+        if (total > 0 && report.framesDropped.toDouble() / total > config.dropRatioThreshold) {
+            pendingHardCongestion = true
+        }
 
         val oldest = delayHistory.first()
         val dt = nowMs - oldest.atMs
         if (dt >= config.slopeWindowMs / 2) {
             val slopePerSec = (report.c2rAvgUs - oldest.c2rAvgUs) * 1000.0 / dt
-            if (slopePerSec > config.delaySlopeThresholdUsPerSec) pendingCongestion = true
+            if (slopePerSec > config.delaySlopeThresholdUsPerSec) pendingHardCongestion = true
+        }
+
+        if (report.c2rAvgUs >= config.highDelayDecreaseUs) {
+            pendingMildCongestion = true
         }
     }
 
@@ -102,20 +142,25 @@ public class BitrateController(private val config: Config) {
         val elapsedTicks = lastTickMs?.let { ((nowMs - it).toDouble() / config.tickMs).coerceIn(0.0, 8.0) } ?: 1.0
         lastTickMs = nowMs
 
-        val congested = pendingCongestion || queueDelayUs > config.queueDelayThresholdUs
-        pendingCongestion = false
+        val hardCongested = pendingHardCongestion || queueDelayUs > config.queueDelayThresholdUs
+        val mildCongested = pendingMildCongestion
+        val reportFresh = nowMs - lastReportAtMs <= 1_500
+        val holdIncrease = reportFresh && lastReportC2rUs >= config.highDelayHoldUs
+        pendingHardCongestion = false
+        pendingMildCongestion = false
 
-        if (congested) {
+        if (hardCongested || mildCongested) {
             lastCongestionMs = nowMs
             if (nowMs - lastDecreaseMs >= config.decreaseHoldMs) {
                 // A short Wi-Fi stall can take the rate to the floor. Remember what worked so the picture does not
                 // stay soft for many seconds; congestion during recovery lowers this, so a slower link still settles.
                 if (!falling) recoveryTarget = target * config.recoveryTargetRatio
                 falling = true
-                target = max(config.minBps.toDouble(), target * config.decreaseFactor)
+                val factor = if (hardCongested) config.decreaseFactor else config.mildDecreaseFactor
+                target = max(config.minBps.toDouble(), target * factor)
                 lastDecreaseMs = nowMs
             }
-        } else if (nowMs - max(lastCongestionMs, start) >= config.stableMsBeforeIncrease) {
+        } else if (!holdIncrease && nowMs - max(lastCongestionMs, start) >= config.stableMsBeforeIncrease) {
             falling = false
             target = if (target < recoveryTarget) {
                 min(recoveryTarget, target * config.recoveryIncreaseFactor.pow(elapsedTicks))
@@ -145,7 +190,11 @@ public class BitrateController(private val config: Config) {
         lastTickMs = null
         startMs = null
         queueDelayUs = 0
-        pendingCongestion = false
+        pendingHardCongestion = false
+        pendingMildCongestion = false
+        lastReportC2rUs = 0
+        lastReportAtMs = Long.MIN_VALUE / 2
+        baselineRttUs = null
         recoveryTarget = 0.0
         falling = false
         delayHistory.clear()

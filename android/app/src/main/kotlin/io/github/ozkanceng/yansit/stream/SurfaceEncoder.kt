@@ -31,11 +31,17 @@ internal interface CaptureSource : VideoSource {
  * The MediaCodec part shared by screen and camera capture: H.264/H.265 from an input Surface.
  * Output timestamps are the capture time of each frame (System.nanoTime clock).
  */
-internal class SurfaceEncoder(private val caps: AndroidEncoderCaps) {
+internal class SurfaceEncoder(private var caps: AndroidEncoderCaps) {
     private val thread = HandlerThread("encoder-video", Process.THREAD_PRIORITY_URGENT_DISPLAY).apply { start() }
     private val handler = Handler(thread.looper)
     @Volatile private var codec: MediaCodec? = null
     private var ownInput: Surface? = null
+
+    /** Switches encoder capabilities (e.g. hardware → software H.264 fallback) before [start]. */
+    @Synchronized
+    fun updateCaps(newCaps: AndroidEncoderCaps) {
+        caps = newCaps
+    }
 
     /**
      * Starts a new encoder for [plan]. With [persistentInput] the encoder reads from it; otherwise it makes its own
@@ -75,7 +81,9 @@ internal class SurfaceEncoder(private val caps: AndroidEncoderCaps) {
             setInteger(MediaFormat.KEY_PREPEND_HEADER_TO_SYNC_FRAMES, 1)
             if (!pacedBySource) setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER, plan.fps.toFloat())
             setInteger(MediaFormat.KEY_OPERATING_RATE, plan.fps)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) setInteger(MediaFormat.KEY_LATENCY, 1)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && caps.supportsLowLatency) {
+                setInteger(MediaFormat.KEY_LATENCY, 1)
+            }
             caps.bestProfile?.let { setInteger(MediaFormat.KEY_PROFILE, it) }
         }
 

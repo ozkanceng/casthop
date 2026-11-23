@@ -1,6 +1,88 @@
 import CastHopProtocol
 import Foundation
 
+/// Pure logic for distinguishing boards with identical default hostnames (e.g. Pardus ETAP "etap"),
+/// sorting favorites/recent first, validating IPv4 addresses, and sanitizing 6-digit OTP input.
+///
+/// The 4-hex short ID (`A4F2`) uses the first 2 bytes of the SHA-256 certificate fingerprint so mDNS TXT `fp=`
+/// prefixes, remembered boards, and receiver waiting screens all show the exact same identifier.
+public enum BoardIdentity {
+    public static func shortId(_ fingerprintOrPrefix: Data) -> String {
+        guard fingerprintOrPrefix.count >= 2 else {
+            let hex = fingerprintOrPrefix.map { String(format: "%02X", $0) }.joined()
+            return String(repeating: "0", count: max(0, 4 - hex.count)) + String(hex.prefix(4))
+        }
+        return String(format: "%02X%02X", fingerprintOrPrefix[fingerprintOrPrefix.startIndex],
+                      fingerprintOrPrefix[fingerprintOrPrefix.index(after: fingerprintOrPrefix.startIndex)])
+    }
+
+    public static func isValidIpv4(_ text: String) -> Bool {
+        QrPayload.isIPv4(text.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
+    public static func primaryIpv4(_ hosts: [String]) -> String? {
+        hosts.first { isValidIpv4($0) }
+    }
+
+    public static func ipLastOctet(_ hosts: [String]) -> String? {
+        guard let ip = primaryIpv4(hosts), let dot = ip.lastIndex(of: ".") else { return nil }
+        let suffix = String(ip[dot...])
+        return suffix.count > 1 ? suffix : nil
+    }
+
+    public static func matchesPrefix(fingerprint: Data, prefix: Data) -> Bool {
+        !prefix.isEmpty && fingerprint.starts(with: prefix)
+    }
+
+    /// Card subtitle: raw name (when nicknamed) + last IPv4 octet + `#XXXX`.
+    public static func subtitle(hosts: [String], fingerprintOrPrefix: Data, rawName: String, nickname: String? = nil) -> String {
+        var parts: [String] = []
+        let cleanNick = nickname?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let cleanRaw = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanNick.isEmpty && cleanNick.caseInsensitiveCompare(cleanRaw) != .orderedSame {
+            parts.append(cleanRaw)
+        }
+        if let oct = ipLastOctet(hosts) {
+            parts.append("IP \(oct)")
+        }
+        parts.append("#\(shortId(fingerprintOrPrefix))")
+        return parts.joined(separator: " · ")
+    }
+
+    public static func sortReceivers(_ receivers: [RememberedReceiver]) -> [RememberedReceiver] {
+        receivers.sorted { lhs, rhs in
+            if lhs.favorite != rhs.favorite { return lhs.favorite }
+            if lhs.lastUsedMs != rhs.lastUsedMs { return lhs.lastUsedMs > rhs.lastUsedMs }
+            return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+    }
+
+    public static func sortDiscovered(_ discovered: [DiscoveredReceiver], remembered: [RememberedReceiver]) -> [DiscoveredReceiver] {
+        func match(_ d: DiscoveredReceiver) -> RememberedReceiver? {
+            remembered.first { matchesPrefix(fingerprint: $0.fingerprint, prefix: d.fingerprintPrefix) }
+        }
+        return discovered.sorted { lhs, rhs in
+            let lm = match(lhs)
+            let rm = match(rhs)
+            let lFav = lm?.favorite ?? false
+            let rFav = rm?.favorite ?? false
+            if lFav != rFav { return lFav }
+            let lLast = lm?.lastUsedMs ?? Int64.min
+            let rLast = rm?.lastUsedMs ?? Int64.min
+            if lLast != rLast { return lLast > rLast }
+            let lName = (lm?.displayName ?? lhs.name)
+            let rName = (rm?.displayName ?? rhs.name)
+            let cmp = lName.localizedCaseInsensitiveCompare(rName)
+            if cmp != .orderedSame { return cmp == .orderedAscending }
+            return shortId(lhs.fingerprintPrefix) < shortId(rhs.fingerprintPrefix)
+        }
+    }
+
+    public static func sanitizeOtp(_ raw: String, length: Int = 6) -> String {
+        String(raw.filter(\.isNumber).prefix(length))
+    }
+}
+
 /// A receiver paired once. Later connections need no QR (PROTOCOL.md §7.1, auth_method=3).
 public struct RememberedReceiver: Codable, Equatable, Identifiable, Sendable {
     public var name: String
@@ -12,10 +94,24 @@ public struct RememberedReceiver: Codable, Equatable, Identifiable, Sendable {
     public var keyId: Data
     public var pairKey: Data
     public var lastUsedMs: Int64
+    /// Optional user-assigned nickname (e.g. "9-B Matematik").
+    public var nickname: String?
+    /// Pinned favorite boards stay at the top of both home and discovery lists.
+    public var favorite: Bool
+    /// Receiver kind ("board", "tv", "pc", "tablet").
+    public var kind: String?
 
     public var id: Data { fingerprint }
 
-    public init(name: String, hosts: [String], port: UInt16, fingerprint: Data, keyId: Data, pairKey: Data, lastUsedMs: Int64) {
+    public var displayName: String {
+        let trimmed = nickname?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? name : trimmed
+    }
+
+    public var shortId: String { BoardIdentity.shortId(fingerprint) }
+
+    public init(name: String, hosts: [String], port: UInt16, fingerprint: Data, keyId: Data, pairKey: Data, lastUsedMs: Int64,
+                nickname: String? = nil, favorite: Bool = false, kind: String? = nil) {
         self.name = name
         self.hosts = hosts
         self.port = port
@@ -23,6 +119,27 @@ public struct RememberedReceiver: Codable, Equatable, Identifiable, Sendable {
         self.keyId = keyId
         self.pairKey = pairKey
         self.lastUsedMs = lastUsedMs
+        self.nickname = nickname
+        self.favorite = favorite
+        self.kind = kind
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case name, hosts, port, fingerprint, keyId, pairKey, lastUsedMs, nickname, favorite, kind
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decode(String.self, forKey: .name)
+        hosts = try c.decode([String].self, forKey: .hosts)
+        port = try c.decode(UInt16.self, forKey: .port)
+        fingerprint = try c.decode(Data.self, forKey: .fingerprint)
+        keyId = try c.decode(Data.self, forKey: .keyId)
+        pairKey = try c.decode(Data.self, forKey: .pairKey)
+        lastUsedMs = try c.decode(Int64.self, forKey: .lastUsedMs)
+        nickname = try c.decodeIfPresent(String.self, forKey: .nickname)
+        favorite = try c.decodeIfPresent(Bool.self, forKey: .favorite) ?? false
+        kind = try c.decodeIfPresent(String.self, forKey: .kind)
     }
 }
 
@@ -40,6 +157,7 @@ public struct SenderSettings: Codable, Equatable, Sendable {
 /// Why a connection failed or ended, in the terms the screens explain to the teacher.
 public enum MirrorFailure: String, Error, Codable, CaseIterable, Sendable {
     case unreachable
+    case clientIsolation
     case refused
     case wrongReceiver
     case authFailed
@@ -124,6 +242,9 @@ public struct BroadcastStats: Codable, Equatable, Sendable {
     public var width: Int
     public var height: Int
     public var autoLowered: Bool
+    public var rttMs: Int?
+    public var lossPercent: Double
+    public var quality: ConnectionQuality
 
     public init(_ stats: MirrorStats) {
         latencyMs = stats.latencyMs
@@ -132,6 +253,26 @@ public struct BroadcastStats: Codable, Equatable, Sendable {
         width = stats.width
         height = stats.height
         autoLowered = stats.autoLowered
+        rttMs = stats.rttMs
+        lossPercent = stats.lossPercent
+        quality = stats.quality
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case latencyMs, fps, bitrateBps, width, height, autoLowered, rttMs, lossPercent, quality
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        latencyMs = try c.decodeIfPresent(Int.self, forKey: .latencyMs)
+        fps = try c.decode(Double.self, forKey: .fps)
+        bitrateBps = try c.decode(Int64.self, forKey: .bitrateBps)
+        width = try c.decode(Int.self, forKey: .width)
+        height = try c.decode(Int.self, forKey: .height)
+        autoLowered = try c.decodeIfPresent(Bool.self, forKey: .autoLowered) ?? false
+        rttMs = try c.decodeIfPresent(Int.self, forKey: .rttMs)
+        lossPercent = try c.decodeIfPresent(Double.self, forKey: .lossPercent) ?? 0
+        quality = try c.decodeIfPresent(ConnectionQuality.self, forKey: .quality) ?? .good
     }
 }
 
@@ -199,34 +340,98 @@ public final class SharedStore: @unchecked Sendable {
         set { write(newValue, "settings.json") }
     }
 
-    /// Latest first.
+    /// Favorites first, then latest used.
     public func receivers() -> [RememberedReceiver] {
-        (read([RememberedReceiver].self, "receivers.json") ?? []).sorted { $0.lastUsedMs > $1.lastUsedMs }
+        BoardIdentity.sortReceivers(read([RememberedReceiver].self, "receivers.json") ?? [])
     }
 
-    /// Replaces an older record of the same receiver.
+    public func find(prefix: Data) -> RememberedReceiver? {
+        receivers().first { BoardIdentity.matchesPrefix(fingerprint: $0.fingerprint, prefix: prefix) }
+    }
+
+    public func recentIps(limit: Int = 4) -> [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        for r in receivers() {
+            for h in r.hosts where BoardIdentity.isValidIpv4(h) && !seen.contains(h) {
+                seen.insert(h)
+                out.append(h)
+                if out.count >= limit { return out }
+            }
+        }
+        return out
+    }
+
+    /// Replaces an older record of the same receiver, preserving nickname, favorite and kind.
     public func save(_ receiver: RememberedReceiver) {
         lock.lock()
         defer { lock.unlock() }
-        let others = receivers().filter { $0.fingerprint != receiver.fingerprint }
-        let all = ([receiver] + others).sorted { $0.lastUsedMs > $1.lastUsedMs }
+        let current = read([RememberedReceiver].self, "receivers.json") ?? []
+        let existing = current.first { $0.fingerprint == receiver.fingerprint }
+        var merged = receiver
+        merged.nickname = receiver.nickname ?? existing?.nickname
+        merged.favorite = receiver.favorite || (existing?.favorite ?? false)
+        merged.kind = receiver.kind ?? existing?.kind
+        let others = current.filter { $0.fingerprint != receiver.fingerprint }
+        let all = BoardIdentity.sortReceivers([merged] + others)
         write(Array(all.prefix(Self.maxReceivers)), "receivers.json")
+    }
+
+    public func setNickname(_ nickname: String?, fingerprint: Data) {
+        lock.lock()
+        defer { lock.unlock() }
+        let trimmed = nickname?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let clean = (trimmed?.isEmpty == false) ? String(trimmed!.prefix(48)) : nil
+        let updated = (read([RememberedReceiver].self, "receivers.json") ?? []).map { r -> RememberedReceiver in
+            var copy = r
+            if copy.fingerprint == fingerprint { copy.nickname = clean }
+            return copy
+        }
+        write(BoardIdentity.sortReceivers(updated), "receivers.json")
+    }
+
+    public func setFavorite(_ favorite: Bool, fingerprint: Data) {
+        lock.lock()
+        defer { lock.unlock() }
+        let updated = (read([RememberedReceiver].self, "receivers.json") ?? []).map { r -> RememberedReceiver in
+            var copy = r
+            if copy.fingerprint == fingerprint { copy.favorite = favorite }
+            return copy
+        }
+        write(BoardIdentity.sortReceivers(updated), "receivers.json")
+    }
+
+    public func updateHosts(_ hosts: [String], port: UInt16, fingerprint: Data) {
+        guard !hosts.isEmpty else { return }
+        lock.lock()
+        defer { lock.unlock() }
+        let updated = (read([RememberedReceiver].self, "receivers.json") ?? []).map { r -> RememberedReceiver in
+            var copy = r
+            if copy.fingerprint == fingerprint {
+                copy.hosts = hosts
+                copy.port = port
+            }
+            return copy
+        }
+        write(BoardIdentity.sortReceivers(updated), "receivers.json")
     }
 
     public func touch(fingerprint: Data, nowMs: Int64) {
         lock.lock()
         defer { lock.unlock() }
-        write(receivers().map { r in
-            var r = r
-            if r.fingerprint == fingerprint { r.lastUsedMs = nowMs }
-            return r
-        }, "receivers.json")
+        let updated = (read([RememberedReceiver].self, "receivers.json") ?? []).map { r -> RememberedReceiver in
+            var copy = r
+            if copy.fingerprint == fingerprint { copy.lastUsedMs = nowMs }
+            return copy
+        }
+        write(BoardIdentity.sortReceivers(updated), "receivers.json")
     }
 
     public func remove(fingerprint: Data) {
         lock.lock()
         defer { lock.unlock() }
-        write(receivers().filter { $0.fingerprint != fingerprint }, "receivers.json")
+        let current = read([RememberedReceiver].self, "receivers.json") ?? []
+        write(BoardIdentity.sortReceivers(current.filter { $0.fingerprint != fingerprint }), "receivers.json")
         writePreset(nil, fingerprint: fingerprint)
         if selectedFingerprint == fingerprint { selectedFingerprint = nil }
     }
@@ -244,7 +449,7 @@ public final class SharedStore: @unchecked Sendable {
     }
 
     private func writePreset(_ preset: Preset?, fingerprint: Data) {
-        let known = Set(receivers().map { Self.hex($0.fingerprint) })
+        let known = Set((read([RememberedReceiver].self, "receivers.json") ?? []).map { Self.hex($0.fingerprint) })
         var all = (read([String: Preset].self, "presets.json") ?? [:]).filter { known.contains($0.key) }
         let key = Self.hex(fingerprint)
         all[key] = known.contains(key) ? preset : nil

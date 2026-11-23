@@ -12,6 +12,7 @@ public struct DiscoveredReceiver: Identifiable, Equatable, Sendable {
     public var kind: String?
 
     public var id: String { "\(endpoint)" }
+    public var shortId: String { BoardIdentity.shortId(fingerprintPrefix) }
 
     public init(name: String, endpoint: NWEndpoint, fingerprintPrefix: Data, kind: String? = nil) {
         self.name = name
@@ -28,6 +29,8 @@ public final class ReceiverBrowser: @unchecked Sendable {
 
     /// The current list after each change.
     public var onChange: (([DiscoveredReceiver]) -> Void)?
+    /// Called if Bonjour browsing fails (e.g. local network permission denied or multicast unavailable).
+    public var onFailed: (() -> Void)?
 
     public init() {
         let parameters = NWParameters()
@@ -36,6 +39,11 @@ public final class ReceiverBrowser: @unchecked Sendable {
     }
 
     public func start() {
+        browser.stateUpdateHandler = { [weak self] state in
+            if case .failed = state {
+                self?.onFailed?()
+            }
+        }
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             let found = results.compactMap(Self.parse).sorted { $0.name < $1.name }
             self?.onChange?(found)
@@ -95,6 +103,7 @@ private extension Optional {
 public enum ConnectTarget: Sendable {
     case qr(QrPayload)
     case discovered(DiscoveredReceiver, pin: String)
+    case manual(host: String, port: UInt16, pin: String)
     case remembered(RememberedReceiver)
 }
 
@@ -103,7 +112,7 @@ public enum ConnectFlow {
     private static let lookupTimeoutMs = 3000
 
     private static func endpoint(for target: ConnectTarget) async -> Result<ReceiverEndpoint, MirrorFailure> {
-        func direct(hosts: [String], port: UInt16, fingerprint: Data) async -> Result<ReceiverEndpoint, MirrorFailure>? {
+        func direct(hosts: [String], port: UInt16, fingerprint: Data?) async -> Result<ReceiverEndpoint, MirrorFailure>? {
             guard !hosts.isEmpty else { return nil }
             switch await Reachability.firstReachable(hosts: hosts, port: port) {
             case .reachable(let host): return .success(ReceiverEndpoint(host: host, port: port, fingerprint: fingerprint))
@@ -115,6 +124,8 @@ public enum ConnectFlow {
             return await direct(hosts: qr.hosts, port: qr.port, fingerprint: qr.certFingerprint) ?? .failure(.unreachable)
         case .discovered(let found, _):
             return .success(ReceiverEndpoint(endpoint: found.endpoint, fingerprint: nil, fingerprintPrefix: found.fingerprintPrefix))
+        case .manual(let host, let port, _):
+            return await direct(hosts: [host], port: port, fingerprint: nil) ?? .failure(.clientIsolation)
         case .remembered(let r):
             if let result = await direct(hosts: r.hosts, port: r.port, fingerprint: r.fingerprint) {
                 if case .success = result { return result }
@@ -138,7 +149,7 @@ public enum ConnectFlow {
         let credentials: Credentials
         switch target {
         case .qr(let qr): credentials = .qrToken(qr.token)
-        case .discovered(_, let pin): credentials = .pin(pin)
+        case .discovered(_, let pin), .manual(_, _, let pin): credentials = .pin(pin)
         case .remembered(let r): credentials = .paired(keyId: r.keyId, pairKey: r.pairKey)
         }
         do {
@@ -151,7 +162,7 @@ public enum ConnectFlow {
                 guard reason == RejectReason.authFailed else { return .failure(.from(rejectReason: reason)) }
                 switch target {
                 case .qr: return .failure(.authFailed)
-                case .discovered: return .failure(.wrongPin)
+                case .discovered, .manual: return .failure(.wrongPin)
                 case .remembered(let r):
                     store.remove(fingerprint: r.fingerprint)
                     return .failure(.receiverForgot)
@@ -186,17 +197,29 @@ public enum ConnectFlow {
         guard let keyId = welcome.keyId, let pairKey = welcome.pairKey else { return .failure(.incompatible) }
         let hosts: [String]
         let port: UInt16
-        if case .qr(let qr) = target {
+        let kind: String?
+        switch target {
+        case .qr(let qr):
             hosts = qr.hosts
             port = qr.port
-        } else {
+            kind = nil
+        case .manual(let host, let p, _):
+            hosts = [host]
+            port = p
+            kind = nil
+        case .discovered(let found, _):
             hosts = remote.map { [$0.host] } ?? []
             port = remote?.port ?? 47800
+            kind = found.kind
+        case .remembered(let existing):
+            hosts = remote.map { [$0.host] } ?? existing.hosts
+            port = remote?.port ?? existing.port
+            kind = existing.kind
         }
         let receiver = RememberedReceiver(name: welcome.receiverName, hosts: hosts, port: port, fingerprint: session.fingerprint,
-                                          keyId: keyId, pairKey: pairKey, lastUsedMs: nowMs)
+                                          keyId: keyId, pairKey: pairKey, lastUsedMs: nowMs, kind: kind)
         store.save(receiver)
-        return .success(receiver)
+        return .success(store.receivers().first { $0.fingerprint == session.fingerprint } ?? receiver)
     }
 }
 

@@ -46,6 +46,9 @@ interface VideoSource {
     fun stop()
 }
 
+/** Canlı bağlantı kalitesi seviyesi. */
+enum class ConnectionQuality { GOOD, FAIR, POOR }
+
 /** Arayüzde gösterilen anlık durum. */
 data class MirrorStats(
     val latencyMs: Int?,
@@ -56,6 +59,14 @@ data class MirrorStats(
     val height: Int,
     /** Quality is below the chosen preset because the network cannot carry it. */
     val autoLowered: Boolean = false,
+    /** PING/PONG gidiş-dönüş süresi (ms); henüz ölçülmediyse null. */
+    val rttMs: Int? = null,
+    /** Son penceredeki tahmini kare kayıp oranı (%0–100). */
+    val lossPercent: Double = 0.0,
+    /** Güncel hedef kare hızı. */
+    val targetFps: Int = 0,
+    /** Özet bağlantı kalitesi. */
+    val quality: ConnectionQuality = ConnectionQuality.GOOD,
 )
 
 /** Bağlantının anlık durumu (arayüzde "yeniden bağlanılıyor" göstermek için). */
@@ -151,9 +162,11 @@ class MirrorSession(
     /** Bu ana kadar gönderim yapılmaz (yolu boşaltma); 0 = yok. */
     @Volatile private var drainUntilUs = 0L
     @Volatile private var drainCooldownUntilUs = 0L
+    @Volatile private var consecutiveHighDelay = 0
     /** Yol boşaltma sayısı (test ve tanılama). */
     val drainCount: AtomicInteger = AtomicInteger()
     private var statsFramesAtLastTick = 0L
+    private var statsDroppedAtLastTick = 0L
     private var statsLastTickUs = 0L
     private var sender: Thread? = null
 
@@ -180,7 +193,9 @@ class MirrorSession(
         this.source = source
         bitrate = BitrateController(BitrateController.Config(plan.startBps, plan.minBps, plan.maxBps))
         ramp = FrameRateRamp(plan.fps).takeIf { it.active }
-        video = SenderClient.attach(session, StreamKind.VIDEO).also { it.setSendBufferBytes(sendBufferFor(plan.startBps)) }
+        val initBuf = sendBufferFor(plan.startBps)
+        video = SenderClient.attach(session, StreamKind.VIDEO, sendBufferBytes = initBuf)
+            .also { it.setSendBufferBytes(initBuf) }
         sendStreamConfig(plan)
         sender = Thread(::sendLoop, "mirror-video").apply {
             isDaemon = true
@@ -223,7 +238,7 @@ class MirrorSession(
     val audioDropped: Long get() = audioQueue.dropped
 
     private fun attachAudio(s: Session, src: AudioSource) {
-        val channel = SenderClient.attach(s, StreamKind.AUDIO)
+        val channel = SenderClient.attach(s, StreamKind.AUDIO, sendBufferBytes = 32 * 1024)
         s.control.send(
             ControlMessage.StreamConfig(
                 streamKind = StreamKind.AUDIO,
@@ -373,7 +388,11 @@ class MirrorSession(
                 val msg = control.receive() ?: break
                 lastRxUs = MonotonicClock.nowUs()
                 when (msg) {
-                    is ControlMessage.Pong -> clock.onPong(msg.t0Us, msg.t1Us, msg.t2Us, MonotonicClock.nowUs())
+                    is ControlMessage.Pong -> {
+                        val now = MonotonicClock.nowUs()
+                        val sample = clock.onPong(msg.t0Us, msg.t1Us, msg.t2Us, now)
+                        if (sample != null) bitrate?.onRttSample(now / 1000, sample.rttUs)
+                    }
                     is ControlMessage.KeyframeRequest -> requestKeyframe()
                     is ControlMessage.ReceiverReport -> {
                         lastReport = msg
@@ -393,6 +412,26 @@ class MirrorSession(
         } catch (e: ProtocolException) {
             linkLost(myEpoch, e)
         }
+    }
+
+    /**
+     * Ağ değişikliği (2,4↔5 GHz geçişi, Wi-Fi/hotspot dalgalanması): hemen bir PING gönderir ve kısa sürede
+     * yanıt gelmezse 2,5 sn beklemeden kesintisiz RESUME başlatır.
+     */
+    fun onNetworkChanged() {
+        if (ended.get() || linkState != LinkState.CONNECTED) return
+        val probeAt = MonotonicClock.nowUs()
+        val myEpoch = epoch.get()
+        scheduler.execute { ping() }
+        scheduler.schedule(
+            {
+                if (!ended.get() && linkState == LinkState.CONNECTED && epoch.get() == myEpoch && lastRxUs < probeAt) {
+                    linkLost(myEpoch, IOException("ağ değişimi sonrası yanıt yok"))
+                }
+            },
+            NETWORK_PROBE_TIMEOUT_MS,
+            TimeUnit.MILLISECONDS,
+        )
     }
 
     private fun checkLiveness() {
@@ -463,8 +502,9 @@ class MirrorSession(
         startReader(myEpoch, newSession.control)
         if (source != null) {
             try {
-                val channel = SenderClient.attach(newSession, StreamKind.VIDEO)
-                channel.setSendBufferBytes(sendBufferFor(bitrate?.appliedBps ?: plan?.startBps ?: 0))
+                val buf = sendBufferFor(bitrate?.appliedBps ?: plan?.startBps ?: 0)
+                val channel = SenderClient.attach(newSession, StreamKind.VIDEO, sendBufferBytes = buf)
+                channel.setSendBufferBytes(buf)
                 plan?.let { p -> lastConfig?.let { cfg -> channel.send(FrameFlags.CONFIG, MonotonicClock.nowUs(), withCodec(p, cfg)) } }
                 plan?.let { sendStreamConfig(it) }
                 video = channel
@@ -561,19 +601,27 @@ class MirrorSession(
     private fun checkLatencyBudget(report: ControlMessage.ReceiverReport) {
         val now = MonotonicClock.nowUs()
         // A still screen (a few redraws a second) has nothing queued to drain; one late redraw is not a backlog.
-        if (report.framesReceived < BitrateController.IDLE_REPORT_FRAMES || report.c2rAvgUs <= config.latencyBudgetUs ||
-            now < drainCooldownUntilUs
-        ) {
+        if (report.framesReceived < BitrateController.IDLE_REPORT_FRAMES) {
+            consecutiveHighDelay = 0
             return
         }
-        // Yoldaki fazla veri (tampon) boşalana kadar bekle: bütçenin üstündeki kısım kadar, en fazla 1 sn.
-        val drainUs = (report.c2rAvgUs - config.latencyBudgetUs / 3).coerceIn(50_000, 1_000_000)
+        if (report.c2rAvgUs <= config.latencyBudgetUs) {
+            consecutiveHighDelay = 0
+            return
+        }
+        if (now < drainCooldownUntilUs) return
+        consecutiveHighDelay += 1
+        // Always step down bitrate immediately instead of waiting for a hard freeze.
+        bitrate?.onSenderDrop()
+        // Require either 2 consecutive over-budget reports or a severe spike (> 2× budget) before draining,
+        // and cap the drain at 250 ms so hotspot hiccups lower quality smoothly instead of freezing for 1 second.
+        if (consecutiveHighDelay < 2 && report.c2rAvgUs < config.latencyBudgetUs * 2) return
+        consecutiveHighDelay = 0
+        val drainUs = ((report.c2rAvgUs - config.latencyBudgetUs / 2) / 2).coerceIn(50_000, MAX_DRAIN_US)
         drainUntilUs = now + drainUs
-        // Boşaltma sırasında gelen raporlar eski kareleri anlatır; bir rapor aralığı daha bekle.
-        drainCooldownUntilUs = now + drainUs + 600_000
+        drainCooldownUntilUs = now + drainUs + 1_000_000
         drainCount.incrementAndGet()
         queue.dropUntilKeyframe()
-        bitrate?.onSenderDrop()
     }
 
     private fun onQueueDrop() {
@@ -663,26 +711,42 @@ class MirrorSession(
         val p = plan ?: return
         val now = MonotonicClock.nowUs()
         val frames = framesSent.get()
-        val fps = (frames - statsFramesAtLastTick) * 1e6 / maxOf(1, now - statsLastTickUs)
+        val deltaFrames = (frames - statsFramesAtLastTick).coerceAtLeast(0)
+        val fps = deltaFrames * 1e6 / maxOf(1, now - statsLastTickUs)
         statsFramesAtLastTick = frames
+        val droppedTotal = queue.droppedTotal
+        val deltaDropped = (droppedTotal - statsDroppedAtLastTick).coerceAtLeast(0)
+        statsDroppedAtLastTick = droppedTotal
         statsLastTickUs = now
         val applied = bitrate?.appliedBps ?: p.startBps
         if (linkState == LinkState.CONNECTED) {
             trySend {
                 session.control.send(ControlMessage.SenderStats(applied, (fps * 100).toInt().coerceIn(0, 0xFFFF),
-                    queue.droppedTotal, p.encoderName.take(64)))
+                    droppedTotal, p.encoderName.take(64)))
             }
         }
         val report = lastReport
+        val latencyMs = report?.takeIf { it.c2dAvgUs > 0 }?.let { (it.c2dAvgUs / 1000).toInt() }
+        val rttMs = clock.rttUs?.let { (it / 1000).toInt() }
+        val senderLossPct = if (deltaFrames + deltaDropped > 0) deltaDropped * 100.0 / (deltaFrames + deltaDropped) else 0.0
+        val receiverLossPct = report?.takeIf { it.framesReceived >= BitrateController.IDLE_REPORT_FRAMES }
+            ?.let { it.framesDropped * 100.0 / it.framesReceived } ?: 0.0
+        val lossPct = maxOf(senderLossPct, receiverLossPct).coerceIn(0.0, 100.0)
+        val lowered = qualityStepsDown.get() > 0
+        val qualityLevel = classifyQuality(latencyMs, rttMs, lossPct, lowered)
         onStats(
             MirrorStats(
-                latencyMs = report?.takeIf { it.c2dAvgUs > 0 }?.let { (it.c2dAvgUs / 1000).toInt() },
+                latencyMs = latencyMs,
                 fps = fps,
                 bitrateBps = applied,
-                droppedFrames = queue.droppedTotal,
+                droppedFrames = droppedTotal,
                 width = p.width,
                 height = p.height,
-                autoLowered = qualityStepsDown.get() > 0,
+                autoLowered = lowered,
+                rttMs = rttMs,
+                lossPercent = lossPct,
+                targetFps = ramp?.fps ?: p.fps,
+                quality = qualityLevel,
             ),
         )
     }
@@ -715,8 +779,17 @@ class MirrorSession(
     }
 
     private companion object {
-        /** ≈ 100 ms veri, 32–512 KiB. */
-        fun sendBufferFor(bps: Long): Int = (bps / 8 / 10).coerceIn(32L * 1024, 512L * 1024).toInt()
+        /** ≈ 80 ms veri, 32–256 KiB (küçük tampon = hotspot bufferbloat'ı yerine hızlı geri basınç). */
+        fun sendBufferFor(bps: Long): Int = (bps / 100).coerceIn(32L * 1024, 256L * 1024).toInt()
+
+        fun classifyQuality(latencyMs: Int?, rttMs: Int?, lossPercent: Double, autoLowered: Boolean): ConnectionQuality = when {
+            (latencyMs != null && latencyMs > 250) || (rttMs != null && rttMs > 180) || lossPercent >= 8.0 -> ConnectionQuality.POOR
+            autoLowered && ((latencyMs != null && latencyMs > 160) || (rttMs != null && rttMs > 100) || lossPercent >= 3.0) ->
+                ConnectionQuality.POOR
+            autoLowered || (latencyMs != null && latencyMs > 120) || (rttMs != null && rttMs > 70) || lossPercent >= 2.0 ->
+                ConnectionQuality.FAIR
+            else -> ConnectionQuality.GOOD
+        }
 
         const val BITRATE_TICK_MS = 250L
         const val CONTROL_WRITE_WAIT_MS = 300L
@@ -724,6 +797,8 @@ class MirrorSession(
         const val FAST_PING_INTERVAL_MS = 50L
         const val STATS_INTERVAL_MS = 1000L
         const val KEYFRAME_COALESCE_US = 200_000L
+        const val MAX_DRAIN_US = 250_000L
+        const val NETWORK_PROBE_TIMEOUT_MS = 750L
     }
 }
 

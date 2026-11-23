@@ -12,6 +12,7 @@ enum Route: Hashable {
     case settings
     case discover
     case pin(String)
+    case manualIp
 }
 
 /// What the home screen shows.
@@ -26,6 +27,15 @@ enum AppPhase: Equatable {
     case broadcast(BroadcastStatus)
     /// `failure` is nil after a stop that was asked for.
     case ended(failure: MirrorFailure?)
+
+    var isConnectingFlow: Bool {
+        switch self {
+        case .pairing, .pairingApproval: return true
+        case .broadcast(let s):
+            return s.phase == .connecting || s.phase == .waitingApproval || s.phase == .starting
+        default: return false
+        }
+    }
 }
 
 @MainActor
@@ -34,6 +44,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var phase = AppPhase.idle
     @Published private(set) var receivers: [RememberedReceiver] = []
     @Published private(set) var discovered: [DiscoveredReceiver] = []
+    @Published private(set) var discoveryFailed = false
     /// Set while the camera is mirrored. The screen goes through the extension instead.
     @Published private(set) var camera: CameraCapture?
     @Published var settings: SenderSettings {
@@ -44,13 +55,14 @@ final class AppModel: ObservableObject {
     private var browser: ReceiverBrowser?
     private var pairing: Task<Void, Never>?
     private var statusObservation: DarwinNotifier.Observation?
-    private var returnToScanner = false
     private var cameraEngine: BroadcastEngine?
     /// By the teacher, as opposed to an interruption that ends by itself.
     private var cameraPaused = false
+    private var lastPair: (target: ConnectTarget, name: String, keepRoute: Bool)?
 
     var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "" }
     var storeAvailable: Bool { store != nil }
+    var recentIps: [String] { store?.recentIps() ?? [] }
 
     init() {
         let store = SharedStore.shared()
@@ -98,12 +110,24 @@ final class AppModel: ObservableObject {
 
     func startBrowsing() {
         guard browser == nil else { return }
+        discoveryFailed = false
         let browser = ReceiverBrowser()
         browser.onChange = { [weak self] found in
-            Task { @MainActor in self?.discovered = found }
+            Task { @MainActor in
+                self?.discovered = found
+                self?.discoveryFailed = false
+            }
+        }
+        browser.onFailed = { [weak self] in
+            Task { @MainActor in self?.discoveryFailed = true }
         }
         browser.start()
         self.browser = browser
+    }
+
+    func refreshBrowsing() {
+        stopBrowsing()
+        startBrowsing()
     }
 
     func stopBrowsing() {
@@ -114,17 +138,30 @@ final class AppModel: ObservableObject {
 
     func discovered(id: String) -> DiscoveredReceiver? { discovered.first { $0.id == id } }
 
+    func rememberedMatch(for found: DiscoveredReceiver) -> RememberedReceiver? {
+        receivers.first { BoardIdentity.matchesPrefix(fingerprint: $0.fingerprint, prefix: found.fingerprintPrefix) }
+    }
+
     // MARK: Connecting
 
     func connect(qr: QrPayload) {
         path = []
-        pair(.qr(qr), name: qr.name ?? qr.hosts.first ?? "")
+        pair(.qr(qr), name: qr.name.isEmpty ? (qr.hosts.first ?? "") : qr.name, keepRoute: false)
     }
 
     func connect(_ found: DiscoveredReceiver, pin: String) {
-        path = []
         stopBrowsing()
-        pair(.discovered(found, pin: pin), name: found.name)
+        let name = rememberedMatch(for: found)?.displayName ?? found.name
+        pair(.discovered(found, pin: pin), name: name, keepRoute: true)
+    }
+
+    func connect(host: String, port: UInt16, pin: String) {
+        pair(.manual(host: host, port: port, pin: pin), name: host, keepRoute: true)
+    }
+
+    func retryLast() {
+        guard let last = lastPair else { return }
+        pair(last.target, name: last.name, keepRoute: last.keepRoute)
     }
 
     func connect(_ receiver: RememberedReceiver) {
@@ -137,11 +174,13 @@ final class AppModel: ObservableObject {
 
     private static var nowMs: Int64 { Int64(Date().timeIntervalSince1970 * 1000) }
 
-    private func pair(_ target: ConnectTarget, name: String) {
+    private func pair(_ target: ConnectTarget, name: String, keepRoute: Bool) {
         guard let store, let device else {
             phase = .ended(failure: .internalError)
             return
         }
+        pairing?.cancel()
+        lastPair = (target, name, keepRoute)
         phase = .pairing(name: name)
         pairing = Task { [weak self] in
             let result = await ConnectFlow.pair(target: target, device: device, store: store, nowMs: Self.nowMs) { _ in
@@ -152,12 +191,23 @@ final class AppModel: ObservableObject {
             case .success(let receiver):
                 store.selectedFingerprint = receiver.fingerprint
                 self.reload()
+                self.path = []
                 self.phase = .ready(receiver)
             case .failure(let failure):
                 self.reload()
                 self.phase = .ended(failure: failure)
             }
         }
+    }
+
+    func toggleFavorite(_ receiver: RememberedReceiver) {
+        store?.setFavorite(!receiver.favorite, fingerprint: receiver.fingerprint)
+        reload()
+    }
+
+    func rename(_ receiver: RememberedReceiver, nickname: String?) {
+        store?.setNickname(nickname, fingerprint: receiver.fingerprint)
+        reload()
     }
 
     func forget(_ receiver: RememberedReceiver) {

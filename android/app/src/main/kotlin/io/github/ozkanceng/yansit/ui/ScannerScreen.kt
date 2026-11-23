@@ -2,23 +2,45 @@ package io.github.ozkanceng.yansit.ui
 
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.FlashOff
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.Lan
+import androidx.compose.material.icons.rounded.Pin
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -29,9 +51,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextAlign
@@ -46,12 +71,20 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import zxingcpp.BarcodeReader
 
-/** Tahtadaki QR kodunu okur (CameraX + zxing-cpp; Google Play Hizmetleri gerekmez). */
+/** Tahtadaki QR kodunu okur (CameraX + zxing-cpp; animasyonlu tarama çizgisi, fener ve kod/IP geçişi). */
 @Composable
-fun ScannerScreen(onResult: (QrPayload) -> Unit, onBack: () -> Unit) {
+fun ScannerScreen(
+    onResult: (QrPayload) -> Unit,
+    onCode: () -> Unit,
+    onManualIp: () -> Unit,
+    onBack: () -> Unit,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val haptic = LocalHapticFeedback.current
     var hint by remember { mutableStateOf<Int?>(null) }
+    var boundCamera by remember { mutableStateOf<Camera?>(null) }
+    var torchOn by remember { mutableStateOf(false) }
     val executor = remember { Executors.newSingleThreadExecutor() }
     val done = remember { AtomicBoolean(false) }
     val providerFuture = remember { ProcessCameraProvider.getInstance(context) }
@@ -86,7 +119,10 @@ fun ScannerScreen(onResult: (QrPayload) -> Unit, onBack: () -> Unit) {
                                 return@setAnalyzer
                             }
                             if (done.compareAndSet(false, true)) {
-                                ContextCompat.getMainExecutor(ctx).execute { onResult(payload) }
+                                ContextCompat.getMainExecutor(ctx).execute {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    onResult(payload)
+                                }
                             }
                         }
                     }
@@ -100,7 +136,7 @@ fun ScannerScreen(onResult: (QrPayload) -> Unit, onBack: () -> Unit) {
                             CameraSelector.DEFAULT_FRONT_CAMERA
                         }
                         provider.unbindAll()
-                        provider.bindToLifecycle(lifecycleOwner, selector, preview, analysis)
+                        boundCamera = provider.bindToLifecycle(lifecycleOwner, selector, preview, analysis)
                     } catch (e: Exception) {
                         Log.e("YansitScanner", "kamera açılamadı", e)
                         hint = R.string.scan_camera_error
@@ -109,15 +145,59 @@ fun ScannerScreen(onResult: (QrPayload) -> Unit, onBack: () -> Unit) {
                 view
             },
         )
-        ScanFrame(Modifier.align(Alignment.Center).fillMaxSize(0.6f).aspectRatio(1f))
+
+        // Üst şerit: Geri + Fener (karanlık sınıflar için)
+        Row(
+            Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(shape = CircleShape, color = Color.Black.copy(alpha = 0.55f)) {
+                IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = stringResource(R.string.action_back),
+                        tint = Color.White,
+                    )
+                }
+            }
+            val hasFlash = boundCamera?.cameraInfo?.hasFlashUnit() == true
+            if (hasFlash) {
+                Surface(shape = CircleShape, color = Color.Black.copy(alpha = 0.55f)) {
+                    IconButton(
+                        onClick = {
+                            val next = !torchOn
+                            torchOn = next
+                            boundCamera?.cameraControl?.enableTorch(next)
+                        },
+                        modifier = Modifier.size(48.dp),
+                    ) {
+                        Icon(
+                            if (torchOn) Icons.Rounded.FlashOff else Icons.Rounded.FlashOn,
+                            contentDescription = stringResource(
+                                if (torchOn) R.string.action_torch_off else R.string.action_torch_on,
+                            ),
+                            tint = if (torchOn) Color(0xFFFFD54F) else Color.White,
+                        )
+                    }
+                }
+            }
+        }
+
+        ScanFrame(Modifier.align(Alignment.Center).fillMaxSize(0.62f).aspectRatio(1f))
+
         Column(
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.7f))
+                .background(Color.Black.copy(alpha = 0.72f))
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Text(
                 stringResource(hint ?: R.string.scan_hint),
@@ -125,19 +205,45 @@ fun ScannerScreen(onResult: (QrPayload) -> Unit, onBack: () -> Unit) {
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
             )
-            OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 56.dp)) {
-                Text(stringResource(R.string.action_cancel), color = Color.White)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                OutlinedButton(
+                    onClick = onCode,
+                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                ) {
+                    Icon(Icons.Rounded.Pin, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.scanner_or_code), color = Color.White)
+                }
+                OutlinedButton(
+                    onClick = onManualIp,
+                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                ) {
+                    Icon(Icons.Rounded.Lan, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.scanner_or_ip), color = Color.White)
+                }
             }
         }
     }
 }
 
-/** QR kodunun nereye tutulacağını gösteren köşe işaretleri (süsleyici). */
+/** QR köşe çerçevesi + yumuşak animasyonlu tarama çizgisi. */
 @Composable
 private fun ScanFrame(modifier: Modifier) {
+    val accent = MaterialTheme.colorScheme.primary
+    val transition = rememberInfiniteTransition(label = "qr_scan")
+    val lineFraction by transition.animateFloat(
+        initialValue = 0.08f,
+        targetValue = 0.92f,
+        animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "scan_line",
+    )
     Canvas(modifier.clearAndSetSemantics { }) {
         val arm = size.minDimension * 0.18f
-        val width = 6.dp.toPx()
+        val width = 5.dp.toPx()
         val corners = listOf(
             Offset(0f, 0f) to Offset(1f, 1f),
             Offset(size.width, 0f) to Offset(-1f, 1f),
@@ -148,5 +254,15 @@ private fun ScanFrame(modifier: Modifier) {
             drawLine(Color.White, corner, corner + Offset(arm * direction.x, 0f), width, StrokeCap.Round)
             drawLine(Color.White, corner, corner + Offset(0f, arm * direction.y), width, StrokeCap.Round)
         }
+        val y = size.height * lineFraction
+        drawLine(
+            brush = Brush.horizontalGradient(
+                listOf(Color.Transparent, accent.copy(alpha = 0.95f), Color.White, accent.copy(alpha = 0.95f), Color.Transparent),
+            ),
+            start = Offset(width * 2, y),
+            end = Offset(size.width - width * 2, y),
+            strokeWidth = 3.dp.toPx(),
+            cap = StrokeCap.Round,
+        )
     }
 }

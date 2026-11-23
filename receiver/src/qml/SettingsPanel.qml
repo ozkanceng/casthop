@@ -16,7 +16,7 @@ Item {
 
     onOpenChanged: {
         if (open) {
-            nameField.text = root.settings.boardName
+            nameField.text = root.receiver.receiverName
             portField.value = root.settings.port
         }
     }
@@ -91,7 +91,7 @@ Item {
 
                     TouchButton {
                         text: qsTr("Save")
-                        enabled: nameField.text.trim().length > 0 && nameField.text !== root.settings.boardName
+                        enabled: nameField.text.trim().length > 0 && nameField.text.trim() !== root.receiver.receiverName
                         onClicked: root.settings.boardName = nameField.text
                     }
                 }

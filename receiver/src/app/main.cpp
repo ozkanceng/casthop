@@ -130,6 +130,7 @@ std::optional<ReceiverService::Options> serviceOptions(const QCommandLineParser&
     }
     opt.approvalTimeout = std::chrono::milliseconds(approval);
     opt.name = p.isSet(o.name) ? p.value(o.name) : QHostInfo::localHostName();
+    opt.customName = p.isSet(o.name);
     opt.dataDir = p.isSet(o.dataDir) ? p.value(o.dataDir)
                                      : QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     opt.pairingFile = p.value(o.pairingFile);
@@ -257,8 +258,10 @@ int runGui(int argc, char* argv[]) {
         gl = false;
     }
     opt->sinkMode = gl ? SinkMode::Gl : SinkMode::Cpu;
-    if (!parser.isSet(o.name))
+    if (!parser.isSet(o.name)) {
         opt->name = settings.boardName();
+        opt->customName = settings.hasCustomBoardName();
+    }
     if (!parser.isSet(o.port))
         opt->port = quint16(settings.port());
     if (!parser.isSet(o.noAudio))
@@ -281,7 +284,7 @@ int runGui(int argc, char* argv[]) {
     installQuitOnSignal(service);
     QObject::connect(&app, &QCoreApplication::aboutToQuit, &service, &ReceiverService::shutdown);
     QObject::connect(&settings, &yansit::ReceiverSettings::changed, &service, [&] {
-        if (!parser.isSet(o.name))
+        if (!parser.isSet(o.name) && settings.hasCustomBoardName())
             service.setReceiverName(settings.boardName());
         if (!parser.isSet(o.noAudio))
             service.setAudioEnabled(settings.audioEnabled());

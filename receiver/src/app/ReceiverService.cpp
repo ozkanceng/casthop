@@ -145,6 +145,12 @@ bool ReceiverService::start() {
         setError(tr("Security certificate could not be created: %1").arg(QString::fromUtf8(e.what())));
         return false;
     }
+    if (!m_options.customName) {
+        const QString resolved = QString::fromStdString(net::defaultBoardName(m_options.name.toStdString(), m_identity.fingerprint));
+        if (resolved != m_options.name)
+            m_options.name = resolved;
+    }
+    emit receiverNameChanged();
 
     m_pairing = std::make_unique<session::PairingManager>(steadyNow());
     loadTrusted();
@@ -242,6 +248,10 @@ QString ReceiverService::qrImageSource() const {
 }
 
 QString ReceiverService::pin() const { return m_pairing ? QString::fromStdString(m_pairing->pin()) : QString(); }
+
+QString ReceiverService::shortId() const {
+    return QString::fromStdString(net::shortBoardId(m_identity.fingerprint));
+}
 
 QString ReceiverService::senderName() const {
     if (!m_sessions || !m_sessions->session())

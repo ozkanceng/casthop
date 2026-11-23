@@ -10,6 +10,7 @@
 #include <gst/video/video.h>
 
 #include <QLoggingCategory>
+#include <QThread>
 
 #include <algorithm>
 #include <array>
@@ -156,6 +157,9 @@ void VideoPipeline::reset() {
     m_backlogSinceUs = 0;
     m_firstRendered = false;
     m_decodedLuma = -1;
+    m_lumaCountdown = 0;
+    m_decodedFrames = 0;
+    m_patternActiveFrames = 0;
     m_totalRendered = 0;
     m_totalDropped = 0;
     m_totalReceived = 0;
@@ -231,7 +235,9 @@ bool VideoPipeline::build() {
 
     GstElement* src = make("appsrc", "src");
     const bool hevc = m_codec == Codec::H265;
-    make(hevc ? "h265parse" : "h264parse");
+    GstElement* parser = make(hevc ? "h265parse" : "h264parse");
+    if (parser && hasProperty(parser, "config-interval"))
+        g_object_set(parser, "config-interval", -1, nullptr);
     GstElement* dec = make(m_decoder.factory.c_str(), "decoder");
     GstElement* sink = nullptr;
     if (m_mode != SinkMode::Fake && m_decoder.hardware && !std::getenv("YANSIT_VA_DMABUF")) {
@@ -244,6 +250,16 @@ bool VideoPipeline::build() {
             gst_caps_unref(raw);
         }
     }
+    const int workerThreads = std::clamp(QThread::idealThreadCount() / 2, 2, 4);
+    if (m_mode == SinkMode::Gl || m_mode == SinkMode::Cpu) {
+        // Decouple decoder from GPU/CPU upload and vsync: stale decoded frames are dropped downstream
+        // instead of stalling the decoder and triggering an IDR storm over congested Wi-Fi/hotspot links.
+        GstElement* renderQueue = make("queue", "render-queue");
+        if (renderQueue) {
+            g_object_set(renderQueue, "leaky", 2 /* downstream */, "max-size-buffers", 2u, "max-size-bytes", 0u,
+                         "max-size-time", guint64(0), nullptr);
+        }
+    }
     if (m_mode == SinkMode::Gl) {
         make("glupload");
         make("glcolorconvert");
@@ -251,7 +267,7 @@ bool VideoPipeline::build() {
     } else if (m_mode == SinkMode::Cpu) {
         GstElement* convert = make("videoconvert");
         if (convert && hasProperty(convert, "n-threads"))
-            g_object_set(convert, "n-threads", 2, nullptr);
+            g_object_set(convert, "n-threads", workerThreads, nullptr);
         sink = make("appsink", "sink");
     } else {
         sink = make("fakesink", "sink");
@@ -278,7 +294,7 @@ bool VideoPipeline::build() {
     gst_caps_unref(caps);
 
     if (hasProperty(dec, "max-threads")) // avdec_h264: live input uses slice threads, so no added frame delay
-        g_object_set(dec, "max-threads", 2, nullptr);
+        g_object_set(dec, "max-threads", workerThreads, nullptr);
     // Senders encode without B-frames, so pictures never reorder. By default a live High profile stream still
     // waits for the next frame before output, and a static screen only sends one every 100 ms.
     if (hasProperty(dec, "compliance"))
@@ -677,21 +693,33 @@ void VideoPipeline::handleDecodedProbe(GstPadProbeInfo* info) {
             return;
         vinfo = *m_decodedInfo;
     }
+    const bool sampleLuma = m_lumaCountdown == 0;
+    if (sampleLuma)
+        m_lumaCountdown = kLumaSampleInterval;
+    --m_lumaCountdown;
+    ++m_decodedFrames;
+    // Normal mirroring avoids mapping every decoded YUV frame on weak ETAP CPUs; once a latency test pattern
+    // is detected (or during the first 15 frames), every frame is inspected until the pattern stops.
+    const bool inspectFrame = sampleLuma || m_decodedFrames <= kLumaSampleInterval || m_patternActiveFrames > 0;
+    if (!inspectFrame)
+        return;
     GstVideoFrame frame;
     if (!gst_video_frame_map(&frame, &vinfo, buf, GST_MAP_READ))
         return;
     const auto* luma = static_cast<const std::uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&frame, 0));
-    if (m_lumaCountdown == 0) {
-        m_lumaCountdown = kLumaSampleInterval;
+    if (sampleLuma) {
         m_decodedLuma = centreLuma(luma, GST_VIDEO_FRAME_WIDTH(&frame), GST_VIDEO_FRAME_HEIGHT(&frame),
                                    GST_VIDEO_FRAME_PLANE_STRIDE(&frame, 0));
     }
-    --m_lumaCountdown;
     const auto ts = LatencyPattern::decodeLuma(luma, GST_VIDEO_FRAME_WIDTH(&frame), GST_VIDEO_FRAME_HEIGHT(&frame),
                                                GST_VIDEO_FRAME_PLANE_STRIDE(&frame, 0));
     gst_video_frame_unmap(&frame);
-    if (!ts)
+    if (!ts) {
+        if (m_patternActiveFrames > 0)
+            --m_patternActiveFrames;
         return;
+    }
+    m_patternActiveFrames = 30;
     std::lock_guard lock(m_mutex);
     m_patternByPts.emplace_back(GST_BUFFER_PTS(buf), *ts);
     while (m_patternByPts.size() > 16)

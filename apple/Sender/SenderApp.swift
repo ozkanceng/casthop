@@ -17,6 +17,7 @@ struct SenderApp: App {
                         case .settings: SettingsView()
                         case .discover: DiscoverView()
                         case .pin(let id): PinView(id: id)
+                        case .manualIp: ManualIpView()
                         }
                     }
             }

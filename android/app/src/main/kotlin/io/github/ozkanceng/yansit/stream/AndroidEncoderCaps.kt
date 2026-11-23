@@ -4,6 +4,7 @@ import io.github.ozkanceng.yansit.sender.VideoEncoderCaps
 import android.media.MediaCodecInfo
 import android.media.MediaCodecList
 import android.media.MediaFormat
+import android.os.Build
 import io.github.ozkanceng.yansit.protocol.Codec
 
 /** `MediaCodecInfo` üzerinden [VideoEncoderCaps]. */
@@ -27,6 +28,10 @@ class AndroidEncoderCaps private constructor(
 
     val supportsCbr: Boolean
         get() = encoder.isBitrateModeSupported(MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR)
+
+    val supportsLowLatency: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+            caps.isFeatureSupported(MediaCodecInfo.CodecCapabilities.FEATURE_LowLatency)
 
     val mime: String = mime
 

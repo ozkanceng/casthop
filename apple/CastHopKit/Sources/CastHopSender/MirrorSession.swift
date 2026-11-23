@@ -7,7 +7,12 @@ public protocol VideoSource: AnyObject {
     func start(plan: StreamPlan, sink: @escaping (EncodedFrame) -> Void, onError: @escaping (Error) -> Void) throws
     func requestKeyframe()
     func setBitrate(_ bps: Int64)
+    func setFrameGate(_ ready: @escaping () -> Bool)
     func stop()
+}
+
+public extension VideoSource {
+    func setFrameGate(_ ready: @escaping () -> Bool) {}
 }
 
 /// Audio as `MirrorSession` sees it. `config` is the CONFIG payload without the codec byte.
@@ -20,6 +25,13 @@ public protocol AudioSource: AnyObject {
     func stop()
 }
 
+/// Live connection quality tier.
+public enum ConnectionQuality: String, Codable, Equatable, Sendable {
+    case good
+    case fair
+    case poor
+}
+
 public struct MirrorStats: Equatable, Sendable {
     public var latencyMs: Int?
     public var fps: Double
@@ -29,6 +41,30 @@ public struct MirrorStats: Equatable, Sendable {
     public var height: Int
     /// Quality is below the chosen preset because the network cannot carry it.
     public var autoLowered: Bool
+    /// PING/PONG round-trip time in ms; nil until first measurement.
+    public var rttMs: Int?
+    /// Estimated frame loss percentage over the latest report window (0–100).
+    public var lossPercent: Double
+    /// Target FPS of the active stream plan.
+    public var targetFps: Int
+    /// Summary connection quality tier.
+    public var quality: ConnectionQuality
+
+    public init(latencyMs: Int?, fps: Double, bitrateBps: Int64, droppedFrames: Int64, width: Int, height: Int,
+                autoLowered: Bool = false, rttMs: Int? = nil, lossPercent: Double = 0, targetFps: Int = 0,
+                quality: ConnectionQuality = .good) {
+        self.latencyMs = latencyMs
+        self.fps = fps
+        self.bitrateBps = bitrateBps
+        self.droppedFrames = droppedFrames
+        self.width = width
+        self.height = height
+        self.autoLowered = autoLowered
+        self.rttMs = rttMs
+        self.lossPercent = lossPercent
+        self.targetFps = targetFps
+        self.quality = quality
+    }
 }
 
 public enum LinkState: Sendable {
@@ -97,9 +133,11 @@ public final class MirrorSession: @unchecked Sendable {
     private var lastKeyframeRequestUs: UInt64 = 0
     private var drainUntilUs: UInt64 = 0
     private var drainCooldownUntilUs: UInt64 = 0
+    private var consecutiveOverBudgetReports = 0
     private var framesSent: Int64 = 0
     private var statsFramesAtLastTick: Int64 = 0
     private var statsLastTickUs: UInt64 = 0
+    private var statsDroppedAtLastTick: Int64 = 0
     private var videoThreadStarted = false
     private var audioThreadStarted = false
     private var resumes = 0
@@ -108,18 +146,24 @@ public final class MirrorSession: @unchecked Sendable {
     private var isPaused = false
     private let audioQueue = AudioQueue()
     private var sendQueue: SendQueue!
+    private var captureGate: CaptureGate!
 
     private static let bitrateTickMs = 250
     private static let fastPings = 4
     private static let fastPingIntervalMs = 50
     private static let statsIntervalMs = 1000
     private static let keyframeCoalesceUs: UInt64 = 200_000
+    private static let maxDrainUs: Int64 = 250_000
+    private static let drainCooldownAfterUs: UInt64 = 1_000_000
 
     public init(session: Session, config: Config = Config()) {
         self.session = session
         self.config = config
         quality = QualityGovernor(config: config.quality)
         sendQueue = SendQueue(onDrop: { [weak self] _ in self?.onQueueDrop() })
+        captureGate = CaptureGate(onCongestion: { [weak self] in
+            self?.queue.async { self?.bitrate?.onSenderDrop() }
+        })
     }
 
     private func locked<T>(_ body: () -> T) -> T {
@@ -164,6 +208,13 @@ public final class MirrorSession: @unchecked Sendable {
         queue.sync {
             self.plan = plan
             self.source = source
+            source.setFrameGate { [weak self] in
+                guard let self else { return false }
+                let now = MonotonicClock.nowUs()
+                let sending = self.locked { self.link == .connected && self.video != nil && self.drainUntilUs == 0 && !self.isPaused }
+                return self.captureGate.ready(nowUs: now, depth: self.sendQueue.depth(),
+                                              oldestAgeUs: self.sendQueue.oldestAgeUs(nowUs: now), sending: sending)
+            }
             bitrate = BitrateController(config: .init(initialBps: plan.startBps, minBps: plan.minBps, maxBps: plan.maxBps))
             locked { video = channel }
             sendStreamConfig(plan)
@@ -251,6 +302,20 @@ public final class MirrorSession: @unchecked Sendable {
         queue.async { [self] in end(.local(byeReason: byeReason)) }
     }
 
+    /// Probes the link immediately after a network interface/route change; if no reply arrives within 750 ms, triggers RESUME.
+    public func onNetworkChanged() {
+        queue.async { [self] in
+            guard !isEnded, linkState == .connected else { return }
+            let probeEpoch = linkEpoch
+            let beforeRx = lastRxUs
+            ping()
+            queue.asyncAfter(deadline: .now() + .milliseconds(750)) { [weak self] in
+                guard let self, !self.isEnded, self.linkEpoch == probeEpoch, self.linkState == .connected else { return }
+                if self.lastRxUs == beforeRx { self.linkLost(epoch: probeEpoch) }
+            }
+        }
+    }
+
     private var isEnded: Bool { locked { ended } }
 
     // MARK: Source and encoder errors
@@ -300,7 +365,9 @@ public final class MirrorSession: @unchecked Sendable {
         lastRxUs = now
         switch msg {
         case .pong(_, let t0, let t1, let t2):
-            _ = clock.onPong(t0Us: Int64(t0), t1Us: Int64(t1), t2Us: Int64(t2), t3Us: Int64(now))
+            if let sample = clock.onPong(t0Us: Int64(t0), t1Us: Int64(t1), t2Us: Int64(t2), t3Us: Int64(now)) {
+                bitrate?.onRttSample(nowMs: Int64(now / 1000), rttUs: sample.rttUs)
+            }
         case .keyframeRequest:
             requestKeyframe()
         case .receiverReport(let report):
@@ -497,18 +564,29 @@ public final class MirrorSession: @unchecked Sendable {
     private func checkLatencyBudget(_ report: ReceiverReport) {
         let now = MonotonicClock.nowUs()
         // A still screen has nothing queued to drain; one late redraw is not a backlog.
-        guard report.framesReceived >= BitrateController.idleReportFrames,
-              Int64(report.c2rAvgUs) > config.latencyBudgetUs, now >= drainCooldownUntilUs else { return }
-        // Wait until the data in the path has drained: what is over budget, at most 1 s.
-        let drainUs = UInt64(min(max(Int64(report.c2rAvgUs) - config.latencyBudgetUs / 3, 50_000), 1_000_000))
+        guard report.framesReceived >= BitrateController.idleReportFrames else {
+            consecutiveOverBudgetReports = 0
+            return
+        }
+        guard Int64(report.c2rAvgUs) > config.latencyBudgetUs else {
+            consecutiveOverBudgetReports = 0
+            return
+        }
+        consecutiveOverBudgetReports += 1
+        // Always back off bitrate immediately so brief hotspot spikes settle without a visible freeze.
+        bitrate?.onSenderDrop()
+        guard now >= drainCooldownUntilUs else { return }
+        let severe = Int64(report.c2rAvgUs) > config.latencyBudgetUs * 2
+        guard severe || consecutiveOverBudgetReports >= 2 else { return }
+        // Short, bounded drain (≤ 250 ms) so the screen lowers quality instead of locking for a full second.
+        let drainUs = UInt64(min(max(Int64(report.c2rAvgUs) - config.latencyBudgetUs / 2, 50_000), Self.maxDrainUs))
+        consecutiveOverBudgetReports = 0
         locked {
             drainUntilUs = now + drainUs
             drains += 1
         }
-        // Reports during the drain describe old frames: wait one more report interval.
-        drainCooldownUntilUs = now + drainUs + 600_000
+        drainCooldownUntilUs = now + drainUs + Self.drainCooldownAfterUs
         sendQueue.dropUntilKeyframe()
-        bitrate?.onSenderDrop()
     }
 
     private func onQueueDrop() {
@@ -564,17 +642,35 @@ public final class MirrorSession: @unchecked Sendable {
         guard let p = locked({ plan }) else { return }
         let now = MonotonicClock.nowUs()
         let frames = locked { framesSent }
-        let fps = Double(frames - statsFramesAtLastTick) * 1e6 / Double(max(1, now - statsLastTickUs))
+        let deltaSent = max(Int64(0), frames - statsFramesAtLastTick)
+        let fps = Double(deltaSent) * 1e6 / Double(max(1, now - statsLastTickUs))
         statsFramesAtLastTick = frames
         statsLastTickUs = now
         let applied = bitrate?.appliedBps ?? p.startBps
         let dropped = sendQueue.droppedTotal
+        let deltaSenderDropped = max(Int64(0), dropped - statsDroppedAtLastTick)
+        statsDroppedAtLastTick = dropped
         controlSend(.senderStats(SenderStats(bitrateBps: UInt32(clamping: applied), fpsX100: UInt16(clamping: Int(fps * 100)),
                                              framesDropped: UInt32(clamping: dropped),
                                              encoderName: String(p.encoderName.prefix(64)))))
         let latency = lastReport.flatMap { $0.c2dAvgUs > 0 ? Int($0.c2dAvgUs / 1000) : nil }
+        let rttMs = clock.rttUs.map { Int($0 / 1000) }
+        let receiverLossPct: Double = {
+            guard let r = lastReport, r.framesReceived > 0 else { return 0 }
+            return Double(r.framesDropped) * 100.0 / Double(r.framesReceived)
+        }()
+        let senderLossPct: Double = (deltaSent + deltaSenderDropped) > 0
+            ? Double(deltaSenderDropped) * 100.0 / Double(deltaSent + deltaSenderDropped)
+            : 0
+        let lossPct = min(100.0, max(receiverLossPct, senderLossPct))
+        let tier: ConnectionQuality = {
+            if (latency ?? 0) > 250 || (rttMs ?? 0) > 150 || lossPct >= 5.0 { return .poor }
+            if qualityStepsDown > 0 || (latency ?? 0) > 120 || (rttMs ?? 0) > 60 || lossPct >= 1.5 { return .fair }
+            return .good
+        }()
         onStats?(MirrorStats(latencyMs: latency, fps: fps, bitrateBps: applied, droppedFrames: dropped, width: p.width,
-                             height: p.height, autoLowered: qualityStepsDown > 0))
+                             height: p.height, autoLowered: qualityStepsDown > 0, rttMs: rttMs, lossPercent: lossPct,
+                             targetFps: p.fps, quality: tier))
     }
 
     private func end(_ reason: SessionEnd) {

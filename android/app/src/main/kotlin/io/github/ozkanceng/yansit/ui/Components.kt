@@ -178,7 +178,7 @@ fun CheckList(@StringRes items: List<Int>, modifier: Modifier = Modifier) {
     }
 }
 
-/** Dokunulabilir tek satırlık kart: ikon, başlık, isteğe bağlı açıklama ve ileri oku. */
+/** Dokunulabilir tek satırlık kart: ikon, başlık, isteğe bağlı açıklama, rozet ve ileri oku. */
 @Composable
 fun NavigationCard(
     title: String,
@@ -186,6 +186,7 @@ fun NavigationCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    badge: (@Composable () -> Unit)? = null,
 ) {
     Card(
         onClick = onClick,
@@ -209,6 +210,7 @@ fun NavigationCard(
                     )
                 }
             }
+            if (badge != null) badge()
             Icon(
                 Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                 contentDescription = null,

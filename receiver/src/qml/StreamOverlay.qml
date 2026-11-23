@@ -55,8 +55,12 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
+        anchors.margins: Theme.space2
         height: Theme.touchTarget + Theme.space2 * 2
+        radius: Theme.radius
         color: Theme.scrim
+        border.width: 1
+        border.color: Theme.border
         opacity: root.barShown ? 1 : 0
         visible: opacity > 0
 
@@ -90,15 +94,27 @@ Item {
                 font.weight: Font.DemiBold
             }
 
-            Text {
+            RowLayout {
                 visible: root.stats.latencyMs !== undefined && root.stats.latencyMs >= 0
-                text: qsTr("%1 ms · %2 fps · %3 Mbps")
-                      .arg(root.stats.latencyMs)
-                      .arg(Math.round(root.stats.fps || 0))
-                      .arg(((root.stats.bitrateKbps || 0) / 1000).toFixed(1))
-                color: Theme.textMuted
-                font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontCaption
+                spacing: Theme.space1
+
+                Rectangle {
+                    width: Math.round(12 * Theme.scale)
+                    height: width
+                    radius: width / 2
+                    color: (root.stats.latencyMs || 0) <= 120 ? Theme.success
+                         : ((root.stats.latencyMs || 0) <= 250 ? Theme.warning : Theme.danger)
+                }
+
+                Text {
+                    text: qsTr("%1 ms · %2 fps · %3 Mbps")
+                          .arg(root.stats.latencyMs)
+                          .arg(Math.round(root.stats.fps || 0))
+                          .arg(((root.stats.bitrateKbps || 0) / 1000).toFixed(1))
+                    color: Theme.textMuted
+                    font.family: Theme.fontMono
+                    font.pixelSize: Theme.fontCaption
+                }
             }
 
             TouchButton {
@@ -111,6 +127,7 @@ Item {
             }
 
             TouchButton {
+                danger: true
                 text: qsTr("Stop mirroring")
                 onClicked: root.receiver.stopSession()
             }
@@ -125,6 +142,8 @@ Item {
         height: noticeText.implicitHeight + Theme.space3 * 2
         radius: Theme.radius
         color: Theme.scrim
+        border.width: 1
+        border.color: root.state === "paused" ? Theme.border : Theme.warning
 
         Text {
             id: noticeText
@@ -148,6 +167,8 @@ Item {
         height: toastText.implicitHeight + Theme.space2 * 2
         radius: Theme.radius
         color: Theme.scrim
+        border.width: 1
+        border.color: Theme.border
 
         Text {
             id: toastText

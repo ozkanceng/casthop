@@ -25,6 +25,8 @@ public:
 
     /// Boşsa bilgisayar adı kullanılır.
     QString boardName() const;
+    /// Kullanıcı Ayarlar'dan özel bir tahta adı kaydetti mi?
+    bool hasCustomBoardName() const;
     void setBoardName(const QString& name);
     bool audioEnabled() const;
     void setAudioEnabled(bool on);

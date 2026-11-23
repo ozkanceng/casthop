@@ -353,4 +353,36 @@ final class BitrateControllerTests: XCTestCase {
         XCTAssertEqual(c.appliedBps, 8_000_000)
         XCTAssertNil(c.tick(nowMs: 10_000))
     }
+
+    func testFlatHighDelayPlateauHoldsBitrateWithoutRamp() {
+        let c = make()
+        var t: Int64 = 0
+        while t <= 10_000 {
+            c.onReceiverReport(nowMs: t, report: report(185_000))
+            _ = c.tick(nowMs: t)
+            t += 250
+        }
+        XCTAssertEqual(c.appliedBps, 16_000_000)
+    }
+
+    func testVeryHighFlatDelayBacksOffGently() {
+        let c = make()
+        c.onReceiverReport(nowMs: 0, report: report(260_000))
+        XCTAssertEqual(c.tick(nowMs: 0), 13_600_000)
+    }
+
+    func testRttSpikeTriggersMildBackoffAndRecovers() {
+        let c = make()
+        _ = c.tick(nowMs: 0)
+        c.onRttSample(nowMs: 0, rttUs: 15_000)
+        c.onRttSample(nowMs: 1_000, rttUs: 140_000)
+        XCTAssertEqual(c.tick(nowMs: 1_000), 13_600_000)
+        var t: Int64 = 1_250
+        while t <= 8_000 {
+            if t % 1_000 == 0 { c.onRttSample(nowMs: t, rttUs: 16_000) }
+            _ = c.tick(nowMs: t)
+            t += 250
+        }
+        XCTAssertGreaterThan(c.appliedBps, 13_600_000)
+    }
 }

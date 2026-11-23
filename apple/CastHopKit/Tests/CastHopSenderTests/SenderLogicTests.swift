@@ -368,8 +368,30 @@ final class StreamPlannerTests: XCTestCase {
     func testPresetsStepOneAtATimeAndStopAtTheEnds() {
         XCTAssertEqual(Preset.best.lower, .balanced)
         XCTAssertEqual(Preset.balanced.lower, .weakNetwork)
-        XCTAssertNil(Preset.weakNetwork.lower)
+        XCTAssertEqual(Preset.weakNetwork.lower, .ultraLow)
+        XCTAssertNil(Preset.ultraLow.lower)
+        XCTAssertEqual(Preset.ultraLow.higher, .weakNetwork)
         XCTAssertEqual(Preset.weakNetwork.higher, .balanced)
         XCTAssertNil(Preset.best.higher)
+    }
+
+    func testUltraLowPresetUses540p24And400kFloor() throws {
+        let p = try XCTUnwrap(plan(1920, 1080, .ultraLow))
+        XCTAssertEqual(p.fps, 24)
+        XCTAssertEqual(p.width, 960)
+        XCTAssertEqual(p.startBps, 1_200_000)
+        XCTAssertEqual(p.minBps, 400_000)
+    }
+
+    func testCaptureGateHoldsDuringDrainWithoutFalseCongestion() {
+        var congestion = 0
+        let gate = CaptureGate(onCongestion: { congestion += 1 })
+        XCTAssertFalse(gate.ready(nowUs: 0, depth: 2, oldestAgeUs: 200_000, sending: false))
+        XCTAssertFalse(gate.ready(nowUs: 200_000, depth: 0, oldestAgeUs: 0, sending: false))
+        XCTAssertEqual(congestion, 0)
+        XCTAssertTrue(gate.ready(nowUs: 210_000, depth: 0, oldestAgeUs: 0, sending: true))
+        XCTAssertFalse(gate.ready(nowUs: 220_000, depth: 2, oldestAgeUs: 20_000, sending: true))
+        XCTAssertFalse(gate.ready(nowUs: 280_000, depth: 2, oldestAgeUs: 80_000, sending: true))
+        XCTAssertEqual(congestion, 1)
     }
 }

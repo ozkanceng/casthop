@@ -2,6 +2,7 @@ import CastHopProtocol
 import CoreMedia
 import CoreVideo
 import Foundation
+import Network
 
 /// One mirroring session without ReplayKit: connects to the selected receiver with its pairing key, plans the stream
 /// from the first frame, follows rotation, reports status to the app. A thin `RPBroadcastSampleHandler` calls it, the app
@@ -48,6 +49,8 @@ public final class BroadcastEngine: @unchecked Sendable {
     private var status = BroadcastStatus()
     private var stopRequested: UInt8?
     private var stopFailure: MirrorFailure?
+    private var pathMonitor: NWPathMonitor?
+    private var sawInitialPath = false
 
     /// `sendsAudio` is false for a source with no sound of its own.
     public init(store: SharedStore, device: Device, sendsAudio: Bool = true) {
@@ -86,7 +89,7 @@ public final class BroadcastEngine: @unchecked Sendable {
             publish {
                 $0 = BroadcastStatus()
                 $0.phase = .connecting
-                $0.receiverName = target.name
+                $0.receiverName = target.displayName
             }
             let caps = VideoToolboxCaps.available(allowH265: settings.hevcEnabled)
             let info = DeviceInfo(name: device.name, deviceId: store.deviceId, appVersion: device.appVersion,
@@ -146,11 +149,29 @@ public final class BroadcastEngine: @unchecked Sendable {
             preset = Preset.start(chosen: settings.preset, remembered: store.preset(fingerprint: fingerprint))
         }
         mirror.start()
+        startNetworkMonitor()
+        let savedName = fingerprint.flatMap { fp in store.receivers().first { $0.fingerprint == fp }?.displayName }
         publish {
             $0.phase = .starting
-            $0.receiverName = session.welcome.receiverName
+            $0.receiverName = savedName ?? session.welcome.receiverName
         }
         startVideoIfReady()
+    }
+
+    private func startNetworkMonitor() {
+        pathMonitor?.cancel()
+        sawInitialPath = false
+        let monitor = NWPathMonitor()
+        monitor.pathUpdateHandler = { [weak self] _ in
+            guard let self else { return }
+            if !self.sawInitialPath {
+                self.sawInitialPath = true
+                return
+            }
+            self.mirror?.onNetworkChanged()
+        }
+        monitor.start(queue: queue)
+        pathMonitor = monitor
     }
 
     private func makePlan(_ width: Int, _ height: Int, _ preset: Preset) -> StreamPlan? {
@@ -296,6 +317,8 @@ public final class BroadcastEngine: @unchecked Sendable {
     private func finish(_ result: MirrorFailure?) {
         guard !finished else { return }
         finished = true
+        pathMonitor?.cancel()
+        pathMonitor = nil
         let failure = stopFailure ?? result
         lock.withLock { videoRunning = false }
         mirror = nil

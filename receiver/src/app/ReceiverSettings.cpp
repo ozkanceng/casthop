@@ -22,6 +22,10 @@ QString ReceiverSettings::boardName() const {
     return n.isEmpty() ? QHostInfo::localHostName() : n;
 }
 
+bool ReceiverSettings::hasCustomBoardName() const {
+    return !m_settings.value(QStringLiteral("boardName")).toString().trimmed().isEmpty();
+}
+
 void ReceiverSettings::setBoardName(const QString& name) {
     // Protokol dizesi en fazla 255 bayt UTF-8 (PROTOCOL.md §7).
     QString n = name.trimmed();

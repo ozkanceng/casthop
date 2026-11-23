@@ -46,7 +46,9 @@ internal class ScreenSource(
     sourceHeight: Int,
     private val maxFps: Int,
     private val canRotate: Boolean = false,
+    private val encoderLookup: (String) -> AndroidEncoderCaps? = { null },
 ) : CaptureSource {
+    private var currentCaps = caps
     private val encoder = SurfaceEncoder(caps)
     private val thread = HandlerThread("mirror-gl", Process.THREAD_PRIORITY_URGENT_DISPLAY).apply { start() }
     private val gl = Handler(thread.looper)
@@ -105,6 +107,12 @@ internal class ScreenSource(
     override fun start(plan: StreamPlan, sink: (EncodedFrame) -> Unit, onError: (Throwable) -> Unit) = onGl {
         check(!released) { "released" }
         stopOnGl()
+        if (plan.encoderName != currentCaps.name) {
+            encoderLookup(plan.encoderName)?.let { fallbackCaps ->
+                currentCaps = fallbackCaps
+                encoder.updateCaps(fallbackCaps)
+            }
+        }
         val encoderPlan = plan.copy(fps = max(plan.fps, maxFps))
         orientation.clear()
         val input = encoder.start(

@@ -35,6 +35,57 @@
         }
       }
     },
+    "540p, 24 fps. Smoothest choice on congested or slow mobile hotspots.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "540p, 24 fps. Smoothest choice on congested or slow mobile hotspots."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "540p, 24 fps. Yoğun veya yavaş mobil hotspot için en akıcı seçenek."
+          }
+        }
+      }
+    },
+    "6-digit code on the board": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6-digit code on the board"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtadaki 6 haneli kod"
+          }
+        }
+      }
+    },
+    "6-digit connection code, %lld of 6 digits entered": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6-digit connection code, %lld of 6 digits entered"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 haneli bağlantı kodu, 6 haneden %lld hane girildi"
+          }
+        }
+      }
+    },
     "720p, 30 fps for crowded or 2.4 GHz networks.": {
       "extractionState": "manual",
       "localizations": {
@@ -82,6 +133,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Başlamadan önce birkaç izin gerekiyor"
+          }
+        }
+      }
+    },
+    "Add %@ to favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add %@ to favorites"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ekranını favorilere ekle"
           }
         }
       }
@@ -171,6 +239,23 @@
         }
       }
     },
+    "Back": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geri"
+          }
+        }
+      }
+    },
     "Balanced": {
       "extractionState": "manual",
       "localizations": {
@@ -218,6 +303,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "En iyi kalite"
+          }
+        }
+      }
+    },
+    "Board IP address": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Board IP address"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahta IP adresi"
           }
         }
       }
@@ -392,6 +494,23 @@
         }
       }
     },
+    "Change port (default 47800)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change port (default 47800)"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Port değiştir (varsayılan 47800)"
+          }
+        }
+      }
+    },
     "Changes take effect the next time you mirror.": {
       "extractionState": "manual",
       "localizations": {
@@ -494,6 +613,23 @@
         }
       }
     },
+    "Clear": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temizle"
+          }
+        }
+      }
+    },
     "Code": {
       "extractionState": "manual",
       "localizations": {
@@ -524,6 +660,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sık sorunlar"
+          }
+        }
+      }
+    },
+    "Connect by IP address": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connect by IP address"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IP adresi ile bağlan"
           }
         }
       }
@@ -664,6 +817,23 @@
         }
       }
     },
+    "Connection starts automatically after the 6th digit.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connection starts automatically after the 6th digit."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 haneyi girdiğinizde bağlantı kendiliğinden başlar."
+          }
+        }
+      }
+    },
     "Connection: fair": {
       "extractionState": "manual",
       "localizations": {
@@ -783,6 +953,40 @@
         }
       }
     },
+    "Enter a classroom or room name (e.g. Room 9-B). Leave blank to use the board's own name.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a classroom or room name (e.g. Room 9-B). Leave blank to use the board's own name."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sınıf veya oda adı yazın (ör. 9-B Matematik). Boş bırakırsanız tahtanın kendi adı kullanılır."
+          }
+        }
+      }
+    },
+    "Enter a valid IPv4 address (e.g. 192.168.43.102).": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a valid IPv4 address (e.g. 192.168.43.102)."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçerli bir IPv4 adresi girin (ör. 192.168.43.102)."
+          }
+        }
+      }
+    },
     "Enter the 6-digit code shown on the board.": {
       "extractionState": "manual",
       "localizations": {
@@ -796,6 +1000,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ekrandaki 6 haneli kodu girin."
+          }
+        }
+      }
+    },
+    "Enter the IP address and 6-digit code shown on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter the IP address and 6-digit code shown on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahta ekranının altındaki IP adresini ve 6 haneli kodu girin."
           }
         }
       }
@@ -1055,6 +1276,23 @@
         }
       }
     },
+    "Live": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canlı"
+          }
+        }
+      }
+    },
     "Local network": {
       "extractionState": "manual",
       "localizations": {
@@ -1068,6 +1306,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yerel ağ"
+          }
+        }
+      }
+    },
+    "Loss": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loss"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kayıp"
           }
         }
       }
@@ -1259,6 +1514,57 @@
         }
       }
     },
+    "Mobile hotspots or school networks may block automatic discovery (mDNS). You can connect directly using the IP address or QR code on the board.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mobile hotspots or school networks may block automatic discovery (mDNS). You can connect directly using the IP address or QR code on the board."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mobil hotspot veya okul ağları otomatik keşfi (mDNS) engelleyebilir. Tahtanın ekranındaki IP adresi veya QR koduyla doğrudan bağlanabilirsiniz."
+          }
+        }
+      }
+    },
+    "Name this board": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name this board"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtaya takma ad ver"
+          }
+        }
+      }
+    },
+    "Network may be isolating devices": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Network may be isolating devices"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ağ cihazları yalıtıyor olabilir"
+          }
+        }
+      }
+    },
     "New board with QR": {
       "extractionState": "manual",
       "localizations": {
@@ -1272,6 +1578,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "QR ile yeni ekran"
+          }
+        }
+      }
+    },
+    "Nickname": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nickname"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takma ad"
           }
         }
       }
@@ -1293,6 +1616,23 @@
         }
       }
     },
+    "No board appeared yet": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No board appeared yet"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahta henüz görünmedi"
+          }
+        }
+      }
+    },
     "No suitable video encoder was found on this tablet.": {
       "extractionState": "manual",
       "localizations": {
@@ -1306,6 +1646,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tablette uygun bir video kodlayıcı bulunamadı."
+          }
+        }
+      }
+    },
+    "Not listed? Connect by IP address": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not listed? Connect by IP address"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Listede yok mu? IP adresi ile bağlan"
           }
         }
       }
@@ -1425,6 +1782,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yayını başlatmadan önce CastHop'u açıp bir ekran seçin."
+          }
+        }
+      }
+    },
+    "Open CastHop on the board — the code appears in large digits (e.g. 482 917) to the right of the QR code.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open CastHop on the board — the code appears in large digits (e.g. 482 917) to the right of the QR code."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtada CastHop'u açtığınızda QR kodunun sağında büyük rakamlarla (ör. 482 917) görünür."
           }
         }
       }
@@ -1565,6 +1939,23 @@
         }
       }
     },
+    "Ping": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ping"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ping"
+          }
+        }
+      }
+    },
     "Play sound on the board": {
       "extractionState": "manual",
       "localizations": {
@@ -1616,6 +2007,40 @@
         }
       }
     },
+    "Port must be between 1 and 65535.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Port must be between 1 and 65535."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Port 1 ile 65535 arasında olmalıdır."
+          }
+        }
+      }
+    },
+    "Recent addresses": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent addresses"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Son kullanılan adresler"
+          }
+        }
+      }
+    },
     "Reconnecting…": {
       "extractionState": "manual",
       "localizations": {
@@ -1633,6 +2058,23 @@
         }
       }
     },
+    "Refresh": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yenile"
+          }
+        }
+      }
+    },
     "Remembered boards": {
       "extractionState": "manual",
       "localizations": {
@@ -1646,6 +2088,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hatırlanan ekranlar"
+          }
+        }
+      }
+    },
+    "Remove %@ from favorites": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove %@ from favorites"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ekranını favorilerden çıkar"
+          }
+        }
+      }
+    },
+    "Rename": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rename"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adlandır"
           }
         }
       }
@@ -1680,6 +2156,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Devam et"
+          }
+        }
+      }
+    },
+    "Save": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kaydet"
           }
         }
       }
@@ -1731,6 +2224,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aynı ağdaki ekranlar aranıyor…"
+          }
+        }
+      }
+    },
+    "Searching for board…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Searching for board…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahta aranıyor…"
+          }
+        }
+      }
+    },
+    "Securing connection…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Securing connection…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güvenli bağlantı kuruluyor…"
           }
         }
       }
@@ -1935,6 +2462,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yansıtmayı Başlat"
+          }
+        }
+      }
+    },
+    "Starting stream…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starting stream…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yayın başlıyor…"
           }
         }
       }
@@ -2211,6 +2755,23 @@
         }
       }
     },
+    "The connection timed out on the local network. Client isolation (AP Isolation) or a firewall may be blocking port 47800. Verify CastHop is open on the board or try the hotspot / QR code.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The connection timed out on the local network. Client isolation (AP Isolation) or a firewall may be blocking port 47800. Verify CastHop is open on the board or try the hotspot / QR code."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aynı ağda bağlantı zaman aşımına uğradı. Okul ağı veya hotspot ayarında istemci yalıtımı (AP Isolation) ya da 47800 portu engelli olabilir; tahtada CastHop'un açık olduğundan emin olun veya hotspot / QR ile deneyin."
+          }
+        }
+      }
+    },
     "The pairing may have been removed on the board. Scan the QR code on the board again.": {
       "extractionState": "manual",
       "localizations": {
@@ -2415,6 +2976,57 @@
         }
       }
     },
+    "Try again": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tekrar dene"
+          }
+        }
+      }
+    },
+    "Turn flashlight off": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn flashlight off"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feneri kapat"
+          }
+        }
+      }
+    },
+    "Turn flashlight on": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn flashlight on"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feneri aç"
+          }
+        }
+      }
+    },
     "Update the tablet app and CastHop on the board.": {
       "extractionState": "manual",
       "localizations": {
@@ -2462,6 +3074,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sürüm %@"
+          }
+        }
+      }
+    },
+    "Very weak network / Hotspot": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Very weak network / Hotspot"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Çok zayıf ağ / Hotspot"
           }
         }
       }
@@ -2534,6 +3163,40 @@
         }
       }
     },
+    "Waiting for approval on board…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for approval on board…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tahtada onay bekleniyor…"
+          }
+        }
+      }
+    },
+    "Weak connection — video quality was lowered automatically to prevent freezes.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weak connection — video quality was lowered automatically to prevent freezes."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bağlantı zayıf — takılmayı önlemek için görüntü otomatik uyarlandı."
+          }
+        }
+      }
+    },
     "Weak network": {
       "extractionState": "manual",
       "localizations": {
@@ -2568,6 +3231,23 @@
         }
       }
     },
+    "Where is the 6-digit code?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where is the 6-digit code?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "6 haneli kod nerede?"
+          }
+        }
+      }
+    },
     "While mirroring": {
       "extractionState": "manual",
       "localizations": {
@@ -2581,6 +3261,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Yansıtma sırasında"
+          }
+        }
+      }
+    },
+    "With IP": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With IP"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IP ile"
+          }
+        }
+      }
+    },
+    "With code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "With code"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kod ile"
           }
         }
       }

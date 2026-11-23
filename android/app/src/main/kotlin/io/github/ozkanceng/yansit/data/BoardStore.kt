@@ -9,8 +9,8 @@ import org.json.JSONException
 import org.json.JSONObject
 
 /**
- * Daha önce QR ile bağlanılmış ve kalıcı eşleştirme anahtarı alınmış tahta (PROTOCOL.md §7.1, auth_method=3).
- * Sonraki bağlantılar QR'sız, tek dokunuşla yapılır.
+ * Daha önce QR veya PIN ile bağlanılmış ve kalıcı eşleştirme anahtarı alınmış tahta (PROTOCOL.md §7.1, auth_method=3).
+ * Sonraki bağlantılar QR/kod olmadan, tek dokunuşla yapılır.
  */
 data class RememberedBoard(
     val name: String,
@@ -21,21 +21,71 @@ data class RememberedBoard(
     val keyId: Bytes,
     val pairKey: Bytes,
     val lastUsedMs: Long,
-)
+    /** Kullanıcının tahtaya verdiği özel takma ad (ör. "9-B Matematik"). */
+    val nickname: String? = null,
+    /** Favori olarak sabitlenen tahtalar listede en üstte çıkar. */
+    val favorite: Boolean = false,
+    /** Alıcı türü ("board", "tv", "pc", "tablet"). */
+    val kind: String? = null,
+) {
+    /** Arayüzde gösterilen birincil ad: varsa takma ad, yoksa tahtanın bildirdiği ad. */
+    val displayName: String get() = nickname?.trim()?.takeIf { it.isNotEmpty() } ?: name
 
-/** Hatırlanan tahtalar; uygulamaya özel depoda, yedeklenmez (data_extraction_rules). */
+    /** Kalıcı 4 haneli kısa kimlik (ör. "A4F2"). */
+    val shortId: String get() = BoardIdentity.shortId(fingerprint)
+}
+
+/** Hatırlanan tahtalar; uygulamaya özel depoda, `pairKey` Android Keystore AES-GCM ile şifrelenir. */
 class BoardStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("boards", Context.MODE_PRIVATE)
 
-    /** En son kullanılan önce. */
-    fun list(): List<RememberedBoard> = load().sortedByDescending { it.lastUsedMs }
+    /** Favoriler üstte, ardından en son kullanılanlar. */
+    fun list(): List<RememberedBoard> = BoardIdentity.sortRemembered(load())
 
     fun find(fingerprint: Bytes): RememberedBoard? = load().firstOrNull { it.fingerprint == fingerprint }
 
-    /** Aynı tahtanın (parmak izi) eski kaydının yerini alır. En fazla [MAX_BOARDS] tahta tutulur. */
+    /** mDNS parmak izi önekiyle eşleşen hatırlanan tahta. */
+    fun findByPrefix(prefix: Bytes): RememberedBoard? =
+        load().firstOrNull { BoardIdentity.matchesPrefix(it.fingerprint, prefix) }
+
+    /** Manuel IP ekranında hızlı seçim için son kullanılan benzersiz IPv4 adresleri. */
+    fun recentIps(limit: Int = 4): List<String> =
+        list().flatMap { it.hosts }.mapNotNull { h -> BoardIdentity.primaryIpv4(listOf(h)) }.distinct().take(limit)
+
+    /**
+     * Aynı tahtanın (parmak izi) eski kaydının yerini alır; mevcut takma ad, favori ve tür bilgisi korunur.
+     * En fazla [MAX_BOARDS] tahta tutulur (favoriler öncelikli korunur).
+     */
     fun save(board: RememberedBoard) {
-        val all = load().filterNot { it.fingerprint == board.fingerprint } + board
-        store(all.sortedByDescending { it.lastUsedMs }.take(MAX_BOARDS))
+        val current = load()
+        val existing = current.firstOrNull { it.fingerprint == board.fingerprint }
+        val merged = board.copy(
+            nickname = board.nickname ?: existing?.nickname,
+            favorite = board.favorite || (existing?.favorite == true),
+            kind = board.kind ?: existing?.kind,
+        )
+        val all = current.filterNot { it.fingerprint == board.fingerprint } + merged
+        store(BoardIdentity.sortRemembered(all).take(MAX_BOARDS))
+    }
+
+    /** Tahtanın özel takma adını günceller (boş/null → takma adı temizle). */
+    fun setNickname(fingerprint: Bytes, nickname: String?) {
+        val clean = nickname?.trim()?.take(48)?.takeIf { it.isNotEmpty() }
+        val all = load().map { if (it.fingerprint == fingerprint) it.copy(nickname = clean) else it }
+        store(BoardIdentity.sortRemembered(all))
+    }
+
+    /** Tahtayı favorilere ekler veya çıkarır. */
+    fun setFavorite(fingerprint: Bytes, favorite: Boolean) {
+        val all = load().map { if (it.fingerprint == fingerprint) it.copy(favorite = favorite) else it }
+        store(BoardIdentity.sortRemembered(all))
+    }
+
+    /** Tahtanın güncel IP listesini günceller (ör. ağ/hotspot değişiminde mDNS ile bulunduğunda). */
+    fun updateHosts(fingerprint: Bytes, hosts: List<String>, port: Int) {
+        if (hosts.isEmpty()) return
+        val all = load().map { if (it.fingerprint == fingerprint) it.copy(hosts = hosts, port = port) else it }
+        store(BoardIdentity.sortRemembered(all))
     }
 
     fun touch(fingerprint: Bytes, nowMs: Long) {
@@ -72,24 +122,39 @@ class BoardStore(context: Context) {
 
     private fun load(): List<RememberedBoard> {
         val raw = prefs.getString(KEY, null) ?: return emptyList()
-        return try {
+        var needsMigration = false
+        val parsed = try {
             val arr = JSONArray(raw)
-            (0 until arr.length()).mapNotNull { i -> parse(arr.getJSONObject(i)) }
+            (0 until arr.length()).mapNotNull { i ->
+                val obj = arr.getJSONObject(i)
+                if (obj.has("pair_key") && !obj.has("pair_key_enc")) needsMigration = true
+                parse(obj)
+            }
         } catch (_: JSONException) {
             emptyList()
         }
+        if (needsMigration && parsed.isNotEmpty()) {
+            store(parsed)
+        }
+        return parsed
     }
 
     private fun parse(o: JSONObject): RememberedBoard? = try {
         val hosts = o.getJSONArray("hosts")
+        val pairKey = o.optString("pair_key_enc", "").takeIf { it.isNotEmpty() }?.let(BoardKeyVault::decrypt)
+            ?: o.optString("pair_key", "").takeIf { it.isNotEmpty() }?.let(Bytes::fromHex)
+            ?: return null
         RememberedBoard(
             name = o.getString("name"),
             hosts = (0 until hosts.length()).map { hosts.getString(it) },
             port = o.getInt("port"),
             fingerprint = Bytes.fromHex(o.getString("fp")),
             keyId = Bytes.fromHex(o.getString("key_id")),
-            pairKey = Bytes.fromHex(o.getString("pair_key")),
+            pairKey = pairKey,
             lastUsedMs = o.getLong("last_used"),
+            nickname = o.optString("nickname", "").takeIf { it.isNotBlank() },
+            favorite = o.optBoolean("favorite", false),
+            kind = o.optString("kind", "").takeIf { it.isNotBlank() },
         ).takeIf { it.fingerprint.size == 32 && it.keyId.size == 16 && it.pairKey.size == 32 && it.hosts.isNotEmpty() }
     } catch (_: JSONException) {
         null
@@ -100,16 +165,23 @@ class BoardStore(context: Context) {
     private fun store(boards: List<RememberedBoard>) {
         val arr = JSONArray()
         for (b in boards) {
-            arr.put(
-                JSONObject()
-                    .put("name", b.name)
-                    .put("hosts", JSONArray(b.hosts))
-                    .put("port", b.port)
-                    .put("fp", b.fingerprint.toHex())
-                    .put("key_id", b.keyId.toHex())
-                    .put("pair_key", b.pairKey.toHex())
-                    .put("last_used", b.lastUsedMs),
-            )
+            val encryptedKey = BoardKeyVault.encrypt(b.pairKey)
+            val obj = JSONObject()
+                .put("name", b.name)
+                .put("hosts", JSONArray(b.hosts))
+                .put("port", b.port)
+                .put("fp", b.fingerprint.toHex())
+                .put("key_id", b.keyId.toHex())
+                .put("last_used", b.lastUsedMs)
+                .put("favorite", b.favorite)
+            if (encryptedKey != null) {
+                obj.put("pair_key_enc", encryptedKey)
+            } else {
+                obj.put("pair_key", b.pairKey.toHex())
+            }
+            b.nickname?.let { obj.put("nickname", it) }
+            b.kind?.let { obj.put("kind", it) }
+            arr.put(obj)
         }
         prefs.edit { putString(KEY, arr.toString()) }
     }
@@ -117,6 +189,6 @@ class BoardStore(context: Context) {
     private companion object {
         const val KEY = "boards"
         const val KEY_PRESETS = "presets"
-        const val MAX_BOARDS = 8
+        const val MAX_BOARDS = 20
     }
 }

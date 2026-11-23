@@ -26,24 +26,26 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.ozkanceng.yansit.data.AppSettings
+import io.github.ozkanceng.yansit.data.BoardIdentity
 import io.github.ozkanceng.yansit.data.BoardStore
 import io.github.ozkanceng.yansit.data.RememberedBoard
+import io.github.ozkanceng.yansit.sender.StreamPlanner
 import io.github.ozkanceng.yansit.stream.AndroidEncoderCaps
 import io.github.ozkanceng.yansit.stream.BoardDiscovery
 import io.github.ozkanceng.yansit.stream.ConnectTarget
 import io.github.ozkanceng.yansit.stream.DiscoveredBoard
 import io.github.ozkanceng.yansit.stream.MirrorController
 import io.github.ozkanceng.yansit.stream.MirrorState
-import io.github.ozkanceng.yansit.sender.StreamPlanner
 import io.github.ozkanceng.yansit.stream.currentDisplaySize
 import io.github.ozkanceng.yansit.ui.AppPermissions
 import io.github.ozkanceng.yansit.ui.DiscoverScreen
 import io.github.ozkanceng.yansit.ui.GuideScreen
-import io.github.ozkanceng.yansit.ui.PinScreen
 import io.github.ozkanceng.yansit.ui.HomeActions
-import io.github.ozkanceng.yansit.ui.LatencyScreen
 import io.github.ozkanceng.yansit.ui.HomeScreen
+import io.github.ozkanceng.yansit.ui.LatencyScreen
+import io.github.ozkanceng.yansit.ui.ManualIpScreen
 import io.github.ozkanceng.yansit.ui.PermissionScreen
+import io.github.ozkanceng.yansit.ui.PinScreen
 import io.github.ozkanceng.yansit.ui.ScannerScreen
 import io.github.ozkanceng.yansit.ui.SettingsOptions
 import io.github.ozkanceng.yansit.ui.SettingsScreen
@@ -59,7 +61,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { HOME, GUIDE, PERMISSIONS, SCANNER, SETTINGS, DISCOVER, PIN, LATENCY }
+private enum class Screen { HOME, GUIDE, PERMISSIONS, SCANNER, SETTINGS, DISCOVER, PIN, MANUAL_IP, LATENCY }
 
 @Composable
 private fun YansitApp() {
@@ -74,32 +76,61 @@ private fun YansitApp() {
     var boardsVersion by remember { mutableIntStateOf(0) }
     val boards = remember(state, boardsVersion) { boardStore.list() }
     var pendingBoard by remember { mutableStateOf<RememberedBoard?>(null) }
-    // Kodla bağlanma: yerel ağ izni istenirken bekleyen akış, ağda bulunan tahtalar ve seçilen tahta.
+    // Yerel ağ izni istenirken bekleyen akışlar.
     var pendingCode by remember { mutableStateOf(false) }
+    var pendingManualIp by remember { mutableStateOf(false) }
     val discovery = remember { BoardDiscovery(context) }
     var discovered by remember { mutableStateOf<List<DiscoveredBoard>>(emptyList()) }
+    var discoveryFailed by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<DiscoveredBoard?>(null) }
     DisposableEffect(Unit) { onDispose { discovery.stop() } }
+
+    fun refreshDiscovery() {
+        discovered = emptyList()
+        discoveryFailed = false
+        discovery.browse(
+            onUpdate = {
+                discovered = it
+                discoveryFailed = false
+            },
+            onFailed = { discoveryFailed = true },
+        )
+    }
 
     fun openCodeFlow() {
         if (discovery.usesSystemPicker) {
             discovery.pick(
                 onPicked = { b ->
                     selected = b
+                    MirrorController.dismiss()
                     screen = Screen.PIN
                 },
                 onCancel = { },
             )
         } else {
-            discovered = emptyList()
             screen = Screen.DISCOVER
-            discovery.browse { discovered = it }
+            refreshDiscovery()
         }
+    }
+
+    fun leaveConnectScreen() {
+        if (state is MirrorState.Ended) {
+            MirrorController.dismiss()
+        } else if (state !is MirrorState.Idle && state !is MirrorState.Mirroring) {
+            MirrorController.stop()
+        }
+        screen = Screen.HOME
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         val board = pendingBoard
         when {
+            pendingManualIp && AppPermissions.networkGranted(context) -> {
+                pendingManualIp = false
+                permissionsDenied = false
+                MirrorController.dismiss()
+                screen = Screen.MANUAL_IP
+            }
             pendingCode && AppPermissions.networkGranted(context) -> {
                 pendingCode = false
                 permissionsDenied = false
@@ -112,7 +143,7 @@ private fun YansitApp() {
                 screen = Screen.HOME
                 MirrorController.connect(context, ConnectTarget.Remembered(board))
             }
-            board == null && !pendingCode && AppPermissions.requiredGranted(context) -> {
+            board == null && !pendingCode && !pendingManualIp && AppPermissions.requiredGranted(context) -> {
                 permissionsDenied = false
                 screen = Screen.SCANNER
             }
@@ -134,6 +165,7 @@ private fun YansitApp() {
     }
 
     // Tahta kabul edince sistemin ekran paylaşımı onayı istenir (her oturumda zorunlu).
+    // Yansıtma başlayınca kod/IP ekranlarından otomatik olarak canlı kontrol ekranına geçilir.
     LaunchedEffect(state) {
         if (state is MirrorState.AwaitingConsent && !consentInFlight) {
             consentInFlight = true
@@ -145,22 +177,41 @@ private fun YansitApp() {
                 mpm.createScreenCaptureIntent()
             }
             consentLauncher.launch(intent)
+        } else if (state is MirrorState.Mirroring &&
+            (screen == Screen.PIN || screen == Screen.MANUAL_IP || screen == Screen.DISCOVER)
+        ) {
+            screen = Screen.HOME
         }
     }
 
     fun startScan() {
         MirrorController.dismiss()
         pendingBoard = null
+        pendingCode = false
+        pendingManualIp = false
         screen = if (AppPermissions.requiredGranted(context)) Screen.SCANNER else Screen.PERMISSIONS
     }
 
     fun startCode() {
         MirrorController.dismiss()
         pendingBoard = null
+        pendingManualIp = false
         if (AppPermissions.networkGranted(context)) {
             openCodeFlow()
         } else {
             pendingCode = true
+            screen = Screen.PERMISSIONS
+        }
+    }
+
+    fun startManualIp() {
+        MirrorController.dismiss()
+        pendingBoard = null
+        pendingCode = false
+        if (AppPermissions.networkGranted(context)) {
+            screen = Screen.MANUAL_IP
+        } else {
+            pendingManualIp = true
             screen = Screen.PERMISSIONS
         }
     }
@@ -183,11 +234,21 @@ private fun YansitApp() {
             actions = HomeActions(
                 onScan = ::startScan,
                 onCode = ::startCode,
+                onManualIp = ::startManualIp,
                 onBoard = ::connectRemembered,
+                onToggleFavorite = { b ->
+                    boardStore.setFavorite(b.fingerprint, !b.favorite)
+                    boardsVersion++
+                },
+                onRename = { b, newName ->
+                    boardStore.setNickname(b.fingerprint, newName)
+                    boardsVersion++
+                },
                 onForget = { b ->
                     boardStore.remove(b.fingerprint)
                     boardsVersion++
                 },
+                onRetry = { MirrorController.retryLast(context) },
                 onStop = MirrorController::stop,
                 onPause = MirrorController::pause,
                 onResume = MirrorController::resume,
@@ -197,28 +258,45 @@ private fun YansitApp() {
             ),
         )
         Screen.GUIDE -> GuideScreen(onScan = ::startScan, onCode = ::startCode, onBack = { screen = Screen.HOME })
-        Screen.PERMISSIONS -> PermissionScreen(
-            missing = AppPermissions.missing(context, settings.audioEnabled).filter {
-                (pendingBoard == null && !pendingCode) || it.permission == AppPermissions.ACCESS_LOCAL_NETWORK
-            },
-            deniedBefore = permissionsDenied,
-            onRequest = {
-                val wanted = AppPermissions.missing(context, settings.audioEnabled).filter {
-                    (pendingBoard == null && !pendingCode) || it.permission == AppPermissions.ACCESS_LOCAL_NETWORK
-                }
-                permissionLauncher.launch(wanted.map { it.permission }.toTypedArray())
-            },
-            onBack = {
-                pendingCode = false
-                screen = Screen.HOME
-            },
-        )
+        Screen.PERMISSIONS -> {
+            val networkOnly = pendingBoard != null || pendingCode || pendingManualIp
+            PermissionScreen(
+                missing = AppPermissions.missing(context, settings.audioEnabled).filter {
+                    !networkOnly || it.permission == AppPermissions.ACCESS_LOCAL_NETWORK
+                },
+                deniedBefore = permissionsDenied,
+                onRequest = {
+                    val wanted = AppPermissions.missing(context, settings.audioEnabled).filter {
+                        !networkOnly || it.permission == AppPermissions.ACCESS_LOCAL_NETWORK
+                    }
+                    permissionLauncher.launch(wanted.map { it.permission }.toTypedArray())
+                },
+                onBack = {
+                    pendingCode = false
+                    pendingManualIp = false
+                    pendingBoard = null
+                    screen = Screen.HOME
+                },
+            )
+        }
         Screen.DISCOVER -> DiscoverScreen(
             boards = discovered,
+            remembered = boards,
+            discoveryFailed = discoveryFailed,
             onPick = { b ->
                 discovery.stop()
                 selected = b
+                MirrorController.dismiss()
                 screen = Screen.PIN
+            },
+            onRefresh = ::refreshDiscovery,
+            onManualIp = {
+                discovery.stop()
+                startManualIp()
+            },
+            onScanQr = {
+                discovery.stop()
+                startScan()
             },
             onBack = {
                 discovery.stop()
@@ -226,21 +304,53 @@ private fun YansitApp() {
             },
         )
         Screen.PIN -> selected?.let { b ->
+            val rememberedMatch = remember(boards, b) {
+                boards.firstOrNull { BoardIdentity.matchesPrefix(it.fingerprint, b.fingerprintPrefix) }
+            }
             PinScreen(
                 board = b,
+                remembered = rememberedMatch,
+                state = state,
                 onConnect = { pin ->
-                    screen = Screen.HOME
+                    MirrorController.dismiss()
                     MirrorController.connect(context, ConnectTarget.Discovered(b, pin))
                 },
-                onBack = { screen = Screen.HOME },
+                onCancel = MirrorController::stop,
+                onRetry = { MirrorController.retryLast(context) },
+                onManualIp = {
+                    leaveConnectScreen()
+                    startManualIp()
+                },
+                onGuide = {
+                    MirrorController.dismiss()
+                    screen = Screen.GUIDE
+                },
+                onBack = ::leaveConnectScreen,
             )
         } ?: run { screen = Screen.HOME }
+        Screen.MANUAL_IP -> ManualIpScreen(
+            recentIps = remember(boards) { boardStore.recentIps() },
+            state = state,
+            onConnect = { host, port, pin ->
+                MirrorController.dismiss()
+                MirrorController.connect(context, ConnectTarget.Manual(host, port, pin))
+            },
+            onCancel = MirrorController::stop,
+            onRetry = { MirrorController.retryLast(context) },
+            onGuide = {
+                MirrorController.dismiss()
+                screen = Screen.GUIDE
+            },
+            onBack = ::leaveConnectScreen,
+        )
         Screen.LATENCY -> LatencyScreen(onBack = { screen = Screen.SETTINGS })
         Screen.SCANNER -> ScannerScreen(
             onResult = { qr ->
                 screen = Screen.HOME
                 MirrorController.connect(context, ConnectTarget.Qr(qr))
             },
+            onCode = ::startCode,
+            onManualIp = ::startManualIp,
             onBack = { screen = Screen.HOME },
         )
         Screen.SETTINGS -> {

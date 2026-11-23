@@ -521,3 +521,23 @@ Mac alıcı, `fake-receiver` ve Pardus başsız alıcısı uyum testinde (`rotat
 | 3 | Tahtada durağan bir slaytı 5 dk yansıtın, sonra slaytı değiştirin | İstatistik satırında kare hızı 60 kalır, kalite Zayıf ağ'a inmez; yeni slayt hemen net gelir | ☐ |
 | 4 | Pardus tahtada (VA H.265 çözücü) ve VA'sız tahtada yansıtın, alıcı günlüğünde codec'e bakın | VA H.265 varsa H.265, yoksa H.264 seçilir; ikisinde de görüntü bozulmasız | ☐ |
 | 5 | H.265 ile gecikme ve yazı netliğini yukarıdaki yöntemle yeniden ölçün | Gecikme H.264'ten belirgin yüksek değil, SSIM ≥ 0,985 | ☐ |
+
+---
+
+## Mobil hotspot, tahta adlandırma ve yeni bağlantı ekranları (gerçek cihaz)
+
+Amaç: Telefonun mobil internet hotspot'u üzerinden Pardus ETAP akıllı tahtaya yansıtmada donmasız uyarlama, çoklu `"etap"` tahtalarının ayrıştırılması ve yeni OTP / Manuel IP akışlarının gerçek donanımda doğrulanması.
+
+| # | Adım | Beklenen | ✓ |
+|---|---|---|---|
+| 1 | Varsayılan hostname'i `etap` olan iki Pardus tahtada CastHop'u açın | Bekleme ekranında farklı `etap-XXXX` adları ve `#XXXX` kısa kimlik rozeti görünür | ☐ |
+| 2 | Android'de **Kodla bağlan** ekranını açın | İki tahta `IP .xxx · #XXXX` alt başlığıyla ayırt edilir; ilk 5 sn shimmer yükleyici görünür | ☐ |
+| 3 | Bir tahtayı bağlanıp hatırlananlara ekleyin, takma ad (`9-B Matematik`) verin ve favori yıldızına basın | Favori tahta hem ana ekranda hem keşif listesinde en üstte çıkar; uygulama kapatılıp açılınca korunur | ☐ |
+| 4 | **Kodla bağlan** OTP ekranında yanlış 6 haneli kod girin | 6. hanede otomatik bağlanma denenir, yanlış kodda hücreler sallanır + titreşim verir + otomatik temizlenip odaklanır | ☐ |
+| 5 | Panoya `"482 917"` biçiminde kod kopyalayıp OTP alanına yapıştırın | Boşluk temizlenir, 6 hücre dolar ve otomatik bağlanma başlar; 3 adımlı ilerleme kartı ekran içinde görünür | ☐ |
+| 6 | Telefonun mobil hotspot'unu açıp tahtayı bağlayın; keşif ekranında tahta 5 sn görünmezse bekleyin | Hotspot bilgi şeridi ve 5 sn sonunda **IP adresi ile bağlan** + **QR okut** yedek kartı çıkar | ☐ |
+| 7 | **IP adresi ile bağlan** ekranında tahtanın IP'sini ve 6 haneli kodu girin | Geçersiz IP'de uyarı, geçerli IP + 6 hanede otomatik bağlantı; sonraki açılışta son IP çipi görünür | ☐ |
+| 8 | Mobil hotspot üzerinden (2,4 GHz ve 5 GHz ayrı ayrı) 10 dk hareketli video + sunum yansıtın | Donma/kilitlenme yok; canlı kartta Gecikme, Ping, Kayıp %, FPS, Mbps görünür; ağ sıkışınca kalite düşüp 5 GHz önerisi çıkar, rahatlayınca geri yükselir | ☐ |
+| 9 | Yansıtma sırasında başka uygulamaya geçin; tahta Wi-Fi'ını 2–3 sn kesip açın | `PARTIAL_WAKE_LOCK` + foreground service ile yayın sürer; kısa kopma sonrası tekrar kod girmeden otomatik `RESUME` olur | ☐ |
+| 10 | Ayarlar → **Güç ve arka plan** → **Pil ayarlarını aç** ile kısıtlamayı kaldırıp geri dönün | Durum otomatik olarak yeşil "Pil optimizasyonu kapalı" metnine döner | ☐ |
+| 11 | Karanlık sınıfta QR tarayıcıyı açıp fener düğmesine dokunun | Fener açılıp kapanır, animasyonlu tarama çizgisi görünür; alttaki **Kod ile** / **IP ile** düğmeleri doğrudan geçiş yapar | ☐ |

@@ -7,6 +7,11 @@ import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.projection.MediaProjection
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -60,6 +65,7 @@ private const val TAG = "YansitMirror"
 /** Kullanıcıya gösterilen hata türleri (her biri anlaşılır bir mesaja karşılık gelir). */
 enum class MirrorError {
     UNREACHABLE,
+    CLIENT_ISOLATION,
     DIFFERENT_NETWORK,
     REFUSED,
     WRONG_BOARD,
@@ -83,12 +89,15 @@ enum class MirrorError {
     INTERNAL,
 }
 
+/** Bağlantı sırasındaki kullanıcı dostu aşama. */
+enum class ConnectStep { SEARCHING, SECURING, WAITING_APPROVAL, STARTING }
+
 /** Sesin durumu (arayüzde bilgi satırı). */
 enum class AudioState { ON, OFF_SETTING, OFF_BOARD, OFF_PERMISSION, OFF_CAMERA, UNSUPPORTED, FAILED }
 
 sealed interface MirrorState {
     data object Idle : MirrorState
-    data class Connecting(val board: String) : MirrorState
+    data class Connecting(val board: String, val step: ConnectStep = ConnectStep.SEARCHING) : MirrorState
     data class WaitingApproval(val board: String, val timeoutMs: Long) : MirrorState
     /** Tahta kabul etti; sistemin ekran paylaşım onayı bekleniyor. */
     data class AwaitingConsent(val board: String) : MirrorState
@@ -103,16 +112,19 @@ sealed interface MirrorState {
         /** Camera mode: the size of the picture being sent; `null` when the screen is mirrored. */
         val cameraSize: Size? = null,
         val canSwitchCamera: Boolean = false,
+        /** Telefon hotspot veya 2,4 GHz Wi-Fi üzerinden mi yayın yapılıyor? */
+        val onHotspot: Boolean = false,
     ) : MirrorState
     /** Bitti; [error] `null` ise kullanıcı kendisi durdurdu. */
     data class Ended(val board: String, val error: MirrorError?) : MirrorState
 }
 
-/** Bağlantı hedefi: yeni QR, hatırlanan tahta ya da ağda bulunup PIN'i girilen tahta. */
+/** Bağlantı hedefi: yeni QR, hatırlanan tahta, mDNS + PIN ya da manuel IP + PIN. */
 sealed interface ConnectTarget {
     data class Qr(val payload: QrPayload) : ConnectTarget
     data class Remembered(val board: RememberedBoard) : ConnectTarget
     data class Discovered(val board: DiscoveredBoard, val pin: String) : ConnectTarget
+    data class Manual(val host: String, val port: Int, val pin: String) : ConnectTarget
 }
 
 /**
@@ -152,10 +164,15 @@ object MirrorController {
         /** Preset in use when the network or encoder moved away from the chosen one. */
         var preset: Preset? = null
         var displayListener: DisplayManager.DisplayListener? = null
+        var networkCallback: ConnectivityManager.NetworkCallback? = null
 
         fun release() {
             displayListener?.let { service.getSystemService(DisplayManager::class.java).unregisterDisplayListener(it) }
             displayListener = null
+            networkCallback?.let { cb ->
+                runCatching { service.getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(cb) }
+            }
+            networkCallback = null
             camera?.release()
             camera = null
             // The source detaches the display before it lets go of its surface.
@@ -174,6 +191,15 @@ object MirrorController {
 
     // --- Bağlanma ---
 
+    /** Son bağlantı denemesini tek dokunuşla yeniden dener (varsa). */
+    fun retryLast(context: Context): Boolean {
+        val last = target ?: return false
+        val current = _state.value
+        if (current !is MirrorState.Idle && current !is MirrorState.Ended) return false
+        connect(context, last)
+        return true
+    }
+
     fun connect(context: Context, target: ConnectTarget) {
         val current = _state.value
         if (current !is MirrorState.Idle && current !is MirrorState.Ended) return
@@ -181,15 +207,23 @@ object MirrorController {
         this.target = target
         board = when (target) {
             is ConnectTarget.Qr -> target.payload.name
-            is ConnectTarget.Remembered -> target.board.name
-            is ConnectTarget.Discovered -> target.board.name
+            is ConnectTarget.Remembered -> target.board.displayName
+            is ConnectTarget.Discovered ->
+                BoardStore(appContext).findByPrefix(target.board.fingerprintPrefix)?.displayName ?: target.board.name
+            is ConnectTarget.Manual -> target.host
         }
-        _state.value = MirrorState.Connecting(board)
+        _state.value = MirrorState.Connecting(board, ConnectStep.SEARCHING)
         val attempt = synchronized(lock) { ++generation }
         scope.launch {
-            val result = hello(target) { timeoutMs ->
-                if (isCurrent(attempt)) _state.value = MirrorState.WaitingApproval(board, timeoutMs)
-            }
+            val result = hello(
+                target = target,
+                onStep = { step ->
+                    if (isCurrent(attempt)) _state.value = MirrorState.Connecting(board, step)
+                },
+                onPending = { timeoutMs ->
+                    if (isCurrent(attempt)) _state.value = MirrorState.WaitingApproval(board, timeoutMs)
+                },
+            )
             when (result) {
                 is HelloResult.Failed -> failIfCurrent(attempt, result.error)
                 is HelloResult.Ok -> {
@@ -199,8 +233,9 @@ object MirrorController {
                         result.session.close()
                         return@launch
                     }
-                    board = result.session.welcome.receiverName
                     boardFingerprint = result.session.fingerprint
+                    board = BoardStore(appContext).find(result.session.fingerprint)?.displayName
+                        ?: result.session.welcome.receiverName
                     val s = newMirrorSession(result.session)
                     synchronized(lock) { session = s }
                     s.start()
@@ -219,30 +254,51 @@ object MirrorController {
         data class Failed(val error: MirrorError) : HelloResult
     }
 
-    /** Ulaşılabilirlik + kimlik doğrulama; QR ile ilk bağlantıda kalıcı eşleştirme istenir ve kaydedilir. */
-    private fun hello(target: ConnectTarget, onPending: (Long) -> Unit): HelloResult {
+    /** Ulaşılabilirlik + kimlik doğrulama; QR/PIN ile ilk bağlantıda kalıcı eşleştirme istenir ve kaydedilir. */
+    private fun hello(
+        target: ConnectTarget,
+        onStep: (ConnectStep) -> Unit = {},
+        onPending: (Long) -> Unit,
+    ): HelloResult {
         val settings = AppSettings(appContext)
-        val (hosts, port, fp) = when (target) {
+        val boards = BoardStore(appContext)
+        var (hosts, port, fp) = when (target) {
             is ConnectTarget.Qr -> Triple(target.payload.hosts, target.payload.port, target.payload.certFingerprint)
             is ConnectTarget.Remembered -> Triple(target.board.hosts, target.board.port, target.board.fingerprint)
             // mDNS'te yalnız parmak izi öneki var: ilk bağlantıda öneki denetlenir, tam iz eşleştirmeyle kaydedilir.
             is ConnectTarget.Discovered -> Triple(target.board.hosts, target.board.port, null)
+            is ConnectTarget.Manual -> Triple(listOf(target.host), target.port, null)
         }
         val fpPrefix = (target as? ConnectTarget.Discovered)?.board?.fingerprintPrefix
-        val host = when (val r = Reachability.firstReachable(hosts, port)) {
+        onStep(ConnectStep.SEARCHING)
+        var reach = Reachability.firstReachable(hosts, port)
+        // Hatırlanan tahtanın IP'si (hotspot/DHCP yüzünden) değiştiyse mDNS ile güncel adresini bul.
+        if (reach is ReachResult.Unreachable && !reach.refused && target is ConnectTarget.Remembered) {
+            val rediscovered = BoardDiscovery(appContext).findByFingerprint(target.board.fingerprint, timeoutMs = 2500L)
+            if (rediscovered != null && rediscovered.hosts.isNotEmpty()) {
+                hosts = rediscovered.hosts
+                port = rediscovered.port
+                boards.updateHosts(target.board.fingerprint, hosts, port)
+                reach = Reachability.firstReachable(hosts, port)
+            }
+        }
+        val host = when (val r = reach) {
             is ReachResult.Reachable -> r.host
             is ReachResult.Unreachable -> return HelloResult.Failed(
                 when {
                     r.refused -> MirrorError.REFUSED
                     NetworkDiagnostics.sharesSubnet(appContext, hosts) == false -> MirrorError.DIFFERENT_NETWORK
+                    NetworkDiagnostics.sharesSubnet(appContext, hosts) == true -> MirrorError.CLIENT_ISOLATION
                     else -> MirrorError.UNREACHABLE
                 },
             )
         }
+        onStep(ConnectStep.SECURING)
         val credentials = when (target) {
             is ConnectTarget.Qr -> Credentials.QrToken(target.payload.token)
             is ConnectTarget.Remembered -> Credentials.Paired(target.board.keyId, target.board.pairKey)
             is ConnectTarget.Discovered -> Credentials.Pin(target.pin)
+            is ConnectTarget.Manual -> Credentials.Pin(target.pin)
         }
         val outcome = try {
             SenderClient.hello(
@@ -275,13 +331,13 @@ object MirrorController {
             Log.w(TAG, "bağlantı hatası", e)
             return HelloResult.Failed(MirrorError.UNREACHABLE)
         }
-        val boards = BoardStore(appContext)
         return when (outcome) {
             is HelloOutcome.Rejected -> {
-                if (target is ConnectTarget.Discovered && outcome.reason == RejectReason.AUTH_FAILED) {
+                val isPinFlow = target is ConnectTarget.Discovered || target is ConnectTarget.Manual
+                if (isPinFlow && outcome.reason == RejectReason.AUTH_FAILED) {
                     HelloResult.Failed(MirrorError.WRONG_PIN)
                 } else if (target is ConnectTarget.Remembered && outcome.reason == RejectReason.AUTH_FAILED) {
-                    // Tahta eşleştirmeyi unutmuş (silinmiş veya sertifika yenilenmiş): yeniden QR gerekir.
+                    // Tahta eşleştirmeyi unutmuş (silinmiş veya sertifika yenilenmiş): yeniden QR/kod gerekir.
                     boards.remove(target.board.fingerprint)
                     HelloResult.Failed(MirrorError.BOARD_FORGOT_TABLET)
                 } else {
@@ -296,17 +352,32 @@ object MirrorController {
                 when (target) {
                     is ConnectTarget.Qr -> if (keyId != null && pairKey != null) {
                         boards.save(
-                            RememberedBoard(w.receiverName, target.payload.hosts, target.payload.port,
-                                outcome.session.fingerprint, keyId, pairKey, now),
+                            RememberedBoard(
+                                w.receiverName, target.payload.hosts, target.payload.port,
+                                outcome.session.fingerprint, keyId, pairKey, now,
+                            ),
                         )
                     }
                     is ConnectTarget.Discovered -> if (keyId != null && pairKey != null) {
                         boards.save(
-                            RememberedBoard(w.receiverName, target.board.hosts, target.board.port,
-                                outcome.session.fingerprint, keyId, pairKey, now),
+                            RememberedBoard(
+                                w.receiverName, target.board.hosts, target.board.port,
+                                outcome.session.fingerprint, keyId, pairKey, now,
+                                kind = target.board.kind,
+                            ),
                         )
                     }
-                    is ConnectTarget.Remembered -> boards.save(target.board.copy(name = w.receiverName, lastUsedMs = now))
+                    is ConnectTarget.Manual -> if (keyId != null && pairKey != null) {
+                        boards.save(
+                            RememberedBoard(
+                                w.receiverName, listOf(host), port,
+                                outcome.session.fingerprint, keyId, pairKey, now,
+                            ),
+                        )
+                    }
+                    is ConnectTarget.Remembered -> boards.save(
+                        target.board.copy(name = w.receiverName, hosts = hosts, port = port, lastUsedMs = now),
+                    )
                 }
                 HelloResult.Ok(outcome.session)
             }
@@ -395,8 +466,10 @@ object MirrorController {
             }
             synchronized(lock) { capture?.camera = camera }
             camera.start()
+            watchNetwork(service)
             _state.value = MirrorState.Mirroring(
                 board, null, audio = AudioState.OFF_CAMERA, cameraSize = size, canSwitchCamera = camera.canSwitch,
+                onHotspot = NetworkDiagnostics.isHostingHotspot(service),
             )
             Log.i(TAG, "kamera: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName})")
         } catch (e: IOException) {
@@ -454,31 +527,35 @@ object MirrorController {
         return hevc + AndroidEncoderCaps.h264Encoders()
     }
 
-    /** Where the network last settled with this board, unless advanced settings fix the stream. */
-    private fun startPreset(context: Context): Preset {
+    /**
+     * Başlangıç ön ayarı: bu tahtada hatırlanan son kararlı ön ayar; telefon hotspot'unda veya 2,4 GHz Wi-Fi'da
+     * ilk saniye donmasını önlemek için en fazla [Preset.WEAK_NETWORK] (720p/30) ile yumuşak başlar,
+     * ağ rahat taşırsa QualityGovernor kademeli olarak seçilen ön ayara yükseltir.
+     */
+    private fun startPreset(context: Context, onHotspot: Boolean): Preset {
         val settings = AppSettings(context)
         if (settings.overrides != StreamOverrides()) return settings.preset
         val remembered = boardFingerprint?.let { BoardStore(context).preset(it) }
-        return Preset.start(settings.preset, remembered)
+        var start = Preset.start(settings.preset, remembered)
+        val constrainedLink = onHotspot || NetworkDiagnostics.onWifi24GHz(context) == true
+        if (constrainedLink && start < Preset.WEAK_NETWORK) {
+            start = Preset.WEAK_NETWORK
+        }
+        return start
     }
 
     private fun startCapture(service: MirrorService, projection: MediaProjection, s: MirrorSession) {
         val settings = AppSettings(service)
-        val start = startPreset(service)
-        // The frame size comes from the teacher's preset and stays for the session; a remembered weaker
-        // preset only lowers the bit rate and frame rate (StreamPlanner.atFixedSize).
-        val sized = currentPlan(service, s, settings.preset)
-        if (sized == null) {
-            Log.e(TAG, "uygun kodlayıcı yok: ${encodersFor(settings, s.welcome).map { it.name }}")
+        val onHotspot = NetworkDiagnostics.isHostingHotspot(service)
+        val start = startPreset(service, onHotspot)
+        val allEncoders = encodersFor(settings, s.welcome)
+        val plan = currentPlan(service, s, start)
+        if (plan == null) {
+            Log.e(TAG, "uygun kodlayıcı yok: ${allEncoders.map { it.name }}")
             fail(MirrorError.NO_ENCODER)
             return
         }
-        val caps = encodersFor(settings, s.welcome).first { it.name == sized.encoderName }
-        val plan = if (start == settings.preset) {
-            sized
-        } else {
-            StreamPlanner.atFixedSize(sized, start, receiverDisplay(s), caps, settings.overrides) ?: sized
-        }
+        val caps = allEncoders.first { it.name == plan.encoderName }
         val dpi = service.resources.displayMetrics.densityDpi
         val (screenW, screenH) = currentDisplaySize(service)
         var display: VirtualDisplay? = null
@@ -489,7 +566,17 @@ object MirrorController {
                 "CastHop", plan.width, plan.height, dpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, null, null, main,
             ) ?: error("createVirtualDisplay")
             display = vd
-            encoder = ScreenSource(caps, vd, dpi, screenW, screenH, maxFps = sized.fps, canRotate = s.welcome.rotatedFrames)
+            val ceilingFps = currentPlan(service, s, settings.preset)?.fps ?: plan.fps
+            encoder = ScreenSource(
+                caps = caps,
+                display = vd,
+                densityDpi = dpi,
+                sourceWidth = screenW,
+                sourceHeight = screenH,
+                maxFps = maxOf(plan.fps, ceilingFps),
+                canRotate = s.welcome.rotatedFrames,
+                encoderLookup = { name -> encodersFor(settings, s.welcome).firstOrNull { it.name == name } },
+            )
             synchronized(lock) {
                 capture?.display = display
                 capture?.encoder = encoder
@@ -498,8 +585,14 @@ object MirrorController {
             }
             s.startVideo(plan, encoder)
             watchRotation(service)
-            _state.value = MirrorState.Mirroring(board, null, audio = startAudio(service, projection, s))
-            Log.i(TAG, "yansıtma: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName}), $start")
+            watchNetwork(service)
+            _state.value = MirrorState.Mirroring(
+                board = board,
+                stats = null,
+                audio = startAudio(service, projection, s),
+                onHotspot = onHotspot,
+            )
+            Log.i(TAG, "yansıtma: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName}), $start, hotspot=$onHotspot")
         } catch (e: IOException) {
             Log.w(TAG, "video bağlantısı kurulamadı", e)
             s.stop(ByeReason.ERROR)
@@ -580,22 +673,87 @@ object MirrorController {
         }
     }
 
-    /** Kodlayıcı tekrar tekrar hata verirse bir alt ön ayar (ARCHITECTURE.md §7). */
+    /** Wi-Fi / hotspot ağ değişikliklerini dinleyip oturumu gecikmesiz toparlar. */
+    private fun watchNetwork(context: Context) {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return
+        var primed = false
+        val cb = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                if (!primed) {
+                    primed = true
+                    return
+                }
+                Log.i(TAG, "ağ kullanılabilir oldu; canlılık sınanıyor")
+                synchronized(lock) { session }?.onNetworkChanged()
+            }
+
+            override fun onLost(network: Network) {
+                Log.i(TAG, "ağ arayüzü kayboldu; canlılık sınanıyor")
+                synchronized(lock) { session }?.onNetworkChanged()
+            }
+
+            override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+                if (!primed) return
+                synchronized(lock) { session }?.onNetworkChanged()
+            }
+        }
+        val req = NetworkRequest.Builder()
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+            .build()
+        runCatching {
+            cm.registerNetworkCallback(req, cb)
+            synchronized(lock) { capture?.networkCallback = cb }
+        }.onFailure { e -> Log.w(TAG, "registerNetworkCallback", e) }
+    }
+
+    /** Kodlayıcı tekrar tekrar hata verirse önce alt ön ayar, hâlâ başarısızsa yazılım H.264 kodlayıcıya düşer. */
     private fun lowerPlan(current: StreamPlan): StreamPlan? {
         val (c, s) = synchronized(lock) { capture to session }
         if (c == null || s == null) return null
         if (c.camera != null) return null // the camera output size is fixed for the session
-        val active = c.preset ?: AppSettings(c.service).preset
-        val next = active.lower ?: active
-        val plan = currentPlan(c.service, s, next)?.takeIf { it != current } ?: return null
-        synchronized(lock) {
-            c.plan = plan
-            c.preset = next
+        val settings = AppSettings(c.service)
+        val active = c.preset ?: settings.preset
+        val next = active.lower
+        if (next != null) {
+            val plan = currentPlan(c.service, s, next)?.takeIf { it != current }
+            if (plan != null) {
+                synchronized(lock) {
+                    c.plan = plan
+                    c.preset = next
+                }
+                return plan
+            }
         }
-        return plan
+        // Donanım kodlayıcı en alt ön ayarda bile hata veriyorsa yazılım H.264 kodlayıcıya güvenli geri dönüş.
+        if (current.hardware) {
+            val swEncoders = AndroidEncoderCaps.h264Encoders().filterNot { it.hardware }
+            if (swEncoders.isNotEmpty()) {
+                val (screenW, screenH) = currentDisplaySize(c.service)
+                val w = s.welcome
+                val (srcW, srcH) = FrameFit.planningSource(screenW, screenH, w.displayWidth, w.displayHeight)
+                val swPlan = StreamPlanner.plan(
+                    srcW, srcH, Preset.WEAK_NETWORK, ReceiverDisplay(w.displayWidth, w.displayHeight, w.displayRefresh),
+                    swEncoders, settings.overrides,
+                )
+                if (swPlan != null) {
+                    Log.w(TAG, "donanım kodlayıcı başarısız, yazılım kodlayıcıya geçiliyor: ${swPlan.encoderName}")
+                    synchronized(lock) {
+                        c.plan = swPlan
+                        c.preset = Preset.WEAK_NETWORK
+                    }
+                    return swPlan
+                }
+            }
+        }
+        return null
     }
 
-    /** Moves one preset down or back up; never above the one the teacher chose. Advanced settings turn this off. */
+    /**
+     * Ağ koşullarına göre kalite basamağı değiştirir (`1080p/60 ↔ 720p/30 ↔ 540p/24`); seçilen ön ayarı aşmaz.
+     * `ScreenSource` taze, kalıcı-olmayan kodlayıcı yüzeyi oluşturup GL ile tam hedef boyutta çizdiği için
+     * çözünürlük değişimi donanım kodlayıcılarda güvenle çalışır ve dar hotspot'ta IDR boyutunu yarı yarıya düşürür.
+     */
     @Synchronized
     private fun stepQuality(step: QualityStep): Boolean {
         val (c, s) = synchronized(lock) { capture to session }
@@ -606,15 +764,17 @@ object MirrorController {
         val next = (if (step == QualityStep.DOWN) active.lower else active.higher) ?: return false
         if (next < settings.preset) return false
         val base = c.plan ?: return false
-        val caps = encodersFor(settings, s.welcome).firstOrNull { it.name == base.encoderName } ?: return false
-        // Same frame size as before: only the bit rate range and frame rate change, the encoder keeps running.
-        val plan = StreamPlanner.atFixedSize(base, next, receiverDisplay(s), caps)?.takeIf { it != base } ?: return false
+        val plan = currentPlan(c.service, s, next)?.takeIf { it != base } ?: return false
         Log.i(TAG, "kalite: $active → $next (${plan.width}x${plan.height}@${plan.fps}, ${plan.minBps}–${plan.maxBps} bps)")
         synchronized(lock) {
             c.plan = plan
             c.preset = next
         }
-        s.retune(plan)
+        if (plan.width == base.width && plan.height == base.height && plan.encoderName == base.encoderName) {
+            s.retune(plan)
+        } else {
+            s.reconfigure(plan)
+        }
         boardFingerprint?.let { BoardStore(c.service).savePreset(it, next.takeIf { p -> p != settings.preset }) }
         return true
     }
@@ -715,12 +875,12 @@ object MirrorController {
 
     private fun rememberedForCurrent(): RememberedBoard? {
         val boards = BoardStore(appContext)
+        boardFingerprint?.let { fp -> boards.find(fp)?.let { return it } }
         return when (val t = target) {
             is ConnectTarget.Remembered -> boards.find(t.board.fingerprint)
             is ConnectTarget.Qr -> boards.find(t.payload.certFingerprint)
-            is ConnectTarget.Discovered -> boards.list().firstOrNull { b ->
-                (0 until t.board.fingerprintPrefix.size).all { b.fingerprint[it] == t.board.fingerprintPrefix[it] }
-            }
+            is ConnectTarget.Discovered -> boards.findByPrefix(t.board.fingerprintPrefix)
+            is ConnectTarget.Manual -> null
             null -> null
         }
     }
@@ -730,15 +890,22 @@ object MirrorController {
         if (st is MirrorState.Mirroring) _state.value = st.copy(reconnecting = true)
         val attempt = synchronized(lock) { generation }
         val deadline = System.nanoTime() + LONG_RECONNECT_WINDOW_NS
+        var backoffMs = 1000L
+        var currentBoard = remembered
         while (System.nanoTime() < deadline) {
             if (synchronized(lock) { attempt != generation || capture == null }) return
-            when (val r = hello(ConnectTarget.Remembered(remembered)) { }) {
+            when (val r = hello(ConnectTarget.Remembered(currentBoard)) { }) {
                 is HelloResult.Ok -> {
                     resumeWithNewSession(attempt, r.session)
                     return
                 }
                 is HelloResult.Failed -> when (r.error) {
-                    MirrorError.UNREACHABLE, MirrorError.DIFFERENT_NETWORK, MirrorError.REFUSED -> delay(1000)
+                    MirrorError.UNREACHABLE, MirrorError.CLIENT_ISOLATION, MirrorError.DIFFERENT_NETWORK, MirrorError.REFUSED -> {
+                        // Güncel kayıt mDNS ile yenilenmiş olabilir; yeniden oku.
+                        BoardStore(appContext).find(currentBoard.fingerprint)?.let { currentBoard = it }
+                        delay(backoffMs)
+                        backoffMs = (backoffMs * 3 / 2).coerceAtMost(3500L)
+                    }
                     else -> {
                         releaseCapture()
                         _state.value = MirrorState.Ended(board, r.error)

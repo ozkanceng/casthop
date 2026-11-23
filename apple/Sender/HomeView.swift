@@ -24,6 +24,7 @@ private struct BroadcastPicker: UIViewRepresentable {
 
 struct HomeView: View {
     @EnvironmentObject private var model: AppModel
+    @State private var renaming: RememberedReceiver?
 
     private var idle: Bool {
         switch model.phase {
@@ -37,7 +38,7 @@ struct HomeView: View {
             ScrollView {
                 Group {
                     if idle {
-                        ConnectView(wide: geometry.size.width >= Tokens.wideLayout)
+                        ConnectView(wide: geometry.size.width >= Tokens.wideLayout) { renaming = $0 }
                     } else {
                         SessionView().frame(maxWidth: Tokens.contentWidth)
                     }
@@ -46,7 +47,7 @@ struct HomeView: View {
                 .padding(Tokens.space5)
             }
         }
-        .background(Tokens.background)
+        .background(Tokens.background.ignoresSafeArea())
         .navigationTitle(Text(verbatim: "CastHop"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -63,12 +64,18 @@ struct HomeView: View {
                 }
             }
         }
+        .sheet(item: $renaming) { receiver in
+            RenameBoardSheet(rawName: receiver.name, currentNickname: receiver.nickname) { newName in
+                model.rename(receiver, nickname: newName)
+            }
+        }
     }
 }
 
-/// With no connection: what went wrong, the ways to connect, short steps and the guide.
+/// With no connection: what went wrong, remembered boards, modern connect choices, quick steps and guide.
 private struct ConnectView: View {
     let wide: Bool
+    let onRequestRename: (RememberedReceiver) -> Void
     @EnvironmentObject private var model: AppModel
 
     private var ended: (failure: MirrorFailure?, shown: Bool) {
@@ -78,23 +85,56 @@ private struct ConnectView: View {
 
     private var hero: some View {
         VStack(spacing: Tokens.space4) {
-            Image(systemName: "rectangle.on.rectangle.angled")
-                .font(.system(size: 72))
-                .foregroundStyle(Tokens.primary)
-                .accessibilityHidden(true)
-            Text("Mirror your tablet screen to the classroom whiteboard, wirelessly.")
-                .font(.title2)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Tokens.onSurface)
+            ZStack {
+                Circle()
+                    .fill(Tokens.primary.opacity(0.12))
+                    .frame(width: 92, height: 92)
+                Image(systemName: "rectangle.on.rectangle.angled")
+                    .font(.system(size: 42, weight: .semibold))
+                    .foregroundStyle(Tokens.primary)
+            }
+            .accessibilityHidden(true)
+            VStack(spacing: Tokens.space2) {
+                Text("Mirror your tablet screen to the classroom whiteboard, wirelessly.")
+                    .font(.title3.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Tokens.onSurface)
+            }
         }
+        .padding(.vertical, Tokens.space5)
+        .padding(.horizontal, Tokens.space4)
         .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(
+                colors: [Tokens.primaryContainer.opacity(0.42), Tokens.surface],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: Tokens.radius + 4)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Tokens.radius + 4)
+                .stroke(Tokens.outlineVariant.opacity(0.8), lineWidth: 1)
+        )
     }
 
     @ViewBuilder private var choices: some View {
         if ended.shown {
-            EndedCard(failure: ended.failure)
-            Button("OK") { model.dismiss() }
-                .frame(minHeight: Tokens.targetSmall)
+            ConnectionErrorCard(
+                failure: ended.failure,
+                onRetry: { model.retryLast() },
+                onManualIp: {
+                    model.dismiss()
+                    model.path.append(.manualIp)
+                },
+                onGuide: { model.path.append(.guide) },
+                onDismiss: { model.dismiss() }
+            )
+            if ended.failure != nil {
+                Button("OK") { model.dismiss() }
+                    .font(.subheadline.weight(.semibold))
+                    .frame(minHeight: Tokens.targetSmall)
+            }
         }
         VStack(spacing: Tokens.space3) {
             if model.receivers.isEmpty {
@@ -105,17 +145,20 @@ private struct ConnectView: View {
                 }
                 .buttonStyle(FilledButtonStyle())
             } else {
-                Text("Remembered boards")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(Tokens.onSurface)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack {
+                    Text("Remembered boards")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Tokens.onSurface)
+                    Spacer()
+                }
                 ForEach(model.receivers) { receiver in
-                    HStack(spacing: Tokens.space2) {
-                        NavigationCard(title: Text(verbatim: receiver.name), icon: "tv") { model.connect(receiver) }
-                        Button("Forget") { model.forget(receiver) }
-                            .frame(minHeight: Tokens.targetSmall)
-                            .accessibilityLabel(Text("Forget \(receiver.name)"))
-                    }
+                    RememberedBoardCard(
+                        receiver: receiver,
+                        onConnect: { model.connect(receiver) },
+                        onToggleFavorite: { model.toggleFavorite(receiver) },
+                        onRename: { onRequestRename(receiver) },
+                        onForget: { model.forget(receiver) }
+                    )
                 }
                 Text("Connect with one tap to boards you have scanned once.")
                     .font(.subheadline)
@@ -126,20 +169,33 @@ private struct ConnectView: View {
                 } label: {
                     Label("New board with QR", systemImage: "qrcode.viewfinder")
                 }
+                .buttonStyle(TonalButtonStyle())
+            }
+
+            // Balanced secondary connection paths: Code + Direct IP
+            HStack(spacing: Tokens.space3) {
+                Button {
+                    model.dismiss()
+                    model.path.append(.discover)
+                } label: {
+                    Label("With code", systemImage: "number")
+                }
+                .buttonStyle(OutlineButtonStyle())
+
+                Button {
+                    model.dismiss()
+                    model.path.append(.manualIp)
+                } label: {
+                    Label("With IP", systemImage: "network")
+                }
                 .buttonStyle(OutlineButtonStyle())
             }
-            Button {
-                model.path.append(.discover)
-            } label: {
-                Label("Connect with code (no QR)", systemImage: "number")
-            }
-            .buttonStyle(OutlineButtonStyle())
         }
     }
 
     @ViewBuilder private var quickSteps: some View {
         if model.receivers.isEmpty, ended.failure == nil {
-            SectionCard(title: "Connect in 3 steps") { StepList(steps: GuideSteps.qr) }
+            SectionCard(title: "Connect in 3 steps", icon: "list.number") { StepList(steps: GuideSteps.qr) }
         }
     }
 
@@ -184,31 +240,81 @@ private struct ConnectView: View {
     }
 }
 
-private struct EndedCard: View {
-    let failure: MirrorFailure?
-    @EnvironmentObject private var model: AppModel
+private struct RememberedBoardCard: View {
+    let receiver: RememberedReceiver
+    let onConnect: () -> Void
+    let onToggleFavorite: () -> Void
+    let onRename: () -> Void
+    let onForget: () -> Void
+
+    private var subtitle: String {
+        BoardIdentity.subtitle(hosts: receiver.hosts, fingerprintOrPrefix: receiver.fingerprint,
+                               rawName: receiver.name, nickname: receiver.nickname)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Tokens.space3) {
-            Text(failure?.title ?? String(localized: "Mirroring stopped."))
-                .font(.title3.weight(.semibold))
-            if let body = failure?.body {
-                Text(body).font(.body)
+        VStack(spacing: 0) {
+            Button(action: onConnect) {
+                HStack(spacing: Tokens.space4) {
+                    IconBadge(systemName: boardKindIcon(receiver.kind))
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(verbatim: receiver.displayName)
+                                .font(.headline)
+                                .foregroundStyle(Tokens.onSurface)
+                                .lineLimit(1)
+                            if receiver.favorite {
+                                Image(systemName: "star.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(Tokens.secondary)
+                            }
+                        }
+                        Text(verbatim: subtitle)
+                            .font(.subheadline.monospaced())
+                            .foregroundStyle(Tokens.onSurfaceVariant)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Tokens.onSurfaceVariant)
+                }
+                .padding(.horizontal, Tokens.space4)
+                .padding(.vertical, Tokens.space3 + 2)
+                .contentShape(Rectangle())
             }
-            // When a school network isolates clients, the hotspot is the dependable way.
-            if failure == .unreachable {
-                Text("If the school network blocks it: use the tablet's hotspot")
-                    .font(.headline)
-                StepList(steps: GuideSteps.hotspot)
-                Button("How do I connect?") { model.path.append(.guide) }
-                    .frame(minHeight: Tokens.targetSmall)
+            .buttonStyle(.plain)
+
+            Divider().padding(.horizontal, Tokens.space3)
+
+            HStack {
+                Button(action: onToggleFavorite) {
+                    Image(systemName: receiver.favorite ? "star.fill" : "star")
+                        .foregroundStyle(receiver.favorite ? Tokens.secondary : Tokens.onSurfaceVariant)
+                        .frame(width: Tokens.targetSmall, height: 42)
+                }
+                .accessibilityLabel(Text(receiver.favorite ? "Remove \(receiver.displayName) from favorites" : "Add \(receiver.displayName) to favorites"))
+
+                Button(action: onRename) {
+                    Label("Rename", systemImage: "pencil")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Tokens.primary)
+                        .frame(minHeight: 42)
+                }
+                Spacer()
+                Button(action: onForget) {
+                    Label("Forget", systemImage: "trash")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Tokens.onSurfaceVariant)
+                        .frame(minHeight: 42)
+                }
+                .accessibilityLabel(Text("Forget \(receiver.displayName)"))
             }
+            .padding(.horizontal, Tokens.space3)
+            .padding(.vertical, 2)
         }
-        .foregroundStyle(failure == nil ? Tokens.onSurface : Tokens.onErrorContainer)
-        .padding(Tokens.space4 + Tokens.space1)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(failure == nil ? Tokens.surface : Tokens.errorContainer, in: RoundedRectangle(cornerRadius: Tokens.radius))
-        .accessibilityElement(children: .combine)
+        .background(Tokens.surface, in: RoundedRectangle(cornerRadius: Tokens.radius))
+        .overlay(RoundedRectangle(cornerRadius: Tokens.radius).stroke(Tokens.outlineVariant, lineWidth: 1))
     }
 }
 
@@ -220,11 +326,9 @@ private struct SessionView: View {
         VStack(spacing: Tokens.space4) {
             switch model.phase {
             case .pairing(let name):
-                Progress(text: Text("Connecting to \(name)…"))
-                cancel
+                ConnectionStepperCard(boardName: name, activeStep: 1, onCancel: { model.dismiss() })
             case .pairingApproval(let name):
-                Progress(text: Text("Waiting for approval on \(name)…"))
-                cancel
+                ConnectionStepperCard(boardName: name, activeStep: 1, waitingApproval: true, onCancel: { model.dismiss() })
             case .ready(let receiver):
                 ReadyCard(receiver: receiver)
             case .broadcast(let status):
@@ -235,22 +339,14 @@ private struct SessionView: View {
         }
     }
 
-    private var cancel: some View {
-        Button("Cancel") { model.dismiss() }
-            .buttonStyle(OutlineButtonStyle())
-    }
-
     @ViewBuilder private func broadcast(_ status: BroadcastStatus) -> some View {
         switch status.phase {
         case .connecting:
-            Progress(text: Text("Connecting to \(status.receiverName)…"))
-            stopButton
+            ConnectionStepperCard(boardName: status.receiverName, activeStep: 0, onCancel: { model.stop() })
         case .waitingApproval:
-            Progress(text: Text("Waiting for approval on \(status.receiverName)…"))
-            stopButton
+            ConnectionStepperCard(boardName: status.receiverName, activeStep: 1, waitingApproval: true, onCancel: { model.stop() })
         case .starting:
-            Progress(text: Text("Starting…"))
-            stopButton
+            ConnectionStepperCard(boardName: status.receiverName, activeStep: 2, onCancel: { model.stop() })
         default:
             if let camera = model.camera {
                 CameraPreview(layer: camera.preview)
@@ -280,7 +376,7 @@ private struct SessionView: View {
                 } label: {
                     Label("Pause", systemImage: "pause.fill")
                 }
-                .buttonStyle(OutlineButtonStyle())
+                .buttonStyle(TonalButtonStyle())
             }
             stopButton
             Button {
@@ -302,44 +398,26 @@ private struct SessionView: View {
     }
 }
 
-private struct Progress: View {
-    let text: Text
-    var hint: Text?
-
-    var body: some View {
-        VStack(spacing: Tokens.space4) {
-            ProgressView().controlSize(.large)
-            text
-                .font(.title3)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Tokens.onSurface)
-            hint?
-                .font(.body)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Tokens.onSurfaceVariant)
-        }
-        .padding(Tokens.space5 + Tokens.space2)
-        .frame(maxWidth: .infinity)
-        .background(Tokens.surface, in: RoundedRectangle(cornerRadius: Tokens.radius))
-        .accessibilityElement(children: .combine)
-    }
-}
-
 /// Paired, and one tap from the system's prompt.
 private struct ReadyCard: View {
     let receiver: RememberedReceiver
     @EnvironmentObject private var model: AppModel
 
+    private var subtitle: String {
+        BoardIdentity.subtitle(hosts: receiver.hosts, fingerprintOrPrefix: receiver.fingerprint,
+                               rawName: receiver.name, nickname: receiver.nickname)
+    }
+
     var body: some View {
         VStack(spacing: Tokens.space4) {
             VStack(spacing: Tokens.space3) {
-                Image(systemName: "tv")
-                    .font(.largeTitle)
-                    .foregroundStyle(Tokens.primary)
-                    .accessibilityHidden(true)
-                Text(verbatim: receiver.name)
+                IconBadge(systemName: boardKindIcon(receiver.kind))
+                Text(verbatim: receiver.displayName)
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Tokens.onSurface)
+                Text(verbatim: subtitle)
+                    .font(.subheadline.monospaced())
+                    .foregroundStyle(Tokens.onSurfaceVariant)
                 Text("Tap the button, then choose Start Broadcast in the system window.")
                     .font(.body)
                     .multilineTextAlignment(.center)
@@ -348,6 +426,7 @@ private struct ReadyCard: View {
             .padding(Tokens.space5)
             .frame(maxWidth: .infinity)
             .background(Tokens.surface, in: RoundedRectangle(cornerRadius: Tokens.radius))
+            .overlay(RoundedRectangle(cornerRadius: Tokens.radius).stroke(Tokens.outlineVariant, lineWidth: 1))
 
             ZStack {
                 Label("Start mirroring", systemImage: "play.fill")
@@ -394,13 +473,15 @@ private struct MirroringCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Tokens.space3) {
             HStack(spacing: Tokens.space3) {
-                Image(systemName: "tv")
-                    .font(.title2)
-                    .foregroundStyle(Tokens.primary)
-                    .accessibilityHidden(true)
+                IconBadge(systemName: "tv")
                 Text("Mirroring to \(status.receiverName)")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(Tokens.onSurface)
+                    .lineLimit(2)
+                Spacer(minLength: 4)
+                if !status.reconnecting && !status.paused {
+                    LivePillBadge()
+                }
             }
             if status.reconnecting {
                 HStack(spacing: Tokens.space3) {
@@ -415,7 +496,7 @@ private struct MirroringCard: View {
                     .font(.body)
                     .foregroundStyle(Tokens.secondary)
             } else if let stats = status.stats {
-                QualityLabel(stats: stats)
+                QualityBadgeAndAlerts(stats: stats)
                 StatGrid(stats: stats)
             }
             if !status.reconnecting {
@@ -430,24 +511,44 @@ private struct MirroringCard: View {
         .padding(Tokens.space4 + Tokens.space1)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Tokens.surface, in: RoundedRectangle(cornerRadius: Tokens.radius))
+        .overlay(RoundedRectangle(cornerRadius: Tokens.radius).stroke(Tokens.outlineVariant, lineWidth: 1))
     }
 }
 
-/// By capture-to-screen delay: the target is 80 ms, 120 ms is acceptable.
-private struct QualityLabel: View {
+/// Live connection quality indicator & weak-link banner (renders even before first latency sample arrives).
+private struct QualityBadgeAndAlerts: View {
     let stats: BroadcastStats
 
+    private var labelAndColor: (LocalizedStringKey, Color) {
+        if stats.autoLowered { return ("Weak network: quality lowered automatically", Tokens.secondary) }
+        switch stats.quality {
+        case .poor: return ("Connection: poor", Tokens.error)
+        case .fair: return ("Connection: fair", Tokens.secondary)
+        case .good: return ("Connection: good", Tokens.tertiary)
+        }
+    }
+
     var body: some View {
-        if let latency = stats.latencyMs {
-            let (label, color): (LocalizedStringKey, Color) = {
-                if stats.autoLowered { return ("Weak network: quality lowered automatically", Tokens.secondary) }
-                if latency <= 120 { return ("Connection: good", Tokens.tertiary) }
-                if latency <= 250 { return ("Connection: fair", Tokens.secondary) }
-                return ("Connection: poor", Tokens.error)
-            }()
-            Text(label)
-                .font(.headline)
-                .foregroundStyle(color)
+        let (label, color) = labelAndColor
+        Text(label)
+            .font(.headline)
+            .foregroundStyle(color)
+
+        if stats.autoLowered || stats.quality == .poor {
+            HStack(alignment: .top, spacing: Tokens.space2) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.subheadline)
+                Text("Weak connection — video quality was lowered automatically to prevent freezes.")
+                    .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .foregroundStyle(stats.quality == .poor ? Tokens.onErrorContainer : Tokens.onSecondaryContainer)
+            .padding(Tokens.space3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                stats.quality == .poor ? Tokens.errorContainer : Tokens.secondaryContainer,
+                in: RoundedRectangle(cornerRadius: Tokens.radiusSmall)
+            )
         }
     }
 }
@@ -466,7 +567,7 @@ private struct StatGrid: View {
         }
         .padding(Tokens.space3)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Tokens.surfaceContainer, in: RoundedRectangle(cornerRadius: Tokens.space3))
+        .background(Tokens.surfaceContainer, in: RoundedRectangle(cornerRadius: Tokens.radiusSmall))
         .accessibilityElement(children: .combine)
     }
 
@@ -474,6 +575,10 @@ private struct StatGrid: View {
         VStack(spacing: Tokens.space2) {
             HStack(spacing: Tokens.space2) {
                 tile("Latency", "\(stats.latencyMs.map(String.init) ?? "–") ms")
+                tile("Ping", "\(stats.rttMs.map(String.init) ?? "–") ms")
+            }
+            HStack(spacing: Tokens.space2) {
+                tile("Loss", String(format: "%.1f%%", stats.lossPercent))
                 tile("Frames/s", "\(Int(stats.fps))")
             }
             HStack(spacing: Tokens.space2) {

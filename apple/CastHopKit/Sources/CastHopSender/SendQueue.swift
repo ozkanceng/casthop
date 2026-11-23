@@ -56,6 +56,13 @@ public final class SendQueue: @unchecked Sendable {
         return Int64(nowUs) - Int64(first.enqueuedUs)
     }
 
+    /// Number of queued frames waiting to be written.
+    public func depth() -> Int {
+        condition.lock()
+        defer { condition.unlock() }
+        return queue.count
+    }
+
     /// True if the frame was accepted.
     @discardableResult
     public func offer(_ frame: EncodedFrame, nowUs: UInt64) -> Bool {

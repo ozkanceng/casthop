@@ -50,6 +50,7 @@ public object PinnedTls {
         expectedFingerprint: Bytes?,
         connectTimeoutMs: Int = 3000,
         handshakeTimeoutMs: Int = 5000,
+        sendBufferBytes: Int = 128 * 1024,
     ): PinnedSocket {
         val trust = PinningTrustManager(expectedFingerprint)
         val context = SSLContext.getInstance("TLS")
@@ -58,7 +59,7 @@ public object PinnedTls {
         val raw = Socket()
         try {
             raw.tcpNoDelay = true
-            raw.sendBufferSize = 256 * 1024
+            raw.sendBufferSize = sendBufferBytes.coerceIn(16 * 1024, 512 * 1024)
             raw.connect(InetSocketAddress(host, port), connectTimeoutMs)
             val ssl = context.socketFactory.createSocket(raw, host, port, true) as SSLSocket
             ssl.enabledProtocols = arrayOf(TLS13)

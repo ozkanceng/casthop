@@ -40,6 +40,7 @@ class ReceiverService : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString stateName READ stateName NOTIFY stateChanged)
     Q_PROPERTY(QString receiverName READ receiverName NOTIFY receiverNameChanged)
+    Q_PROPERTY(QString shortId READ shortId NOTIFY receiverNameChanged)
     Q_PROPERTY(int videoWidth READ videoWidth NOTIFY videoSizeChanged)
     Q_PROPERTY(int videoHeight READ videoHeight NOTIFY videoSizeChanged)
     /// The picture came turned 90° clockwise (FrameFlags::Rotated); the view turns it back.
@@ -62,6 +63,8 @@ public:
 
     struct Options {
         QString name;
+        /// True when name was explicitly configured via CLI or Settings (skip automatic suffix).
+        bool customName = false;
         quint16 port = 47800;
         /// Kalıcı veriler (TLS kimliği, eşleştirmeler).
         QString dataDir;
@@ -91,6 +94,7 @@ public:
     State state() const { return m_state; }
     QString stateName() const;
     QString receiverName() const { return m_options.name; }
+    QString shortId() const;
     int port() const { return m_options.port; }
     QString qrUri() const { return m_qrUri; }
     /// QrImageProvider kaynağı; QR yoksa boş.

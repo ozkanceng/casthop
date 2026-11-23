@@ -52,10 +52,16 @@ Connection::~Connection() = default;
 
 void Connection::setRole(Role role) {
     m_role = role;
-    if (role == Role::Control)
+    if (role == Role::Control) {
         m_deadline.start(kControlSilenceTimeoutMs);
-    else
+    } else {
         m_deadline.stop(); // medya bağlantısı CONTROL'e bağlı yaşar; PAUSE sırasında sessiz kalabilir
+        if (role == Role::Media && m_socket) {
+            // Bound Qt's internal read buffer on media channels so bursty Wi-Fi/hotspot delivery cannot
+            // silently queue megabytes of stale video frames in userspace.
+            m_socket->setReadBufferSize(512 * 1024);
+        }
+    }
 }
 
 void Connection::sendControl(const ControlMessage& msg) {
@@ -112,8 +118,16 @@ void Connection::protocolViolation(const char* what) {
 void Connection::onReadyRead() {
     if (!m_socket)
         return;
-    while (!m_closing && m_socket && m_socket->bytesAvailable() > 0) {
+    constexpr int kMaxFramesPerTick = 16;
+    constexpr qint64 kMaxBytesPerTick = 1024 * 1024;
+    int framesHandled = 0;
+    qint64 bytesRead = 0;
+    while (!m_closing && m_socket && m_socket->bytesAvailable() > 0 && framesHandled < kMaxFramesPerTick &&
+           bytesRead < kMaxBytesPerTick) {
         const QByteArray chunk = m_socket->read(256 * 1024);
+        if (chunk.isEmpty())
+            break;
+        bytesRead += chunk.size();
         try {
             m_parser.feed(ByteView(reinterpret_cast<const std::uint8_t*>(chunk.constData()), std::size_t(chunk.size())));
         } catch (const ProtocolException& e) {
@@ -127,8 +141,11 @@ void Connection::onReadyRead() {
             if (!frame)
                 break;
             handleFrame(std::move(*frame));
+            ++framesHandled;
         }
     }
+    if (!m_closing && m_socket && m_socket->bytesAvailable() > 0)
+        QMetaObject::invokeMethod(this, &Connection::onReadyRead, Qt::QueuedConnection);
 }
 
 void Connection::handleFrame(FrameParser::Frame&& frame) {

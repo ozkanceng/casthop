@@ -195,6 +195,14 @@
         <source>Settings</source>
         <translation>Ayarlar</translation>
     </message>
+    <message>
+        <source>Ready to connect</source>
+        <translation>Bağlantıya hazır</translation>
+    </message>
+    <message>
+        <source>Offline</source>
+        <translation>Çevrimdışı</translation>
+    </message>
 </context>
 <context>
     <name>yansit::ReceiverService</name>

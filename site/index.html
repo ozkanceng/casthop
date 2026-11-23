@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>CastHop Kurulum</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -12,57 +13,69 @@
   color-scheme: light dark;
   --primary: #0b5cad; --on-primary: #fff; --primary-soft: #d5e3ff; --on-primary-soft: #001b3d;
   --bg: #f6f8fc; --card: #fff; --text: #181c22; --muted: #434852; --line: #c3c7d1; --code: #eaeef4;
+  --shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+  --hero-tint: rgba(11, 92, 173, 0.07);
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --primary: #a7c8ff; --on-primary: #003063; --primary-soft: #00468b; --on-primary-soft: #d5e3ff;
     --bg: #111318; --card: #191c20; --text: #e1e2e9; --muted: #c3c6d0; --line: #43474f; --code: #272a2f;
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+    --hero-tint: rgba(167, 200, 255, 0.08);
   }
 }
 * { box-sizing: border-box; }
 body {
-  margin: 0; background: var(--bg); color: var(--text); line-height: 1.5; font-size: 18px;
+  margin: 0;
+  background: radial-gradient(ellipse 80% 420px at 50% -120px, var(--hero-tint), transparent), var(--bg);
+  color: var(--text); line-height: 1.5; font-size: 18px;
   font-family: "Noto Sans", Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 48px; }
 header { text-align: center; margin-bottom: 32px; }
 h1 { margin: 0; font-size: 44px; line-height: 1.2; }
 h1 img { display: block; width: 100%; max-width: 322px; height: auto; margin: 0 auto; }
-header p { margin: 8px 0 0; font-size: 22px; }
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; min-width: 0; }
+header p { margin: 10px 0 0; font-size: 21px; color: var(--muted); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 18px; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 24px; min-width: 0;
+  box-shadow: var(--shadow);
+}
 .card h2 { margin: 0 0 16px; font-size: 26px; line-height: 1.25; display: flex; align-items: center; gap: 12px; }
 .num {
   flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
-  background: var(--primary-soft); color: var(--on-primary-soft); font-size: 20px;
+  background: var(--primary-soft); color: var(--on-primary-soft); font-size: 20px; font-weight: 700;
 }
 ol { margin: 0 0 16px; padding-left: 24px; }
 li { margin-bottom: 8px; }
 kbd { font: inherit; font-weight: 600; white-space: nowrap; }
 .command {
-  background: var(--code); border-radius: 12px; padding: 12px 16px; margin: 0 0 12px; overflow-wrap: anywhere;
-  font: 16px/1.5 "Noto Sans Mono", ui-monospace, Menlo, monospace;
+  background: var(--code); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 0 0 12px;
+  overflow-wrap: anywhere; font: 16px/1.5 "Noto Sans Mono", ui-monospace, Menlo, monospace;
 }
 .button {
-  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 64px; padding: 12px 24px;
-  border: 0; border-radius: 32px; background: var(--primary); color: var(--on-primary); text-decoration: none;
-  font: inherit; font-size: 20px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; width: 100%; min-height: 60px; padding: 12px 24px;
+  border: 0; border-radius: 16px; background: var(--primary); color: var(--on-primary); text-decoration: none;
+  font: inherit; font-size: 19px; font-weight: 600; cursor: pointer;
+  transition: filter 120ms ease, transform 120ms ease;
 }
-.button.secondary { background: transparent; color: var(--primary); border: 1px solid var(--line); min-height: 56px; font-size: 18px; }
+.button.secondary { background: transparent; color: var(--primary); border: 1px solid var(--line); min-height: 54px; font-size: 18px; }
 .button:hover { filter: brightness(1.08); }
+.button:active { transform: scale(0.99); }
+@media (prefers-reduced-motion: reduce) { .button { transition: none; } .button:active { transform: none; } }
 :focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
 details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
 summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 details p { margin: 8px 0 12px; color: var(--muted); }
 .qr { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
-.qr img { flex: none; width: 144px; height: 144px; background: #fff; border-radius: 8px; }
+.qr img { flex: none; width: 144px; height: 144px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
 .qr p { margin: 0; color: var(--muted); }
 .note { margin: 12px 0 0; color: var(--muted); font-size: 16px; }
-.connect { margin-top: 16px; }
+.connect { margin-top: 18px; }
 .connect ol { margin-bottom: 0; }
-footer { margin-top: 32px; text-align: center; color: var(--muted); font-size: 16px; }
+footer { margin-top: 36px; text-align: center; color: var(--muted); font-size: 16px; }
 footer a { color: var(--primary); }
-.lang { width: fit-content; margin: 0 0 16px auto; padding: 8px 24px; }
+.lang { width: fit-content; margin: 0 0 16px auto; padding: 8px 20px; border-radius: 999px; min-height: 44px; font-size: 16px; }
 </style>
 </head>
 <body>
@@ -123,14 +136,14 @@ footer a { color: var(--primary); }
     <h2><span class="num">3</span><span data-i18n="c_h">Bağlanın</span></h2>
     <ol>
       <li data-i18n="c_1">Tahtada <strong>CastHop</strong>'u açın; tablet ile tahta aynı Wi-Fi ağında olsun.</li>
-      <li data-i18n="c_2">Tablette <strong>CastHop</strong>'u açıp <strong>Ekrana Bağlan</strong>'a dokunun ve tahtadaki QR kodu okutun.</li>
+      <li data-i18n="c_2">Tablette <strong>CastHop</strong>'u açıp tahtadaki QR kodu okutun ya da 6 haneli kod / IP adresiyle bağlanın.</li>
       <li data-i18n="c_3">Android'in ekran paylaşımı sorusuna <strong>Başlat</strong> deyin.</li>
     </ol>
   </section>
 
   <section class="card connect" id="other">
     <h2 data-i18n="o_h">Başka ekranlara yansıtın</h2>
-    <p data-i18n="o_p">Tablet aynı uygulamayla bu cihazlara da bağlanır. Cihaza CastHop'u kurun, ekrandaki QR kodu okutun.</p>
+    <p data-i18n="o_p">Tablet aynı uygulamayla bu cihazlara da bağlanır. Cihaza CastHop'u kurun; QR kod, 6 haneli kod veya IP adresiyle bağlanın.</p>
     <div class="cards">
       <div>
         <a class="button secondary" href="https://github.com/ozkanceng/casthop/releases/latest/download/casthop-tv.apk" data-i18n="o_tv">Android TV ve Android tablet</a>
@@ -180,10 +193,10 @@ const EN = {
   "t_req": "Works on tablets with Android 10 or later.",
   "c_h": "Connect",
   "c_1": "Open <strong>CastHop</strong> on the board; keep the tablet and the board on the same Wi-Fi network.",
-  "c_2": "On the tablet, open <strong>CastHop</strong>, tap <strong>Connect to screen</strong> and scan the QR code on the board.",
+  "c_2": "On the tablet, open <strong>CastHop</strong> and scan the QR code on the board, or connect with the 6-digit code or IP address.",
   "c_3": "Answer Android's screen sharing question with <strong>Start now</strong>.",
   "o_h": "Mirror to other screens",
-  "o_p": "The tablet connects to these devices with the same app. Install CastHop on the device and scan the QR code on its screen.",
+  "o_p": "The tablet connects to these devices with the same app. Install CastHop on the device and connect with the QR code, 6-digit code, or IP address.",
   "o_tv": "Android TV and Android tablet",
   "o_tv_n": "Android 10 or later. Also works on Google TV and Fire TV.",
   "o_win": "Windows computer",

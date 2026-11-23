@@ -10,13 +10,15 @@ Item {
     required property QtObject receiver
 
     readonly property bool open: receiver.pendingSenderName !== ""
+    property int totalSeconds: 20
     property int secondsLeft: 0
 
     visible: open
 
     onOpenChanged: {
         if (open) {
-            secondsLeft = Math.ceil(receiver.pendingTimeoutMs / 1000)
+            totalSeconds = Math.max(1, Math.ceil(receiver.pendingTimeoutMs / 1000))
+            secondsLeft = totalSeconds
             countdown.start()
             allowButton.forceActiveFocus()
         } else {
@@ -46,10 +48,26 @@ Item {
         width: Math.min(parent.width - Theme.space5 * 2, 1000)
         height: content.implicitHeight + Theme.space4 * 2
         radius: Theme.radius
-        color: Theme.surfaceRaised
+        color: Theme.surface
+        border.width: 2
+        border.color: Theme.border
+        clip: true
 
         Accessible.role: Accessible.Dialog
         Accessible.name: title.text
+
+        // Üst kenarda yumuşak geri sayım çubuğu
+        Rectangle {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            height: Math.max(4, Math.round(6 * Theme.scale))
+            width: parent.width * (root.totalSeconds > 0 ? root.secondsLeft / root.totalSeconds : 0)
+            color: Theme.primary
+
+            Behavior on width {
+                NumberAnimation { duration: 950 }
+            }
+        }
 
         ColumnLayout {
             id: content

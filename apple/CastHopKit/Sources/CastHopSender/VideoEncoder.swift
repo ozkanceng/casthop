@@ -97,6 +97,7 @@ public final class VideoToolboxEncoder: VideoSource, @unchecked Sendable {
     private var plan: StreamPlan?
     private var sink: ((EncodedFrame) -> Void)?
     private var errorHandler: ((Error) -> Void)?
+    private var frameGate: (() -> Bool)?
     private var forceKeyframe = false
     private var inFlight = 0
     private var parameterSets: [Data] = []
@@ -191,6 +192,12 @@ public final class VideoToolboxEncoder: VideoSource, @unchecked Sendable {
         VTSessionSetProperty(session, key: kVTCompressionPropertyKey_AverageBitRate, value: bps as CFNumber)
     }
 
+    public func setFrameGate(_ ready: @escaping () -> Bool) {
+        lock.lock()
+        frameGate = ready
+        lock.unlock()
+    }
+
     public func requestKeyframe() {
         lock.lock()
         forceKeyframe = true
@@ -213,29 +220,45 @@ public final class VideoToolboxEncoder: VideoSource, @unchecked Sendable {
     /// Takes a frame in capture time. Skips it if the encoder is behind or the frame comes before the plan's frame time.
     public func encode(_ image: CVPixelBuffer, ptsUs: UInt64) {
         lock.lock()
-        guard let session, let plan else {
+        guard self.session != nil, let plan else {
             lastPixelBuffer = image
             lock.unlock()
             return
         }
         lastPixelBuffer = image
+        let gate = frameGate
         let tooSoon = !pacer.admits(ptsUs: ptsUs, fps: plan.fps)
         if (tooSoon && !forceKeyframe) || inFlight >= Self.maxInFlight {
             if inFlight >= Self.maxInFlight { skippedBusy += 1 } else { skippedRate += 1 }
             lock.unlock()
             return
         }
-        submitted += 1
         let wantKey = forceKeyframe
+        lock.unlock()
+
+        if !wantKey, let gate, !gate() {
+            lock.lock()
+            skippedBusy += 1
+            lock.unlock()
+            return
+        }
+
+        lock.lock()
+        guard let activeSession = self.session, let activePlan = self.plan else {
+            lock.unlock()
+            return
+        }
+        submitted += 1
+        let submitKey = forceKeyframe
         forceKeyframe = false
-        pacer.accept(ptsUs: ptsUs, fps: plan.fps)
+        pacer.accept(ptsUs: ptsUs, fps: activePlan.fps)
         inFlight += 1
         let current = generation
         lock.unlock()
 
-        let properties = wantKey ? [kVTEncodeFrameOptionKey_ForceKeyFrame as String: true] as CFDictionary : nil
+        let properties = submitKey ? [kVTEncodeFrameOptionKey_ForceKeyFrame as String: true] as CFDictionary : nil
         let pts = CMTime(value: Int64(ptsUs), timescale: 1_000_000)
-        let status = VTCompressionSessionEncodeFrame(session, imageBuffer: image, presentationTimeStamp: pts, duration: .invalid,
+        let status = VTCompressionSessionEncodeFrame(activeSession, imageBuffer: image, presentationTimeStamp: pts, duration: .invalid,
                                                      frameProperties: properties, infoFlagsOut: nil) { [weak self] status, _, sample in
             self?.encoded(status: status, sample: sample, ptsUs: ptsUs, generation: current)
         }

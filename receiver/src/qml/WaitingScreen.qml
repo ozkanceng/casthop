@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Yansit
 
-// Bekleme ekranı: büyük QR, 6 haneli kod ve tahtanın adresleri. Öğretmen tabletten QR'ı okutur.
+// Bekleme ekranı: büyük QR, 6 kutulu (3+3) bağlantı kodu ve tahta kimlik/IP kartı.
 Rectangle {
     id: root
 
@@ -17,9 +17,7 @@ Rectangle {
 
     readonly property bool failed: receiver.stateName === "failed"
     readonly property bool hasQr: receiver.qrImageSource !== ""
-    readonly property string pinText: receiver.pin.length === 6
-                                      ? receiver.pin.substring(0, 3) + " " + receiver.pin.substring(3)
-                                      : receiver.pin
+    readonly property string pinDigits: receiver.pin.length === 6 ? receiver.pin : "------"
 
     color: Theme.background
 
@@ -28,13 +26,52 @@ Rectangle {
         anchors.margins: Theme.space5
         spacing: Theme.space4
 
-        Text {
-            text: "CastHop"
-            color: Theme.primary
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.fontTitle
-            font.weight: Font.Bold
+        // Üst şerit: CastHop başlığı + canlı durum hapı
+        RowLayout {
             Layout.alignment: Qt.AlignHCenter
+            spacing: Theme.space3
+
+            Text {
+                text: "CastHop"
+                color: Theme.primary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontTitle
+                font.weight: Font.Bold
+            }
+
+            Rectangle {
+                visible: !root.failed
+                radius: height / 2
+                color: root.connecting ? Theme.primarySubtle
+                                       : (root.hasQr ? Theme.successSubtle : Theme.surfaceRaised)
+                border.width: 1
+                border.color: Theme.border
+                Layout.preferredHeight: statusRow.implicitHeight + Theme.space1 * 2
+                Layout.preferredWidth: statusRow.implicitWidth + Theme.space3 * 2
+
+                RowLayout {
+                    id: statusRow
+                    anchors.centerIn: parent
+                    spacing: Theme.space1
+
+                    Rectangle {
+                        width: Math.round(12 * Theme.scale)
+                        height: width
+                        radius: width / 2
+                        color: root.connecting ? Theme.primary
+                                               : (root.hasQr ? Theme.success : Theme.warning)
+                    }
+
+                    Text {
+                        text: root.connecting ? qsTr("Connecting…")
+                                              : (root.hasQr ? qsTr("Ready to connect") : qsTr("Offline"))
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontCaption
+                        font.weight: Font.DemiBold
+                    }
+                }
+            }
         }
 
         RowLayout {
@@ -43,15 +80,17 @@ Rectangle {
             Layout.alignment: Qt.AlignHCenter
             Layout.fillHeight: true
 
-            // QR kartı: beyaz zemin, sessiz bölge görüntünün içinde.
+            // QR kartı: beyaz zemin, yüksek kontrastlı kenarlık, sessiz bölge görüntünün içinde.
             Rectangle {
                 id: qrCard
-                readonly property int side: Math.min(root.height * 0.62, root.width * 0.42)
+                readonly property int side: Math.min(root.height * 0.60, root.width * 0.40)
                 Layout.preferredWidth: side
                 Layout.preferredHeight: side
                 Layout.alignment: Qt.AlignVCenter
-                radius: Theme.radius
+                radius: Theme.radius + Math.round(4 * Theme.scale)
                 color: root.hasQr ? "white" : Theme.surface
+                border.width: Math.max(2, Math.round(2 * Theme.scale))
+                border.color: root.hasQr ? Theme.primarySubtle : Theme.border
 
                 Image {
                     anchors.fill: parent
@@ -83,7 +122,7 @@ Rectangle {
             ColumnLayout {
                 spacing: Theme.space3
                 Layout.alignment: Qt.AlignVCenter
-                Layout.maximumWidth: root.width * 0.42
+                Layout.maximumWidth: root.width * 0.44
 
                 Text {
                     text: root.connecting ? qsTr("Connecting…") : qsTr("Scan the code with the CastHop app on your tablet")
@@ -110,19 +149,56 @@ Rectangle {
                     font.pixelSize: Theme.fontBody
                 }
 
-                Text {
+                // 6 ayrı karakter kutusu (3+3 grup): mobil OTP ekranıyla birebir görsel eşleşme.
+                RowLayout {
                     visible: !root.connecting
-                    text: root.pinText
-                    color: Theme.text
-                    font.family: Theme.fontMono
-                    font.pixelSize: Theme.fontDisplay
-                    font.weight: Font.Bold
-                    font.letterSpacing: 6
+                    spacing: Math.round(12 * Theme.scale)
+                    Accessible.role: Accessible.StaticText
                     Accessible.name: qsTr("Connection code %1").arg(root.receiver.pin)
+
+                    Repeater {
+                        model: 6
+
+                        RowLayout {
+                            required property int index
+                            spacing: Math.round(12 * Theme.scale)
+
+                            // 3. ve 4. rakam arasında ince grup ayırıcısı
+                            Rectangle {
+                                visible: index === 3
+                                Layout.preferredWidth: Math.round(18 * Theme.scale)
+                                Layout.preferredHeight: Math.max(3, Math.round(5 * Theme.scale))
+                                radius: Layout.preferredHeight / 2
+                                color: Theme.border
+                            }
+
+                            Rectangle {
+                                readonly property int cellW: Math.round(92 * Theme.scale)
+                                readonly property int cellH: Math.round(118 * Theme.scale)
+                                Layout.preferredWidth: cellW
+                                Layout.preferredHeight: cellH
+                                radius: Theme.radius
+                                color: Theme.surface
+                                border.width: Math.max(2, Math.round(2 * Theme.scale))
+                                border.color: Theme.primary
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: root.pinDigits.charAt(index)
+                                    color: Theme.text
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: Theme.fontDisplay
+                                    font.weight: Font.Bold
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Rectangle {
                     color: Theme.surface
+                    border.width: 1
+                    border.color: Theme.border
                     radius: Theme.radius
                     Layout.fillWidth: true
                     Layout.preferredHeight: infoColumn.implicitHeight + Theme.space3 * 2
@@ -133,22 +209,47 @@ Rectangle {
                         anchors.margins: Theme.space3
                         spacing: Theme.space1
 
-                        Text {
-                            text: qsTr("Board: %1").arg(root.receiver.receiverName)
-                            color: Theme.text
-                            elide: Text.ElideRight
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontLabel
-                            font.weight: Font.DemiBold
+                        RowLayout {
                             Layout.fillWidth: true
+                            spacing: Theme.space2
+
+                            Text {
+                                text: qsTr("Board: %1").arg(root.receiver.receiverName)
+                                color: Theme.text
+                                elide: Text.ElideRight
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontLabel
+                                font.weight: Font.DemiBold
+                                Layout.fillWidth: true
+                            }
+
+                            Rectangle {
+                                visible: root.receiver.shortId !== ""
+                                color: Theme.primarySubtle
+                                border.width: 1
+                                border.color: Theme.primary
+                                radius: Theme.radius / 2
+                                Layout.preferredWidth: idBadgeText.implicitWidth + Theme.space2 * 2
+                                Layout.preferredHeight: idBadgeText.implicitHeight + Theme.space1 * 2
+
+                                Text {
+                                    id: idBadgeText
+                                    anchors.centerIn: parent
+                                    text: "#" + root.receiver.shortId
+                                    color: Theme.primary
+                                    font.family: Theme.fontMono
+                                    font.pixelSize: Theme.fontCaption
+                                    font.weight: Font.Bold
+                                }
+                            }
                         }
 
                         Text {
                             visible: root.receiver.addresses.length > 0
-                            text: qsTr("Address: %1").arg(root.receiver.addresses.join(", "))
+                            text: qsTr("Address: %1").arg(root.receiver.addresses.join(", ") + " :" + root.receiver.port)
                             color: Theme.textMuted
                             wrapMode: Text.WordWrap
-                            font.family: Theme.fontFamily
+                            font.family: Theme.fontMono
                             font.pixelSize: Theme.fontLabel
                             Layout.fillWidth: true
                         }
@@ -161,6 +262,8 @@ Rectangle {
         Rectangle {
             visible: root.failed
             color: Theme.surface
+            border.width: 1
+            border.color: Theme.danger
             radius: Theme.radius
             Layout.alignment: Qt.AlignHCenter
             Layout.fillHeight: true

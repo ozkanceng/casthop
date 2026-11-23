@@ -13,24 +13,30 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.ozkanceng.yansit.R
 import io.github.ozkanceng.yansit.sender.Preset
 import io.github.ozkanceng.yansit.sender.StreamOverrides
+import io.github.ozkanceng.yansit.stream.NetworkDiagnostics
 
 /** Ayarlar ekranında gösterilecek, cihazın gerçekten desteklediği seçenekler. */
 data class SettingsOptions(
@@ -54,10 +60,24 @@ fun SettingsScreen(
     onBack: () -> Unit,
     mirroring: Boolean = false,
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var audio by remember { mutableStateOf(audioEnabled) }
     var hevc by remember { mutableStateOf(hevcEnabled) }
     var current by remember { mutableStateOf(preset) }
     var adv by remember { mutableStateOf(overrides) }
+    var batteryUnrestricted by remember { mutableStateOf(NetworkDiagnostics.isIgnoringBatteryOptimizations(context)) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                batteryUnrestricted = NetworkDiagnostics.isIgnoringBatteryOptimizations(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     fun update(p: Preset = current, o: StreamOverrides = adv) {
         current = p
         adv = o
@@ -78,11 +98,29 @@ fun SettingsScreen(
                 PresetRow(Preset.BEST, R.string.preset_best, R.string.preset_best_desc, current) { update(p = it) }
                 PresetRow(Preset.BALANCED, R.string.preset_balanced, R.string.preset_balanced_desc, current) { update(p = it) }
                 PresetRow(Preset.WEAK_NETWORK, R.string.preset_weak, R.string.preset_weak_desc, current) { update(p = it) }
+                PresetRow(Preset.ULTRA_LOW, R.string.preset_ultra_low, R.string.preset_ultra_low_desc, current) { update(p = it) }
             }
             HorizontalDivider()
             SwitchRow(R.string.settings_audio, R.string.settings_audio_desc, audio) {
                 audio = it
                 onAudioChange(it)
+            }
+        }
+        SectionCard(stringResource(R.string.settings_power), Modifier.fillMaxWidth()) {
+            Text(
+                stringResource(if (batteryUnrestricted) R.string.settings_battery_ok else R.string.settings_battery_restricted),
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (batteryUnrestricted) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.secondary,
+            )
+            if (!batteryUnrestricted) {
+                OutlinedButton(
+                    onClick = {
+                        runCatching { context.startActivity(NetworkDiagnostics.batteryOptimizationSettingsIntent()) }
+                    },
+                    modifier = Modifier.heightIn(min = 52.dp),
+                ) {
+                    Text(stringResource(R.string.battery_opt_action))
+                }
             }
         }
         SectionCard(stringResource(R.string.settings_advanced), Modifier.fillMaxWidth()) {

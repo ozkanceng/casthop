@@ -142,9 +142,9 @@ public object SenderClient {
 
     /** Oturuma VIDEO veya AUDIO bağlantısı ekler. */
     @Throws(IOException::class, ProtocolException::class)
-    public fun attach(session: Session, kind: Int): MediaChannel {
+    public fun attach(session: Session, kind: Int, sendBufferBytes: Int = 128 * 1024): MediaChannel {
         val endpoint = session.endpoint.copy(fingerprint = session.fingerprint)
-        val tls = PinnedTls.connect(endpoint.host, endpoint.port, endpoint.fingerprint)
+        val tls = PinnedTls.connect(endpoint.host, endpoint.port, endpoint.fingerprint, sendBufferBytes = sendBufferBytes)
         val channel = ControlChannel(tls)
         try {
             channel.readTimeoutMs = FIRST_MESSAGE_TIMEOUT_MS
@@ -191,7 +191,7 @@ public object SenderClient {
     }
 
     private fun open(endpoint: Endpoint): ControlChannel {
-        val tls = PinnedTls.connect(endpoint.host, endpoint.port, endpoint.fingerprint)
+        val tls = PinnedTls.connect(endpoint.host, endpoint.port, endpoint.fingerprint, sendBufferBytes = 32 * 1024)
         endpoint.fingerprintPrefix?.let { prefix ->
             val seen = tls.fingerprint
             val matches = prefix.size <= seen.size && (0 until prefix.size).all { prefix[it] == seen[it] }
