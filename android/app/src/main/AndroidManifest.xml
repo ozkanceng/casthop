@@ -18,6 +18,7 @@
     <!-- QR okumak için kamera gerekir ama kamerasız cihaz da (ileride PIN ile) kurabilsin. -->
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
 
     <application
         android:allowBackup="false"
