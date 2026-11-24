@@ -4,6 +4,15 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+## [0.4.1] - 2026-11-24
+
+### Değiştirildi / Changed
+- **6 haneli şifre/kod kutuları tüm platformlarda birebir eşit boyda:** Android ve iOS OTP giriş hücrelerindeki aktif/dolu büyüme ölçeği kaldırıldı; Pardus/Windows (`WaitingScreen.qml`) ve macOS/iPad/Apple TV (`WaitingView.swift`) alıcılarında 6 kutunun ve 6 rakamın her pencere genişliğinde aynı sabit boyutta çizilmesi sağlandı.
+- **Bağlantı istatistiklerinden `Kare/sn` (`fps`) kaldırıldı:** Android ve iOS gönderici yansıtma kartında `Gecikme`, `Ping`, `Kayıp`, `Veri hızı` ve `Çözünürlük` korunarak `Kare/sn` kutusu kaldırıldı; Pardus/Windows, macOS/iPad/Apple TV ve Android TV alıcı çubuklarında da FPS yerine diğer bağlantı değerleri gösterilir.
+
+### Düzeltildi / Fixed
+- **Google Play donanım kısıtı (`AndroidManifest.xml`):** `android.hardware.wifi` donanım özelliği `required="false"` olarak işaretlendi.
+
 ## [0.4.0] - 2026-11-24
 
 ### Düzeltildi / Fixed

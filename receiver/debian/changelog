@@ -1,3 +1,11 @@
+casthop (0.4.1) unstable; urgency=medium
+
+  * Release 0.4.1 (uniform sizing across all 6 PIN digits on every
+    platform, hide FPS counter while keeping latency/ping/loss/bitrate/
+    resolution stats, mark android.hardware.wifi feature optional).
+
+ -- CastHop Authors <casthop@users.noreply.github.com>  Tue, 24 Nov 2026 20:15:00 +0300
+
 casthop (0.4.0) unstable; urgency=medium
 
   * Release 0.4.0 (hotspot & weak-network streaming stability across
