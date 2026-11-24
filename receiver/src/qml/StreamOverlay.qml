@@ -107,9 +107,8 @@ Item {
                 }
 
                 Text {
-                    text: qsTr("%1 ms · %2 fps · %3 Mbps")
+                    text: qsTr("%1 ms · %2 Mbps")
                           .arg(root.stats.latencyMs)
-                          .arg(Math.round(root.stats.fps || 0))
                           .arg(((root.stats.bitrateKbps || 0) / 1000).toFixed(1))
                     color: Theme.textMuted
                     font.family: Theme.fontMono

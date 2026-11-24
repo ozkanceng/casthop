@@ -39,14 +39,16 @@ struct WaitingView: View {
                 if let failure = snapshot.failure {
                     FailureCard(failure: failure)
                 } else if wide {
+                    let detailsMaxWidth = geometry.size.width * 0.44
                     HStack(spacing: theme.space5) {
                         qrCard(side: min(geometry.size.height * 0.60, geometry.size.width * 0.40))
-                        details.frame(maxWidth: geometry.size.width * 0.44)
+                        details(maxWidth: detailsMaxWidth).frame(maxWidth: detailsMaxWidth)
                     }
                 } else {
+                    let detailsMaxWidth = max(280, geometry.size.width - theme.space4 * 2)
                     VStack(spacing: theme.space4) {
                         qrCard(side: min(geometry.size.width * 0.7, geometry.size.height * 0.40))
-                        details
+                        details(maxWidth: detailsMaxWidth)
                     }
                 }
                 Spacer(minLength: 0)
@@ -107,33 +109,43 @@ struct WaitingView: View {
         )
     }
 
-    private var pinCells: some View {
-        HStack(spacing: max(6, 10 * theme.scale)) {
-            ForEach(0..<6, id: \.self) { index in
-                if index == 3 {
-                    Capsule()
-                        .fill(theme.border)
-                        .frame(width: max(10, 16 * theme.scale), height: max(3, 4 * theme.scale))
-                }
-                Text(String(pinDigits[index]))
-                    .font(.system(size: theme.fontDisplay, weight: .bold, design: .monospaced))
-                    .foregroundStyle(theme.text)
-                    .minimumScaleFactor(0.45)
-                    .lineLimit(1)
-                    .frame(minWidth: max(40, 82 * theme.scale), maxWidth: max(56, 94 * theme.scale),
-                           minHeight: max(56, 108 * theme.scale))
-                    .background(theme.surface, in: RoundedRectangle(cornerRadius: theme.radius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: theme.radius)
-                            .stroke(theme.primary, lineWidth: max(2, 2 * theme.scale))
-                    )
+    private func pinCells(maxWidth: CGFloat) -> some View {
+        let gap = max(6, (10 * theme.scale).rounded())
+        let sepW = max(10, (16 * theme.scale).rounded())
+        let available = max(220, maxWidth - gap * 6 - sepW)
+        let cellW = min((92 * theme.scale).rounded(), floor(available / 6))
+        let cellH = (cellW * 1.25).rounded()
+        let digitFont = min(theme.fontDisplay, (cellW * 0.72).rounded())
+
+        return HStack(spacing: gap) {
+            ForEach(0..<3, id: \.self) { index in
+                pinDigitBox(pinDigits[index], width: cellW, height: cellH, fontSize: digitFont)
+            }
+            Capsule()
+                .fill(theme.border)
+                .frame(width: sepW, height: max(3, 4 * theme.scale))
+            ForEach(3..<6, id: \.self) { index in
+                pinDigitBox(pinDigits[index], width: cellW, height: cellH, fontSize: digitFont)
             }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Connection code \(snapshot.pin)"))
     }
 
-    private var details: some View {
+    private func pinDigitBox(_ digit: Character, width: CGFloat, height: CGFloat, fontSize: CGFloat) -> some View {
+        Text(String(digit))
+            .font(.system(size: fontSize, weight: .bold, design: .monospaced))
+            .foregroundStyle(theme.text)
+            .lineLimit(1)
+            .frame(width: width, height: height)
+            .background(theme.surface, in: RoundedRectangle(cornerRadius: theme.radius))
+            .overlay(
+                RoundedRectangle(cornerRadius: theme.radius)
+                    .stroke(theme.primary, lineWidth: max(2, 2 * theme.scale))
+            )
+    }
+
+    private func details(maxWidth: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: theme.space3) {
             Text(connecting ? "Connecting…" : "Scan the code with the CastHop app on your tablet")
                 .font(.system(size: theme.fontTitle, weight: .semibold))
@@ -145,7 +157,7 @@ struct WaitingView: View {
                 Text("or enter this code:")
                     .font(.system(size: theme.fontBody))
                     .foregroundStyle(theme.textMuted)
-                pinCells
+                pinCells(maxWidth: maxWidth)
             }
             VStack(alignment: .leading, spacing: theme.space1) {
                 HStack(spacing: theme.space2) {

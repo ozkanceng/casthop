@@ -133,7 +133,7 @@ struct StreamingView: View {
     private var statsLine: String {
         let s = snapshot.stats
         let latency = s.latencyMs.map(String.init) ?? "–"
-        return "\(latency) ms · \(Int(s.fps.rounded())) fps · \(String(format: "%.1f", Double(s.bitrateKbps) / 1000)) Mbps"
+        return "\(latency) ms · \(String(format: "%.1f", Double(s.bitrateKbps) / 1000)) Mbps"
     }
 
     private var controls: some View {

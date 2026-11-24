@@ -579,12 +579,9 @@ private struct StatGrid: View {
             }
             HStack(spacing: Tokens.space2) {
                 tile("Loss", String(format: "%.1f%%", stats.lossPercent))
-                tile("Frames/s", "\(Int(stats.fps))")
-            }
-            HStack(spacing: Tokens.space2) {
                 tile("Data rate", String(format: "%.1f Mbps", Double(stats.bitrateBps) / 1_000_000))
-                tile("Resolution", "\(stats.width)×\(stats.height)")
             }
+            tile("Resolution", "\(stats.width)×\(stats.height)")
         }
     }
 }

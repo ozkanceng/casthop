@@ -792,20 +792,17 @@ private fun StatGrid(stats: MirrorStats) {
                 stringResource(R.string.stat_loss_value, stats.lossPercent),
                 Modifier.weight(1f),
             )
-            StatTile(R.string.stat_fps, stats.fps.toInt().toString(), Modifier.weight(1f))
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatTile(
                 R.string.stat_bitrate,
                 stringResource(R.string.stat_bitrate_value, stats.bitrateBps / 1_000_000.0),
                 Modifier.weight(1f),
             )
-            StatTile(
-                R.string.stat_resolution,
-                stringResource(R.string.stat_resolution_value, stats.width, stats.height),
-                Modifier.weight(1f),
-            )
         }
+        StatTile(
+            R.string.stat_resolution,
+            stringResource(R.string.stat_resolution_value, stats.width, stats.height),
+            Modifier.fillMaxWidth(),
+        )
     }
 }
 

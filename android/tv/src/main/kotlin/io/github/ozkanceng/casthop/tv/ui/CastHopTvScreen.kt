@@ -246,7 +246,7 @@ private fun StatsLines(stats: LiveStats) {
         } else {
             stringResource(R.string.stats_latency_unknown)
         },
-        stringResource(R.string.stats_rate, stats.fps, stats.bitrateKbps),
+        stringResource(R.string.stats_rate, stats.bitrateKbps),
         stringResource(R.string.stats_dropped, stats.dropped),
         stringResource(R.string.stats_decoder, stats.decoder),
     )

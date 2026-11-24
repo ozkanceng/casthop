@@ -31,7 +31,7 @@
     <string name="approval_body_idle">%1$s wants to mirror to this screen.</string>
     <string name="stats_latency">Latency: %1$d ms</string>
     <string name="stats_latency_unknown">Latency: measuring</string>
-    <string name="stats_rate">%1$.0f fps · %2$d kbit/s</string>
+    <string name="stats_rate">Data rate: %1$d kbit/s</string>
     <string name="stats_dropped">Skipped frames: %1$d</string>
     <string name="stats_decoder">Decoder: %1$s</string>
     <string name="settings_title">Settings</string>

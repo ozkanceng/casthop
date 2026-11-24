@@ -32,7 +32,7 @@
     <string name="approval_body_idle">%1$s bu ekrana yansıtmak istiyor.</string>
     <string name="stats_latency">Gecikme: %1$d ms</string>
     <string name="stats_latency_unknown">Gecikme: ölçülüyor</string>
-    <string name="stats_rate">%1$.0f kare/sn · %2$d kbit/sn</string>
+    <string name="stats_rate">Veri hızı: %1$d kbit/sn</string>
     <string name="stats_dropped">Atlanan kare: %1$d</string>
     <string name="stats_decoder">Çözücü: %1$s</string>
     <string name="settings_title">Ayarlar</string>

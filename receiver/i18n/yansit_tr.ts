@@ -113,8 +113,8 @@
 <context>
     <name>StreamOverlay</name>
     <message>
-        <source>%1 ms · %2 fps · %3 Mbps</source>
-        <translation>%1 ms · %2 fps · %3 Mbps</translation>
+        <source>%1 ms · %2 Mbps</source>
+        <translation>%1 ms · %2 Mbps</translation>
     </message>
     <message>
         <source>Stop mirroring</source>

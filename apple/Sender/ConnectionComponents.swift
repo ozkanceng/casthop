@@ -58,8 +58,10 @@ struct OtpCodeInput: View {
             GeometryReader { geo in
                 let gap: CGFloat = geo.size.width < 340 ? 6 : 9
                 let groupGap: CGFloat = geo.size.width < 340 ? 12 : 18
-                let cellWidth = min(max((geo.size.width - gap * 4 - groupGap) / 6, 40), 58)
-                let cellHeight = min(max(cellWidth * 1.28, 56), 74)
+                let available = max(geo.size.width - gap * 4 - groupGap, 180)
+                let cellWidth = min(available / 6, 58)
+                let cellHeight = min(max(cellWidth * 1.28, 52), 74)
+                let digitFont: CGFloat = cellWidth < 40 ? 22 : (cellWidth < 48 ? 26 : 32)
                 let digits = Array(code)
 
                 HStack(spacing: 0) {
@@ -82,7 +84,8 @@ struct OtpCodeInput: View {
                             visualState: visualState,
                             pulse: pulse,
                             width: cellWidth,
-                            height: cellHeight
+                            height: cellHeight,
+                            fontSize: digitFont
                         )
                     }
                 }
@@ -124,6 +127,7 @@ private struct OtpDigitCell: View {
     let pulse: Bool
     let width: CGFloat
     let height: CGFloat
+    let fontSize: CGFloat
 
     private var filled: Bool { digit != nil }
 
@@ -170,9 +174,10 @@ private struct OtpDigitCell: View {
 
             if let digit {
                 Text(String(digit))
-                    .font(.system(size: width < 48 ? 26 : 32, weight: .bold, design: .monospaced))
+                    .font(.system(size: fontSize, weight: .bold, design: .monospaced))
                     .foregroundStyle(textColor)
-                    .transition(.scale.combined(with: .opacity))
+                    .lineLimit(1)
+                    .transition(.opacity)
             } else if active {
                 Capsule()
                     .fill(Tokens.primary)
@@ -181,8 +186,6 @@ private struct OtpDigitCell: View {
             }
         }
         .frame(width: width, height: height)
-        .scaleEffect(active ? 1.05 : filled ? 1.02 : 1)
-        .animation(.spring(response: 0.25, dampingFraction: 0.65), value: filled)
         .animation(.easeInOut(duration: 0.16), value: active)
     }
 }

@@ -204,7 +204,6 @@
     <string name="state_collapsed">Collapsed</string>
     <string name="stat_latency">Latency</string>
     <string name="stat_latency_value">%1$s ms</string>
-    <string name="stat_fps">Frames/s</string>
     <string name="stat_bitrate">Data rate</string>
     <string name="stat_bitrate_value">%1$.1f Mbps</string>
     <string name="stat_resolution">Resolution</string>

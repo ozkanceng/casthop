@@ -5,13 +5,10 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -66,7 +63,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -202,12 +198,17 @@ fun OtpCodeInput(
             },
         decorationBox = {
             BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                // Küçük telefonlardan geniş tabletlere her ekranda taşmadan dengeli hücre boyutu.
+                // Küçük telefonlardan geniş tabletlere tüm 6 kutu her zaman birebir aynı boyda ve taşmadan sığar.
                 val gap = if (maxWidth < 360.dp) 6.dp else 10.dp
                 val groupGap = if (maxWidth < 360.dp) 12.dp else 18.dp
-                val cellWidth = ((maxWidth - gap * 4 - groupGap) / 6f).coerceIn(42.dp, 62.dp)
-                val cellHeight = (cellWidth * 1.28f).coerceIn(58.dp, 76.dp)
-                val digitFontSize = if (cellWidth < 48.dp) 26.sp else 32.sp
+                val available = (maxWidth - gap * 4 - groupGap).coerceAtLeast(180.dp)
+                val cellWidth = (available / 6f).coerceAtMost(62.dp)
+                val cellHeight = (cellWidth * 1.28f).coerceIn(52.dp, 76.dp)
+                val digitFontSize = when {
+                    cellWidth < 40.dp -> 22.sp
+                    cellWidth < 48.dp -> 26.sp
+                    else -> 32.sp
+                }
 
                 Row(
                     horizontalArrangement = Arrangement.Center,
@@ -270,15 +271,6 @@ private fun OtpDigitCell(
     onClick: () -> Unit,
 ) {
     val filled = digit != null
-    val scale by animateFloatAsState(
-        targetValue = when {
-            isActive -> 1.05f
-            filled -> 1.02f
-            else -> 1f
-        },
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-        label = "cell_scale",
-    )
     val borderWidth by animateDpAsState(
         targetValue = when {
             visualState == OtpVisualState.ERROR -> 2.5.dp
@@ -314,7 +306,6 @@ private fun OtpDigitCell(
     Surface(
         modifier = Modifier
             .size(width = width, height = height)
-            .scale(scale)
             .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
@@ -331,6 +322,8 @@ private fun OtpDigitCell(
                     fontFamily = FontFamily.Monospace,
                     color = textColor,
                     textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    softWrap = false,
                 )
             } else if (isActive) {
                 Box(

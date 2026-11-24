@@ -205,7 +205,6 @@
     <string name="state_collapsed">Kapalı</string>
     <string name="stat_latency">Gecikme</string>
     <string name="stat_latency_value">%1$s ms</string>
-    <string name="stat_fps">Kare/sn</string>
     <string name="stat_bitrate">Veri hızı</string>
     <string name="stat_bitrate_value">%1$.1f Mbps</string>
     <string name="stat_resolution">Çözünürlük</string>

@@ -149,47 +149,72 @@ Rectangle {
                     font.pixelSize: Theme.fontBody
                 }
 
-                // 6 ayrı karakter kutusu (3+3 grup): mobil OTP ekranıyla birebir görsel eşleşme.
-                RowLayout {
+                // 6 ayrı karakter kutusu (3+3 grup): tüm kutular ve rakamlar her genişlikte birebir aynı boyda.
+                Row {
+                    id: pinRow
                     visible: !root.connecting
-                    spacing: Math.round(12 * Theme.scale)
+                    readonly property int pinGap: Math.round(12 * Theme.scale)
+                    readonly property int sepW: Math.round(18 * Theme.scale)
+                    readonly property int maxRowW: Math.max(240, Math.floor(root.width * 0.44))
+                    readonly property int cellW: Math.min(Math.round(92 * Theme.scale),
+                                                          Math.floor((maxRowW - pinGap * 6 - sepW) / 6))
+                    readonly property int cellH: Math.round(cellW * 1.28)
+                    readonly property int cellFontPx: Math.min(Theme.fontDisplay, Math.round(cellW * 0.74))
+                    spacing: pinGap
                     Accessible.role: Accessible.StaticText
                     Accessible.name: qsTr("Connection code %1").arg(root.receiver.pin)
 
                     Repeater {
-                        model: 6
+                        model: 3
 
-                        RowLayout {
+                        Rectangle {
                             required property int index
-                            spacing: Math.round(12 * Theme.scale)
+                            width: pinRow.cellW
+                            height: pinRow.cellH
+                            radius: Theme.radius
+                            color: Theme.surface
+                            border.width: Math.max(2, Math.round(2 * Theme.scale))
+                            border.color: Theme.primary
 
-                            // 3. ve 4. rakam arasında ince grup ayırıcısı
-                            Rectangle {
-                                visible: index === 3
-                                Layout.preferredWidth: Math.round(18 * Theme.scale)
-                                Layout.preferredHeight: Math.max(3, Math.round(5 * Theme.scale))
-                                radius: Layout.preferredHeight / 2
-                                color: Theme.border
+                            Text {
+                                anchors.centerIn: parent
+                                text: root.pinDigits.charAt(index)
+                                color: Theme.text
+                                font.family: Theme.fontMono
+                                font.pixelSize: pinRow.cellFontPx
+                                font.weight: Font.Bold
                             }
+                        }
+                    }
 
-                            Rectangle {
-                                readonly property int cellW: Math.round(92 * Theme.scale)
-                                readonly property int cellH: Math.round(118 * Theme.scale)
-                                Layout.preferredWidth: cellW
-                                Layout.preferredHeight: cellH
-                                radius: Theme.radius
-                                color: Theme.surface
-                                border.width: Math.max(2, Math.round(2 * Theme.scale))
-                                border.color: Theme.primary
+                    // 3. ve 4. rakam arasında ince grup ayırıcısı
+                    Rectangle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: pinRow.sepW
+                        height: Math.max(3, Math.round(5 * Theme.scale))
+                        radius: height / 2
+                        color: Theme.border
+                    }
 
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: root.pinDigits.charAt(index)
-                                    color: Theme.text
-                                    font.family: Theme.fontMono
-                                    font.pixelSize: Theme.fontDisplay
-                                    font.weight: Font.Bold
-                                }
+                    Repeater {
+                        model: 3
+
+                        Rectangle {
+                            required property int index
+                            width: pinRow.cellW
+                            height: pinRow.cellH
+                            radius: Theme.radius
+                            color: Theme.surface
+                            border.width: Math.max(2, Math.round(2 * Theme.scale))
+                            border.color: Theme.primary
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: root.pinDigits.charAt(index + 3)
+                                color: Theme.text
+                                font.family: Theme.fontMono
+                                font.pixelSize: pinRow.cellFontPx
+                                font.weight: Font.Bold
                             }
                         }
                     }
