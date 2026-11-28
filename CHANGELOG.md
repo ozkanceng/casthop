@@ -4,6 +4,18 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+## [0.4.2] - 2026-11-28
+
+### Düzeltildi / Fixed
+- **Kayıtlı tahtaya yeniden bağlanma ve QR tarama hataları giderildi (Pardus ETAP, Windows, Android, Android TV, iOS, macOS):**
+  - **Aynı cihaz otomatik devralma ve çift anahtar yuvarlama:** Tüm alıcılarda (`SessionManager` / `PairingManager`) aynı tablet kendi açık veya yarı-kopuk oturumunu ve kendi bayat onay isteğini yalnızca kayıtlı anahtarla değil QR ve PIN ile de onay beklemeden devralır; cihaz başına son 2 eşleştirme anahtarı saklanır, 10 saniyelik `HELLO` sınırı `10 → 20` yapıldı ve güvenilen cihaz listesi `deviceId` bazında tekilleştirildi.
+  - **mDNS/Avahi dayanıklılığı ve `ip=` TXT ipucu:** Pardus/Windows/Apple/Android TV alıcıları mDNS TXT kaydına geriye uyumlu `ip=` IPv4 listesi ekler (`etap.local` çakışmalarını ve IPv6-only çözümlemeyi aşar); ağ değişince mDNS yeniden yayınlanır; Pardus Avahi bağlantısı koparsa otomatik yeniden kurulur; sanal arayüzler (`waydroid`, `podman`, `cni`, `tailscale`, `incus`, `lxd`, `zt`, `dummy`) elenir ve kabul edilen soketlerde TCP keep-alive açılır.
+  - **Doğrudan TLS 1.3 yarışı, otomatik yeniden keşif ve akıllı yedekler (Android ve iOS):** Ayrı ham TCP yoklaması kaldırılıp doğrudan sertifika parmak izi doğrulamalı TLS 1.3 yarışı (`4 sn` zaman aşımı, yerel alt ağ önceliği) eklendi; Android'de interneti olmayan okul Wi-Fi ağlarında trafiğin hücresel veriye kaçması engellendi ve çok tahtalı sınıflar için seri NSD çözümleme kuyruğu eklendi. Kayıtlı tahtada zaman aşımı, `REFUSED` veya DHCP IP değişiminde (`FingerprintMismatch`) otomatik mDNS/Bonjour yeniden keşfi + 1x `350 ms` ARP/Wi-Fi uyanma tekrarı yapılır; harcanmış QR token'ı kayıtlı tahtada sessizce saklanan `pairKey`'e düşer; Android izin penceresinde kontrol kanalı zaman aşımı uzatıldı ve `VIDEO ATTACH` 3 denemeli hale getirildi.
+  - **iOS/macOS taşıma katmanı kararlılığı:** `PinnedTLS` uyanma/Broadcast Extension sırasındaki geçici `.waiting(ENETUNREACH/EHOSTUNREACH)` durumlarında bağlantıyı erken kesmez; `FramedConnection` erken gelen `CHALLENGE` karelerini tamponlayarak yarış durumunu önler; `ConnectFlow.pair` kapanmadan önce `BYE` paketinin iletilmesini bekler.
+
+### Eklendi / Added
+- **Ana ekranda canlı ağ durumu (“Bu ağda” / “On this network”) ve bağlantı teşhisi (Android ve iOS):** Ana ekranda pasif mDNS/Bonjour taramasıyla şu anki ağda çevrimiçi olan kayıtlı tahtalar yeşil rozetle en üste taşınır ve IP adresleri sessizce güncellenir; diğer sınıflardaki çevrimdışı tahtalar hafif soluk gösterilir. Android hata kartlarına hassas bilgi içermeyen tek satır bağlantı teşhisi eklendi.
+
 ## [0.4.1] - 2026-11-24
 
 ### Değiştirildi / Changed
