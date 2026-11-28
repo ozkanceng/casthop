@@ -552,6 +552,7 @@ fun ConnectionStepperCard(
 fun ConnectionErrorCard(
     error: MirrorError?,
     modifier: Modifier = Modifier,
+    detail: String? = null,
     onRetry: (() -> Unit)? = null,
     onGuide: (() -> Unit)? = null,
     onManualIp: (() -> Unit)? = null,
@@ -592,6 +593,13 @@ fun ConnectionErrorCard(
             }
             if (body != null) {
                 Text(stringResource(body), style = MaterialTheme.typography.bodyLarge)
+            }
+            if (!detail.isNullOrBlank()) {
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.78f),
+                )
             }
             if (showHotspotHelp) {
                 Text(stringResource(R.string.hotspot_title), style = MaterialTheme.typography.titleMedium)

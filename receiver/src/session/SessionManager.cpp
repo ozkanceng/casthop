@@ -78,8 +78,10 @@ Actions SessionManager::onHello(ConnId conn, const Hello& hello, const Id16& ser
 
     if (hello.version != 1)
         return refuse(reject(RejectReason::VersionUnsupported));
-    // Zaten biri onay bekliyorsa kimlik bilgisini harcamadan reddet.
-    if (m_pending)
+    // Başka bir cihaz onay bekliyorsa kimlik bilgisini harcamadan reddet.
+    // Aynı cihaz (ör. kopan önceki onay soketinden sonra yeniden bağlanıyorsa) kimlik doğrulandıktan sonra
+    // kendi bekleyen isteğini yenileyebilir.
+    if (m_pending && m_pending->hello.deviceId != hello.deviceId)
         return refuse(reject(RejectReason::BusyDenied));
 
     const auto verdict = m_pairing.verifyHello(hello, serverNonce, certFingerprint, now);
@@ -96,10 +98,15 @@ Actions SessionManager::onHello(ConnId conn, const Hello& hello, const Id16& ser
     }
 
     const bool byPairKey = verdict.trusted.has_value();
+    if (m_pending && m_pending->hello.deviceId == hello.deviceId) {
+        a.close.push_back(m_pending->conn);
+        m_pending.reset();
+    }
     if (m_session) {
-        // Eşleştirilmiş aynı cihaz kendi eski oturumunu onaysız devralır (örn. uygulama yeniden başladı).
-        if (byPairKey && m_session->sender.deviceId == hello.deviceId) {
-            a = closeSession(ByeReason::Takeover);
+        // Aynı cihaz kendi eski/kopuk oturumunu her geçerli doğrulama yöntemiyle (Paired, QR veya PIN)
+        // onaysız devralır: QR/PIN fiziksel ekran erişimi kanıtladığından kendi zombi oturumuyla kilitlenmez.
+        if (m_session->sender.deviceId == hello.deviceId) {
+            a.merge(closeSession(ByeReason::Takeover));
             a.merge(startSession(conn, hello, byPairKey));
             return a;
         }
@@ -109,7 +116,8 @@ Actions SessionManager::onHello(ConnId conn, const Hello& hello, const Id16& ser
         a.send.emplace_back(conn, p);
         return a;
     }
-    return startSession(conn, hello, byPairKey);
+    a.merge(startSession(conn, hello, byPairKey));
+    return a;
 }
 
 Actions SessionManager::startSession(ConnId conn, const Hello& hello, bool authenticatedByPairKey) {

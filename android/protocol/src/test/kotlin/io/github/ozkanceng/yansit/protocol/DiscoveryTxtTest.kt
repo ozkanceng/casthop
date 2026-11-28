@@ -33,4 +33,16 @@ class DiscoveryTxtTest {
         assertNull(DiscoveryTxt.parse(mapOf("v" to "1".toByteArray(), "fp" to "kısa".toByteArray())))
         assertNull(DiscoveryTxt.parse(mapOf("v" to "1".toByteArray())))
     }
+
+    @Test
+    fun parsesOptionalIpv4HintsAndFiltersInvalidEntries() {
+        val b64 = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(ByteArray(16))
+        val txt = mapOf(
+            "v" to "1".toByteArray(),
+            "fp" to b64.toByteArray(),
+            "ip" to "10.0.1.24, fe80::1, 192.168.43.10, bad, 10.0.1.24, 10.0.1.25, 10.0.1.26, 10.0.1.27".toByteArray(),
+        )
+        val parsed = DiscoveryTxt.parse(txt)!!
+        assertEquals(listOf("10.0.1.24", "192.168.43.10", "10.0.1.25", "10.0.1.26"), parsed.hosts)
+    }
 }

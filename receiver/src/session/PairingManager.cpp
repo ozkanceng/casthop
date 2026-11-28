@@ -117,8 +117,21 @@ PairingManager::Verdict PairingManager::verifyHello(const Hello& hello, const Id
 }
 
 TrustedSender PairingManager::createPairing(const Hello& hello) {
-    // Aynı cihazın eski eşleştirmeleri silinir: cihaz başına tek anahtar.
-    std::erase_if(m_trusted, [&](const TrustedSender& t) { return t.deviceId == hello.deviceId; });
+    // Çift anahtarlı geçiş (dual-key rollover): aynı cihazın son (maxKeysPerDevice - 1) anahtarı korunur.
+    // Böylece yeni WELCOME ağda düşerse tabletin mevcut pairKey'i geçersiz kalmaz.
+    const int keepExisting = std::max(0, m_policy.maxKeysPerDevice - 1);
+    std::vector<std::size_t> sameDeviceIdx;
+    for (std::size_t i = 0; i < m_trusted.size(); ++i) {
+        if (m_trusted[i].deviceId == hello.deviceId) {
+            m_trusted[i].deviceName = hello.deviceName;
+            sameDeviceIdx.push_back(i);
+        }
+    }
+    if (int(sameDeviceIdx.size()) > keepExisting) {
+        const std::size_t dropCount = sameDeviceIdx.size() - std::size_t(keepExisting);
+        for (std::size_t k = dropCount; k > 0; --k)
+            m_trusted.erase(m_trusted.begin() + std::ptrdiff_t(sameDeviceIdx[k - 1]));
+    }
     TrustedSender t{randomArray<16>(), randomArray<32>(), hello.deviceId, hello.deviceName};
     m_trusted.push_back(t);
     if (onTrustedChanged)
@@ -127,7 +140,13 @@ TrustedSender PairingManager::createPairing(const Hello& hello) {
 }
 
 bool PairingManager::removeTrusted(const Id16& keyId) {
-    const auto n = std::erase_if(m_trusted, [&](const TrustedSender& t) { return t.keyId == keyId; });
+    const auto it = std::find_if(m_trusted.begin(), m_trusted.end(),
+                                 [&](const TrustedSender& t) { return t.keyId == keyId; });
+    if (it == m_trusted.end())
+        return false;
+    // Cihaz unutulunca geçiş penceresindeki önceki anahtarları da birlikte silinir.
+    const Id16 targetDevice = it->deviceId;
+    const auto n = std::erase_if(m_trusted, [&](const TrustedSender& t) { return t.deviceId == targetDevice; });
     if (n > 0 && onTrustedChanged)
         onTrustedChanged();
     return n > 0;

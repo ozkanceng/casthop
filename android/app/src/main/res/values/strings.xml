@@ -275,4 +275,5 @@
     <string name="scanner_or_code">Kod ile</string>
     <string name="scanner_or_ip">IP ile</string>
     <string name="state_live">Canlı</string>
+    <string name="board_online_badge">Bu ağda</string>
 </resources>

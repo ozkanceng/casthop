@@ -201,10 +201,30 @@ public final class MirrorSession: @unchecked Sendable {
         try queue.sync(execute: body)
     }
 
-    /// Opens VIDEO and starts the encoder.
+    /// Opens VIDEO and starts the encoder, retrying transient network attach errors up to 2 times.
     public func startVideo(plan: StreamPlan, source: VideoSource) async throws {
-        let s = locked { session }
-        let channel = try await SenderClient.attach(session: s, kind: StreamKind.video)
+        let waitDeadline = MonotonicClock.nowUs() + 3_000_000
+        while !isEnded && linkState == .reconnecting && MonotonicClock.nowUs() < waitDeadline {
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        guard !isEnded else { throw TransportError.closed }
+        let delaysNs: [UInt64] = [0, 250_000_000, 500_000_000]
+        var channel: MediaChannel?
+        var lastError: Error?
+        for delayNs in delaysNs {
+            if delayNs > 0 { try? await Task.sleep(nanoseconds: delayNs) }
+            guard !isEnded else { throw lastError ?? TransportError.closed }
+            let s = locked { session }
+            do {
+                channel = try await SenderClient.attach(session: s, kind: StreamKind.video)
+                break
+            } catch ClientError.attachRejected(let status) {
+                throw ClientError.attachRejected(status: status)
+            } catch {
+                lastError = error
+            }
+        }
+        guard let channel else { throw lastError ?? TransportError.timeout }
         queue.sync {
             self.plan = plan
             self.source = source

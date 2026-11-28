@@ -201,6 +201,41 @@ TEST_F(Fixture, PairedOtherDeviceStillNeedsApproval) {
     EXPECT_NE(sentTo<PendingApproval>(a, 2), nullptr);
 }
 
+TEST_F(Fixture, SameDeviceTakesOverOwnSessionViaQrAndPinWithoutApproval) {
+    // Önceki oturum canlıyken veya Reconnecting penceresindeyken aynı tablet QR okutursa onay sormadan devralmalı.
+    open(1, Id16{0xA});
+    const Actions byQr = sm.onHello(2, hello(AuthMethod::QrToken, pairing.qrToken(), Id16{0xA}, {}, true), kNonce,
+                                    certFp(), T0 + 1s);
+    ASSERT_NE(sentTo<Bye>(byQr, 1), nullptr);
+    EXPECT_EQ(sentTo<Bye>(byQr, 1)->reason, ByeReason::Takeover);
+    EXPECT_NE(sentTo<Welcome>(byQr, 2), nullptr);
+    EXPECT_FALSE(sm.pending());
+    EXPECT_TRUE(sm.isControl(2));
+
+    // Oturum kontrol bağlantısını kaybettiğinde (10 sn RESUME penceresi) aynı cihaz PIN ile hemen devralmalı.
+    sm.onConnectionClosed(2, T0 + 2s);
+    ASSERT_TRUE(sm.session());
+    EXPECT_FALSE(sm.session()->control);
+    const Actions byPin = sm.onHello(3, hello(AuthMethod::Pin, pinBytes(pairing.pin()), Id16{0xA}), kNonce, certFp(),
+                                     T0 + 3s);
+    EXPECT_NE(sentTo<Welcome>(byPin, 3), nullptr);
+    EXPECT_FALSE(sm.pending());
+    EXPECT_TRUE(sm.isControl(3));
+}
+
+TEST_F(Fixture, SameDeviceReplacesItsOwnStalePendingRequest) {
+    open(1, Id16{0xA});
+    // Cihaz B onay beklemeye girer; eski soketi henüz kopmadan tekrar bağlanırsa BusyDenied yerine yenilenir.
+    const Actions first = sm.onHello(2, hello(AuthMethod::Pin, pinBytes(pairing.pin()), Id16{0xB}), kNonce, certFp(), T0);
+    ASSERT_NE(sentTo<PendingApproval>(first, 2), nullptr);
+    const Actions retry =
+        sm.onHello(3, hello(AuthMethod::QrToken, pairing.qrToken(), Id16{0xB}), kNonce, certFp(), T0 + 1s);
+    EXPECT_TRUE(closes(retry, 2));
+    ASSERT_NE(sentTo<PendingApproval>(retry, 3), nullptr);
+    ASSERT_TRUE(sm.pending());
+    EXPECT_EQ(sm.pending()->conn, 3u);
+}
+
 TEST_F(Fixture, AttachValidatesProofAndKind) {
     const Welcome w = open(1);
     Attach bad;

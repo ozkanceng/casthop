@@ -22,7 +22,9 @@ int kindRank(AddressCandidate::Kind kind) {
 }
 
 bool isVirtualName(const QString& name) {
-    static const char* const prefixes[] = {"docker", "veth", "virbr", "br-", "vmnet", "vboxnet", "lxc", "tun", "tap", "wg"};
+    static const char* const prefixes[] = {"docker", "veth",    "virbr",  "br-",       "vmnet", "vboxnet",
+                                           "lxc",    "lxd",     "incus",  "tun",       "tap",   "wg",
+                                           "waydroid", "podman", "cni",   "tailscale", "zt",    "dummy"};
     for (const char* p : prefixes) {
         if (name.startsWith(QLatin1String(p)))
             return true;

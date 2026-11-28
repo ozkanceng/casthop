@@ -121,8 +121,9 @@ public class SessionManager(
         }
 
         if (hello.version != 1) return refuse(RejectReason.VERSION_UNSUPPORTED)
-        // Someone is already waiting: refuse before the credential is spent.
-        if (pending != null) return refuse(RejectReason.BUSY_DENIED)
+        // Another device is already waiting: refuse before the credential is spent.
+        // The same device may replace its own stale pending request once authenticated.
+        if (pending != null && pending?.hello?.deviceId != hello.deviceId) return refuse(RejectReason.BUSY_DENIED)
 
         val verdict = pairing.verifyHello(hello, serverNonce, certFingerprint, nowMs)
         when (verdict.outcome) {
@@ -135,9 +136,17 @@ public class SessionManager(
         }
 
         val byPairKey = verdict.trusted != null
-        val current = session ?: return startSession(conn, hello, byPairKey)
-        // A paired device takes over its own session without approval (the app restarted, for example).
-        if (byPairKey && current.sender.deviceId == hello.deviceId) {
+        pending?.takeIf { it.hello.deviceId == hello.deviceId }?.let { stale ->
+            a.close += stale.conn
+            pending = null
+        }
+        val current = session
+        if (current == null) {
+            a.merge(startSession(conn, hello, byPairKey))
+            return a
+        }
+        // The same device takes over its own session without approval via any valid credential (Paired, QR, or PIN).
+        if (current.sender.deviceId == hello.deviceId) {
             a.merge(closeSession(ByeReason.TAKEOVER))
             a.merge(startSession(conn, hello, byPairKey))
             return a

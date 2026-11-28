@@ -51,3 +51,10 @@ TEST(Mdns, DefaultBoardNameDisambiguatesGenericEtapHostnames) {
     EXPECT_EQ(defaultBoardName("", fp), "CastHop-A4F2");
     EXPECT_EQ(defaultBoardName("Lab-3-Tahta", fp), "Lab-3-Tahta");
 }
+
+TEST(Mdns, TxtRecordIncludesOptionalValidIpv4Hints) {
+    yansit::protocol::Key32 fp{};
+    const auto txt = mdnsTxt("Tahta", fp, {"10.0.1.24", "fe80::1", "192.168.43.10", "invalid", "10.0.1.25", "10.0.1.26", "10.0.1.27"});
+    ASSERT_EQ(txt.size(), 5u);
+    EXPECT_EQ(txt[4], "ip=10.0.1.24,192.168.43.10,10.0.1.25,10.0.1.26");
+}

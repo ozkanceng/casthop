@@ -27,8 +27,9 @@ public class PairingManager(nowMs: Long, private val policy: Policy = Policy()) 
         val tokenLifetimeMs: Long = 10 * 60 * 1000L,
         val maxPinFailures: Int = 5,
         val pinLockoutMs: Long = 30_000L,
-        val maxHellosPerWindow: Int = 10,
+        val maxHellosPerWindow: Int = 20,
         val helloWindowMs: Long = 10_000L,
+        val maxKeysPerDevice: Int = 2,
     )
 
     public enum class Outcome { ACCEPTED, AUTH_FAILED, RATE_LIMITED, LOCKED_OUT, UNSUPPORTED_METHOD }
@@ -136,9 +137,22 @@ public class PairingManager(nowMs: Long, private val policy: Policy = Policy()) 
         return Verdict(Outcome.ACCEPTED, trusted = renamed)
     }
 
-    /** Creates a pairing key for an accepted HELLO. One key per device: older ones are dropped. */
+    /** Creates a pairing key for an accepted HELLO, keeping up to [Policy.maxKeysPerDevice] recent keys per device. */
     public fun createPairing(hello: ControlMessage.Hello): TrustedSender {
-        trusted.removeAll { it.deviceId == hello.deviceId }
+        val keepExisting = (policy.maxKeysPerDevice - 1).coerceAtLeast(0)
+        val sameIndices = ArrayList<Int>()
+        for (i in trusted.indices) {
+            if (trusted[i].deviceId == hello.deviceId) {
+                trusted[i] = trusted[i].copy(deviceName = hello.deviceName)
+                sameIndices += i
+            }
+        }
+        if (sameIndices.size > keepExisting) {
+            val dropCount = sameIndices.size - keepExisting
+            for (idx in sameIndices.take(dropCount).asReversed()) {
+                trusted.removeAt(idx)
+            }
+        }
         val sender = TrustedSender(
             keyId = Auth.randomBytes(ControlCodec.ID_SIZE),
             pairKey = Auth.randomBytes(ControlCodec.KEY_SIZE),
@@ -151,7 +165,8 @@ public class PairingManager(nowMs: Long, private val policy: Policy = Policy()) 
     }
 
     public fun removeTrusted(keyId: Bytes): Boolean {
-        val removed = trusted.removeAll { it.keyId == keyId }
+        val targetDevice = trusted.firstOrNull { it.keyId == keyId }?.deviceId ?: return false
+        val removed = trusted.removeAll { it.deviceId == targetDevice }
         if (removed) onTrustedChanged?.invoke()
         return removed
     }

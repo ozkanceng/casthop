@@ -23,7 +23,7 @@ let package = Package(
         .executableTarget(name: "casthop-receiver", dependencies: ["CastHopReceiver"], swiftSettings: swift5),
         .executableTarget(name: "casthop-sender", dependencies: ["CastHopSender"], swiftSettings: swift5),
         .testTarget(name: "CastHopProtocolTests", dependencies: ["CastHopProtocol"], swiftSettings: swift5),
-        .testTarget(name: "CastHopSenderTests", dependencies: ["CastHopSender"], swiftSettings: swift5),
+        .testTarget(name: "CastHopSenderTests", dependencies: ["CastHopSender", "CastHopReceiver", "CastHopTransport"], swiftSettings: swift5),
         .testTarget(name: "CastHopReceiverTests", dependencies: ["CastHopReceiver", "CastHopSender"], swiftSettings: swift5),
     ]
 )

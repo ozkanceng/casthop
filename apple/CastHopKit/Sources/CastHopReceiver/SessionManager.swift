@@ -115,8 +115,11 @@ public final class SessionManager {
         }
 
         if hello.version != 1 { return refuse(Self.reject(RejectReason.versionUnsupported)) }
-        // Someone already waits for approval: refuse before spending a credential.
-        if pending != nil { return refuse(Self.reject(RejectReason.busyDenied)) }
+        // Another device is already waiting: refuse before spending a credential.
+        // The same device may replace its own stale pending request once authenticated.
+        if let p = pending, p.hello.deviceId != hello.deviceId {
+            return refuse(Self.reject(RejectReason.busyDenied))
+        }
 
         let verdict = pairing.verifyHello(hello, serverNonce: serverNonce, certFingerprint: certFingerprint, nowMs: nowMs)
         switch verdict.outcome {
@@ -127,10 +130,14 @@ public final class SessionManager {
         }
 
         let byPairKey = verdict.trusted != nil
+        if let p = pending, p.hello.deviceId == hello.deviceId {
+            a.close.append(p.conn)
+            pending = nil
+        }
         if let s = session {
-            // The same paired device takes over its own session without approval, for example after an app restart.
-            if byPairKey && s.deviceId == hello.deviceId {
-                a = closeSession(bye: ByeReason.takeover)
+            // The same device takes over its own session without approval via any valid credential (Paired, QR, or PIN).
+            if s.deviceId == hello.deviceId {
+                a.merge(closeSession(bye: ByeReason.takeover))
                 a.merge(startSession(conn: conn, hello: hello, byPairKey: byPairKey))
                 return a
             }
@@ -138,7 +145,8 @@ public final class SessionManager {
             a.send.append((conn, .pendingApproval(timeoutMs: UInt32(policy.approvalTimeoutMs))))
             return a
         }
-        return startSession(conn: conn, hello: hello, byPairKey: byPairKey)
+        a.merge(startSession(conn: conn, hello: hello, byPairKey: byPairKey))
+        return a
     }
 
     private func startSession(conn: ConnId, hello: Hello, byPairKey: Bool) -> Actions {

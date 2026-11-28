@@ -53,48 +53,67 @@ class BoardStore(context: Context) {
         list().flatMap { it.hosts }.mapNotNull { h -> BoardIdentity.primaryIpv4(listOf(h)) }.distinct().take(limit)
 
     /**
-     * Aynı tahtanın (parmak izi) eski kaydının yerini alır; mevcut takma ad, favori ve tür bilgisi korunur.
+     * Aynı tahtanın (parmak izi) eski kaydının yerini alır; mevcut takma ad, favori, tür ve geçmiş IP'ler korunur.
      * En fazla [MAX_BOARDS] tahta tutulur (favoriler öncelikli korunur).
      */
-    fun save(board: RememberedBoard) {
-        val current = load()
+    fun save(board: RememberedBoard, preferredHost: String? = null) {
+        val (current, unreadable) = loadAll()
         val existing = current.firstOrNull { it.fingerprint == board.fingerprint }
+        val mergedHosts = mergeHosts(
+            primaryHost = preferredHost,
+            freshHosts = board.hosts,
+            existingHosts = existing?.hosts.orEmpty(),
+        )
         val merged = board.copy(
+            hosts = mergedHosts.ifEmpty { board.hosts },
             nickname = board.nickname ?: existing?.nickname,
             favorite = board.favorite || (existing?.favorite == true),
             kind = board.kind ?: existing?.kind,
         )
         val all = current.filterNot { it.fingerprint == board.fingerprint } + merged
-        store(BoardIdentity.sortRemembered(all).take(MAX_BOARDS))
+        store(BoardIdentity.sortRemembered(all).take(MAX_BOARDS), unreadable)
     }
 
     /** Tahtanın özel takma adını günceller (boş/null → takma adı temizle). */
     fun setNickname(fingerprint: Bytes, nickname: String?) {
         val clean = nickname?.trim()?.take(48)?.takeIf { it.isNotEmpty() }
-        val all = load().map { if (it.fingerprint == fingerprint) it.copy(nickname = clean) else it }
-        store(BoardIdentity.sortRemembered(all))
+        val (current, unreadable) = loadAll()
+        val all = current.map { if (it.fingerprint == fingerprint) it.copy(nickname = clean) else it }
+        store(BoardIdentity.sortRemembered(all), unreadable)
     }
 
     /** Tahtayı favorilere ekler veya çıkarır. */
     fun setFavorite(fingerprint: Bytes, favorite: Boolean) {
-        val all = load().map { if (it.fingerprint == fingerprint) it.copy(favorite = favorite) else it }
-        store(BoardIdentity.sortRemembered(all))
+        val (current, unreadable) = loadAll()
+        val all = current.map { if (it.fingerprint == fingerprint) it.copy(favorite = favorite) else it }
+        store(BoardIdentity.sortRemembered(all), unreadable)
     }
 
-    /** Tahtanın güncel IP listesini günceller (ör. ağ/hotspot değişiminde mDNS ile bulunduğunda). */
-    fun updateHosts(fingerprint: Bytes, hosts: List<String>, port: Int) {
-        if (hosts.isEmpty()) return
-        val all = load().map { if (it.fingerprint == fingerprint) it.copy(hosts = hosts, port = port) else it }
-        store(BoardIdentity.sortRemembered(all))
+    /** Tahtanın güncel IP listesini günceller; eski ağ/hotspot IP'lerini silmeden birleştirip yeni adresi öne alır. */
+    fun updateHosts(fingerprint: Bytes, hosts: List<String>, port: Int, preferredHost: String? = null) {
+        if (hosts.isEmpty() && preferredHost.isNullOrBlank()) return
+        val (current, unreadable) = loadAll()
+        var changed = false
+        val all = current.map { b ->
+            if (b.fingerprint != fingerprint) return@map b
+            val merged = mergeHosts(preferredHost, hosts, b.hosts)
+            if (merged == b.hosts && port == b.port) return@map b
+            changed = true
+            b.copy(hosts = merged.ifEmpty { b.hosts }, port = port)
+        }
+        if (changed) store(BoardIdentity.sortRemembered(all), unreadable)
     }
 
     fun touch(fingerprint: Bytes, nowMs: Long) {
-        val all = load()
-        store(all.map { if (it.fingerprint == fingerprint) it.copy(lastUsedMs = nowMs) else it })
+        val (current, unreadable) = loadAll()
+        store(current.map { if (it.fingerprint == fingerprint) it.copy(lastUsedMs = nowMs) else it }, unreadable)
     }
 
     fun remove(fingerprint: Bytes) {
-        store(load().filterNot { it.fingerprint == fingerprint })
+        val (current, unreadable) = loadAll()
+        val fpHex = fingerprint.toHex()
+        val remainingRaw = unreadable.filterNot { it.optString("fp").equals(fpHex, ignoreCase = true) }
+        store(current.filterNot { it.fingerprint == fingerprint }, remainingRaw)
         savePreset(fingerprint, null)
     }
 
@@ -120,23 +139,37 @@ class BoardStore(context: Context) {
         JSONObject()
     }
 
-    private fun load(): List<RememberedBoard> {
-        val raw = prefs.getString(KEY, null) ?: return emptyList()
+    private fun load(): List<RememberedBoard> = loadAll().first
+
+    /**
+     * Geçici Keystore çözme hatasında ham JSON girdisini [Pair.second] içinde korur; bir sonraki `save` / `updateHosts`
+     * çağrısında kayıt kalıcı olarak silinmez.
+     */
+    private fun loadAll(): Pair<List<RememberedBoard>, List<JSONObject>> {
+        val raw = prefs.getString(KEY, null) ?: return emptyList<RememberedBoard>() to emptyList()
         var needsMigration = false
-        val parsed = try {
+        val parsed = ArrayList<RememberedBoard>()
+        val unreadable = ArrayList<JSONObject>()
+        try {
             val arr = JSONArray(raw)
-            (0 until arr.length()).mapNotNull { i ->
+            for (i in 0 until arr.length()) {
                 val obj = arr.getJSONObject(i)
                 if (obj.has("pair_key") && !obj.has("pair_key_enc")) needsMigration = true
-                parse(obj)
+                val board = parse(obj)
+                if (board != null) {
+                    parsed += board
+                } else if (obj.optString("pair_key_enc", "").isNotEmpty() && obj.optString("fp", "").length == 64) {
+                    // Geçici Keystore erişim/çözme hatası olabilir: ham kaydı koru.
+                    unreadable += obj
+                }
             }
         } catch (_: JSONException) {
-            emptyList()
+            return emptyList<RememberedBoard>() to emptyList()
         }
         if (needsMigration && parsed.isNotEmpty()) {
-            store(parsed)
+            store(parsed, unreadable)
         }
-        return parsed
+        return parsed to unreadable
     }
 
     private fun parse(o: JSONObject): RememberedBoard? = try {
@@ -162,15 +195,18 @@ class BoardStore(context: Context) {
         null
     }
 
-    private fun store(boards: List<RememberedBoard>) {
+    private fun store(boards: List<RememberedBoard>, preserveUnreadable: List<JSONObject> = emptyList()) {
         val arr = JSONArray()
+        val writtenFps = HashSet<String>(boards.size)
         for (b in boards) {
+            val fpHex = b.fingerprint.toHex()
+            writtenFps += fpHex
             val encryptedKey = BoardKeyVault.encrypt(b.pairKey)
             val obj = JSONObject()
                 .put("name", b.name)
                 .put("hosts", JSONArray(b.hosts))
                 .put("port", b.port)
-                .put("fp", b.fingerprint.toHex())
+                .put("fp", fpHex)
                 .put("key_id", b.keyId.toHex())
                 .put("last_used", b.lastUsedMs)
                 .put("favorite", b.favorite)
@@ -183,12 +219,31 @@ class BoardStore(context: Context) {
             b.kind?.let { obj.put("kind", it) }
             arr.put(obj)
         }
+        for (rawObj in preserveUnreadable) {
+            val fpHex = rawObj.optString("fp", "")
+            if (fpHex.isNotEmpty() && fpHex !in writtenFps) arr.put(rawObj)
+        }
         prefs.edit { putString(KEY, arr.toString()) }
     }
 
-    private companion object {
+    internal companion object {
         const val KEY = "boards"
         const val KEY_PRESETS = "presets"
         const val MAX_BOARDS = 20
+        const val MAX_HOSTS = 6
+
+        /** En son çalışan host'u başa alarak taze ve geçmiş IP'leri (okul Wi-Fi + Ethernet + hotspot) birleştirir. */
+        fun mergeHosts(
+            primaryHost: String?,
+            freshHosts: List<String>,
+            existingHosts: List<String>,
+            limit: Int = MAX_HOSTS,
+        ): List<String> {
+            val out = LinkedHashSet<String>()
+            primaryHost?.trim()?.takeIf { it.isNotEmpty() }?.let { out += it }
+            for (h in freshHosts) h.trim().takeIf { it.isNotEmpty() }?.let { out += it }
+            for (h in existingHosts) h.trim().takeIf { it.isNotEmpty() }?.let { out += it }
+            return out.take(limit)
+        }
     }
 }

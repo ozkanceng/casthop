@@ -22,16 +22,61 @@ std::string asciiLowerTrimmed(std::string_view s) {
     return out;
 }
 
+bool isValidIpv4Host(std::string_view s) {
+    int parts = 0;
+    std::size_t i = 0;
+    while (i < s.size()) {
+        if (parts >= 4)
+            return false;
+        const std::size_t start = i;
+        int val = 0;
+        while (i < s.size() && s[i] != '.') {
+            if (s[i] < '0' || s[i] > '9')
+                return false;
+            val = val * 10 + (s[i] - '0');
+            if (val > 255)
+                return false;
+            ++i;
+        }
+        const std::size_t len = i - start;
+        if (len == 0 || (len > 1 && s[start] == '0'))
+            return false;
+        ++parts;
+        if (i < s.size()) {
+            if (s[i] != '.' || i + 1 == s.size())
+                return false;
+            ++i;
+        }
+    }
+    return parts == 4;
+}
+
 } // namespace
 
-std::vector<std::string> mdnsTxt(const std::string& name, const protocol::Key32& fingerprint) {
+std::vector<std::string> mdnsTxt(const std::string& name, const protocol::Key32& fingerprint,
+                                 const std::vector<std::string>& hosts) {
     const protocol::ByteView prefix(fingerprint.data(), 16);
 #ifdef _WIN32
     constexpr const char* kKind = "kind=pc";
 #else
     constexpr const char* kKind = "kind=board";
 #endif
-    return {"v=1", "name=" + name, "fp=" + protocol::base64UrlNoPad(prefix), kKind};
+    std::vector<std::string> out{"v=1", "name=" + name, "fp=" + protocol::base64UrlNoPad(prefix), kKind};
+    std::string ipList;
+    int added = 0;
+    for (const std::string& h : hosts) {
+        if (added >= 4)
+            break;
+        if (!isValidIpv4Host(h))
+            continue;
+        if (!ipList.empty())
+            ipList.push_back(',');
+        ipList += h;
+        ++added;
+    }
+    if (!ipList.empty())
+        out.push_back("ip=" + ipList);
+    return out;
 }
 
 std::string mdnsInstanceName(const std::string& name) {

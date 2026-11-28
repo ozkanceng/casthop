@@ -125,7 +125,13 @@ class HomeActions(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(state: MirrorState, boards: List<RememberedBoard>, versionName: String, actions: HomeActions) {
+fun HomeScreen(
+    state: MirrorState,
+    boards: List<RememberedBoard>,
+    versionName: String,
+    actions: HomeActions,
+    onlineFingerprints: Set<Bytes> = emptySet(),
+) {
     val idle = state is MirrorState.Idle || state is MirrorState.Ended
     var renaming by remember { mutableStateOf<RememberedBoard?>(null) }
 
@@ -171,6 +177,7 @@ fun HomeScreen(state: MirrorState, boards: List<RememberedBoard>, versionName: S
                 ConnectView(
                     state = state,
                     boards = boards,
+                    onlineFingerprints = onlineFingerprints,
                     versionName = versionName,
                     actions = actions,
                     onRequestRename = { renaming = it },
@@ -188,6 +195,7 @@ fun HomeScreen(state: MirrorState, boards: List<RememberedBoard>, versionName: S
 private fun ConnectView(
     state: MirrorState,
     boards: List<RememberedBoard>,
+    onlineFingerprints: Set<Bytes>,
     versionName: String,
     actions: HomeActions,
     onRequestRename: (RememberedBoard) -> Unit,
@@ -199,6 +207,7 @@ private fun ConnectView(
         if (ended != null) {
             ConnectionErrorCard(
                 error = ended.error,
+                detail = ended.detail,
                 onRetry = actions.onRetry,
                 onGuide = actions.onGuide,
                 onManualIp = actions.onManualIp,
@@ -210,7 +219,7 @@ private fun ConnectView(
                 }
             }
         }
-        ConnectChoices(boards, actions, onRequestRename)
+        ConnectChoices(boards, onlineFingerprints, actions, onRequestRename)
     }
     val quickSteps: @Composable () -> Unit = {
         if (boards.isEmpty() && ended?.error == null) {
@@ -306,17 +315,22 @@ private fun Hero() {
 @Composable
 private fun ConnectChoices(
     boards: List<RememberedBoard>,
+    onlineFingerprints: Set<Bytes>,
     actions: HomeActions,
     onRequestRename: (RememberedBoard) -> Unit,
 ) {
+    val hasOnlineInfo = onlineFingerprints.isNotEmpty()
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (boards.isEmpty()) {
             BigButton(R.string.action_connect, Icons.Rounded.QrCodeScanner, actions.onScan, Modifier.fillMaxWidth())
         } else {
             Text(stringResource(R.string.boards_title), style = MaterialTheme.typography.titleLarge)
             for (b in boards) {
+                val online = b.fingerprint in onlineFingerprints
                 BoardRow(
                     board = b,
+                    online = online,
+                    dimmed = hasOnlineInfo && !online,
                     onConnect = { actions.onBoard(b) },
                     onToggleFavorite = { actions.onToggleFavorite(b) },
                     onRename = { onRequestRename(b) },
@@ -380,6 +394,8 @@ private fun CameraModeRow() {
 @Composable
 private fun BoardRow(
     board: RememberedBoard,
+    online: Boolean,
+    dimmed: Boolean,
     onConnect: () -> Unit,
     onToggleFavorite: () -> Unit,
     onRename: () -> Unit,
@@ -396,9 +412,13 @@ private fun BoardRow(
     val forgetDesc = stringResource(R.string.board_forget_desc, board.displayName)
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().alpha(if (dimmed) 0.78f else 1f),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
-        border = CardDefaults.outlinedCardBorder(),
+        border = if (online) {
+            BorderStroke(1.5.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.65f))
+        } else {
+            CardDefaults.outlinedCardBorder()
+        },
     ) {
         Column(Modifier.fillMaxWidth()) {
             Row(
@@ -429,6 +449,31 @@ private fun BoardRow(
                                 tint = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.size(18.dp),
                             )
+                        }
+                        if (online) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                ) {
+                                    Box(
+                                        Modifier
+                                            .size(7.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.tertiary),
+                                    )
+                                    Text(
+                                        stringResource(R.string.board_online_badge),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
                         }
                     }
                     Text(

@@ -59,6 +59,11 @@ final class AppModel: ObservableObject {
     /// By the teacher, as opposed to an interruption that ends by itself.
     private var cameraPaused = false
     private var lastPair: (target: ConnectTarget, name: String, keepRoute: Bool)?
+    private var lastRememberedFingerprint: Data?
+    private var prewarmTask: Task<Void, Never>?
+    private var passiveBrowser: ReceiverBrowser?
+    /// Remembered receiver fingerprints currently visible on the active local network via passive Bonjour.
+    @Published private(set) var onlineFingerprints: Set<Data> = []
 
     var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "" }
     var storeAvailable: Bool { store != nil }
@@ -142,34 +147,106 @@ final class AppModel: ObservableObject {
         receivers.first { BoardIdentity.matchesPrefix(fingerprint: $0.fingerprint, prefix: found.fingerprintPrefix) }
     }
 
+    /// Passive Bonjour presence on the Home screen: keeps remembered board IPs fresh and marks boards online.
+    func startPassivePresence() {
+        guard passiveBrowser == nil, !receivers.isEmpty else { return }
+        let browser = ReceiverBrowser()
+        browser.onChange = { [weak self] found in
+            Task { @MainActor in self?.applyPassiveDiscovery(found) }
+        }
+        browser.start()
+        passiveBrowser = browser
+    }
+
+    func stopPassivePresence() {
+        passiveBrowser?.stop()
+        passiveBrowser = nil
+    }
+
+    private func applyPassiveDiscovery(_ found: [DiscoveredReceiver]) {
+        guard let store else { return }
+        var online = Set<Data>()
+        var hostsUpdated = false
+        for receiver in receivers {
+            if let hit = found.first(where: { BoardIdentity.matchesPrefix(fingerprint: receiver.fingerprint, prefix: $0.fingerprintPrefix) }) {
+                online.insert(receiver.fingerprint)
+                if !hit.hosts.isEmpty {
+                    store.updateHosts(hit.hosts, port: receiver.port, fingerprint: receiver.fingerprint)
+                    hostsUpdated = true
+                }
+            }
+        }
+        if onlineFingerprints != online { onlineFingerprints = online }
+        if hostsUpdated { reload() }
+    }
+
+    /// Online boards on the current Wi-Fi float to the top, preserving favorite and recent order inside each group.
+    var sortedReceivers: [RememberedReceiver] {
+        guard !onlineFingerprints.isEmpty else { return receivers }
+        let online = receivers.filter { onlineFingerprints.contains($0.fingerprint) }
+        let offline = receivers.filter { !onlineFingerprints.contains($0.fingerprint) }
+        return online + offline
+    }
+
     // MARK: Connecting
 
     func connect(qr: QrPayload) {
         path = []
+        lastRememberedFingerprint = nil
         pair(.qr(qr), name: qr.name.isEmpty ? (qr.hosts.first ?? "") : qr.name, keepRoute: false)
     }
 
     func connect(_ found: DiscoveredReceiver, pin: String) {
         stopBrowsing()
+        lastRememberedFingerprint = nil
         let name = rememberedMatch(for: found)?.displayName ?? found.name
         pair(.discovered(found, pin: pin), name: name, keepRoute: true)
     }
 
     func connect(host: String, port: UInt16, pin: String) {
+        lastRememberedFingerprint = nil
         pair(.manual(host: host, port: port, pin: pin), name: host, keepRoute: true)
     }
 
     func retryLast() {
+        if let fp = lastRememberedFingerprint,
+           let fresh = store?.receivers().first(where: { $0.fingerprint == fp }) {
+            connect(fresh)
+            return
+        }
         guard let last = lastPair else { return }
+        // Avoid resending a spent single-use QR token if the pairing was already persisted.
+        if case .qr(let qr) = last.target,
+           let saved = store?.receivers().first(where: { $0.fingerprint == qr.certFingerprint }) {
+            connect(saved)
+            return
+        }
         pair(last.target, name: last.name, keepRoute: last.keepRoute)
     }
 
     func connect(_ receiver: RememberedReceiver) {
         guard let store else { return }
+        lastPair = nil
+        lastRememberedFingerprint = receiver.fingerprint
         store.selectedFingerprint = receiver.fingerprint
         store.touch(fingerprint: receiver.fingerprint, nowMs: Self.nowMs)
         reload()
-        phase = .ready(receiver)
+        let fresh = receivers.first { $0.fingerprint == receiver.fingerprint } ?? receiver
+        phase = .ready(fresh)
+        // Non-blocking Bonjour IP pre-warm while the teacher reads the ReadyCard so Broadcast Extension gets a fresh IP.
+        prewarmTask?.cancel()
+        prewarmTask = Task { [weak self] in
+            guard let hit = await ReceiverBrowser.find(fingerprint: fresh.fingerprint, timeoutMs: 2500),
+                  !Task.isCancelled, !hit.hosts.isEmpty else { return }
+            store.updateHosts(hit.hosts, port: fresh.port, fingerprint: fresh.fingerprint)
+            await MainActor.run {
+                self?.reload()
+                if case .ready(let cur) = self?.phase, cur.fingerprint == fresh.fingerprint,
+                   let updated = self?.receivers.first(where: { $0.fingerprint == fresh.fingerprint }) {
+                    self?.phase = .ready(updated)
+                }
+            }
+        }
     }
 
     private static var nowMs: Int64 { Int64(Date().timeIntervalSince1970 * 1000) }
@@ -217,6 +294,7 @@ final class AppModel: ObservableObject {
 
     func dismiss() {
         pairing?.cancel()
+        prewarmTask?.cancel()
         phase = .idle
     }
 

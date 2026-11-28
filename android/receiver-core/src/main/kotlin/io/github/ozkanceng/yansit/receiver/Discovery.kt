@@ -35,13 +35,27 @@ public object Discovery {
         return if (cut.isEmpty()) DEFAULT_NAME else cut + INSTANCE_SUFFIX
     }
 
-    /** The TXT record: `v=1`, `name=<name>`, `fp=<first 16 fingerprint bytes, base64url>`. */
-    public fun txt(name: String, fingerprint: Bytes): Map<String, String> {
+    /** The TXT record: `v=1`, `name=<name>`, `fp=<first 16 fingerprint bytes, base64url>`, optional `ip=<ipv4,...>`. */
+    public fun txt(name: String, fingerprint: Bytes, hosts: List<String> = emptyList()): Map<String, String> {
         val prefix = fingerprint.toByteArray().copyOf(FINGERPRINT_PREFIX_SIZE)
-        return mapOf(
+        val out = linkedMapOf(
             "v" to "1",
             "name" to truncateUtf8(name, MAX_TXT_NAME_BYTES),
             "fp" to Base64.getUrlEncoder().withoutPadding().encodeToString(prefix),
         )
+        val validHosts = hosts.filter(::isIpv4).distinct().take(4)
+        if (validHosts.isNotEmpty()) {
+            out["ip"] = validHosts.joinToString(",")
+        }
+        return out
+    }
+
+    private fun isIpv4(text: String): Boolean {
+        val parts = text.split('.')
+        if (parts.size != 4) return false
+        return parts.all { p ->
+            p.isNotEmpty() && p.length <= 3 && p.all(Char::isDigit) && (p.length == 1 || p[0] != '0') &&
+                (p.toIntOrNull() ?: 256) <= 255
+        }
     }
 }

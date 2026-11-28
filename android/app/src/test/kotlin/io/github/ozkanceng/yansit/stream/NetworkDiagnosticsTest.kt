@@ -58,4 +58,14 @@ class NetworkDiagnosticsTest {
             ),
         )
     }
+
+    @Test
+    fun prioritizesSameSubnetHostsFirst() {
+        val prefixes = listOf(ip("192.168.43.1") to 24)
+        val ordered = NetworkDiagnostics.prioritizeHosts(
+            listOf("10.0.1.24", "192.168.1.10", "192.168.43.88", "10.0.1.24"),
+            prefixes,
+        )
+        assertEquals(listOf("192.168.43.88", "10.0.1.24", "192.168.1.10"), ordered)
+    }
 }

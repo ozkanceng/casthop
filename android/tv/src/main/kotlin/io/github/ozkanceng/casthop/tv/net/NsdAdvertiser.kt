@@ -18,13 +18,13 @@ internal class NsdAdvertiser(private val context: Context) {
     private val nsd = context.getSystemService(NsdManager::class.java)
     private var listener: NsdManager.RegistrationListener? = null
 
-    fun publish(name: String, port: Int, fingerprint: Bytes) {
+    fun publish(name: String, port: Int, fingerprint: Bytes, hosts: List<String> = emptyList()) {
         stop()
         val info = NsdServiceInfo().apply {
             serviceName = Discovery.instanceName(name)
             serviceType = DiscoveryTxt.SERVICE_TYPE
             setPort(port)
-            for ((key, value) in Discovery.txt(name, fingerprint)) setAttribute(key, value)
+            for ((key, value) in Discovery.txt(name, fingerprint, hosts)) setAttribute(key, value)
             val tv = context.getSystemService(UiModeManager::class.java).currentModeType ==
                 Configuration.UI_MODE_TYPE_TELEVISION
             setAttribute("kind", if (tv) "tv" else "tablet")

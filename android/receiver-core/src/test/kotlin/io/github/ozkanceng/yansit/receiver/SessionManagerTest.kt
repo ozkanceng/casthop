@@ -202,6 +202,33 @@ class SessionManagerTest {
     }
 
     @Test
+    fun sameDeviceTakesOverOwnSessionViaQrAndPinWithoutApproval() {
+        open(1, id(0xA))
+        val byQr = sm.onHello(2, hello(AuthMethod.QR_TOKEN, pairing.qrToken.toByteArray(), id(0xA), requestPairing = true), nonce, certFp, t0 + 1000)
+        assertEquals(ByeReason.TAKEOVER, byQr.sentTo<ControlMessage.Bye>(1)?.reason)
+        assertNotNull(byQr.sentTo<ControlMessage.Welcome>(2))
+        assertNull(sm.pending)
+        assertTrue(sm.isControl(2))
+
+        sm.onConnectionClosed(2, t0 + 2000)
+        val byPin = sm.onHello(3, pinHello(id(0xA)), nonce, certFp, t0 + 3000)
+        assertNotNull(byPin.sentTo<ControlMessage.Welcome>(3))
+        assertNull(sm.pending)
+        assertTrue(sm.isControl(3))
+    }
+
+    @Test
+    fun sameDeviceReplacesItsOwnStalePendingRequest() {
+        open(1, id(0xA))
+        val first = sm.onHello(2, pinHello(id(0xB)), nonce, certFp, t0)
+        org.junit.jupiter.api.Assertions.assertNotNull(first.sentTo<ControlMessage.PendingApproval>(2))
+        val retry = sm.onHello(3, hello(AuthMethod.QR_TOKEN, pairing.qrToken.toByteArray(), id(0xB)), nonce, certFp, t0 + 1000)
+        assertTrue(retry.closes(2))
+        org.junit.jupiter.api.Assertions.assertNotNull(retry.sentTo<ControlMessage.PendingApproval>(3))
+        assertEquals(3L, sm.pending?.conn)
+    }
+
+    @Test
     fun attachValidatesProofAndKind() {
         val w = open(1)
         val bad = ControlMessage.Attach(

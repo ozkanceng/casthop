@@ -11,8 +11,9 @@ namespace yansit::net {
 
 inline constexpr const char* kMdnsServiceType = "_yansit._tcp";
 
-/// PROTOCOL.md §8: `v=1`, `name=<ad>`, `fp=<parmak izinin ilk 16 baytı, base64url>`.
-std::vector<std::string> mdnsTxt(const std::string& name, const protocol::Key32& fingerprint);
+/// PROTOCOL.md §8: `v=1`, `name=<ad>`, `fp=<parmak izinin ilk 16 baytı, base64url>`, isteğe bağlı `ip=<ipv4,...>`.
+std::vector<std::string> mdnsTxt(const std::string& name, const protocol::Key32& fingerprint,
+                                 const std::vector<std::string>& hosts = {});
 
 /// DNS-SD örnek adı en fazla 63 bayt; UTF-8 karakter ortasından kesilmez.
 std::string mdnsInstanceName(const std::string& name);
@@ -39,8 +40,9 @@ public:
     MdnsPublisher(const MdnsPublisher&) = delete;
     MdnsPublisher& operator=(const MdnsPublisher&) = delete;
 
-    /// Yayını başlatır veya içeriğini günceller (ad/port/parmak izi değişince).
-    void publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint);
+    /// Yayını başlatır veya içeriğini günceller (ad/port/parmak izi/IP listesi değişince).
+    void publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint,
+                 const std::vector<std::string>& hosts = {});
     void stop();
 
 private:

@@ -81,6 +81,23 @@ public enum BoardIdentity {
     public static func sanitizeOtp(_ raw: String, length: Int = 6) -> String {
         String(raw.filter(\.isNumber).prefix(length))
     }
+
+    /// Merges the winning host, fresh hosts, and previously known hosts (e.g. school Wi-Fi + Ethernet + hotspot),
+    /// deduplicating in priority order up to `limit`.
+    public static func mergeHosts(primary: String?, fresh: [String], existing: [String], limit: Int = 6) -> [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        func append(_ raw: String?) {
+            guard let raw else { return }
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, seen.insert(trimmed).inserted else { return }
+            out.append(trimmed)
+        }
+        append(primary)
+        fresh.forEach { append($0) }
+        existing.forEach { append($0) }
+        return Array(out.prefix(limit))
+    }
 }
 
 /// A receiver paired once. Later connections need no QR (PROTOCOL.md §7.1, auth_method=3).
@@ -362,13 +379,15 @@ public final class SharedStore: @unchecked Sendable {
         return out
     }
 
-    /// Replaces an older record of the same receiver, preserving nickname, favorite and kind.
-    public func save(_ receiver: RememberedReceiver) {
+    /// Replaces an older record of the same receiver, preserving nickname, favorite, kind, and prior network IPs.
+    public func save(_ receiver: RememberedReceiver, preferredHost: String? = nil) {
         lock.lock()
         defer { lock.unlock() }
         let current = read([RememberedReceiver].self, "receivers.json") ?? []
         let existing = current.first { $0.fingerprint == receiver.fingerprint }
         var merged = receiver
+        let mergedHosts = BoardIdentity.mergeHosts(primary: preferredHost, fresh: receiver.hosts, existing: existing?.hosts ?? [])
+        if !mergedHosts.isEmpty { merged.hosts = mergedHosts }
         merged.nickname = receiver.nickname ?? existing?.nickname
         merged.favorite = receiver.favorite || (existing?.favorite ?? false)
         merged.kind = receiver.kind ?? existing?.kind
@@ -401,19 +420,22 @@ public final class SharedStore: @unchecked Sendable {
         write(BoardIdentity.sortReceivers(updated), "receivers.json")
     }
 
-    public func updateHosts(_ hosts: [String], port: UInt16, fingerprint: Data) {
-        guard !hosts.isEmpty else { return }
+    public func updateHosts(_ hosts: [String], port: UInt16, fingerprint: Data, preferredHost: String? = nil) {
+        guard !hosts.isEmpty || (preferredHost?.isEmpty == false) else { return }
         lock.lock()
         defer { lock.unlock() }
+        var changed = false
         let updated = (read([RememberedReceiver].self, "receivers.json") ?? []).map { r -> RememberedReceiver in
+            guard r.fingerprint == fingerprint else { return r }
+            let merged = BoardIdentity.mergeHosts(primary: preferredHost, fresh: hosts, existing: r.hosts)
+            if merged == r.hosts && port == r.port { return r }
+            changed = true
             var copy = r
-            if copy.fingerprint == fingerprint {
-                copy.hosts = hosts
-                copy.port = port
-            }
+            if !merged.isEmpty { copy.hosts = merged }
+            copy.port = port
             return copy
         }
-        write(BoardIdentity.sortReceivers(updated), "receivers.json")
+        if changed { write(BoardIdentity.sortReceivers(updated), "receivers.json") }
     }
 
     public func touch(fingerprint: Data, nowMs: Int64) {

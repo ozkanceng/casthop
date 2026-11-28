@@ -109,6 +109,11 @@ class MirrorSession(
     data class Config(
         val pingIntervalMs: Long = 1000,
         val livenessTimeoutMs: Long = 2500,
+        /**
+         * Video başlamadan önce (Android ekran paylaşım onay penceresi açıkken) daha toleranslı canlılık eşiği:
+         * OEM izin diyalogları arka plan zamanlayıcısını kısa süre bekletebilir.
+         */
+        val preVideoLivenessTimeoutMs: Long = 8000,
         /** Tahtanın RESUME penceresi 10 sn; biraz önce vazgeçilir. */
         val resumeWindowMs: Long = 9500,
         val maxEncoderRestarts: Int = 3,
@@ -194,8 +199,7 @@ class MirrorSession(
         bitrate = BitrateController(BitrateController.Config(plan.startBps, plan.minBps, plan.maxBps))
         ramp = FrameRateRamp(plan.fps).takeIf { it.active }
         val initBuf = sendBufferFor(plan.startBps)
-        video = SenderClient.attach(session, StreamKind.VIDEO, sendBufferBytes = initBuf)
-            .also { it.setSendBufferBytes(initBuf) }
+        video = attachVideoWithRetry(initBuf).also { it.setSendBufferBytes(initBuf) }
         sendStreamConfig(plan)
         sender = Thread(::sendLoop, "mirror-video").apply {
             isDaemon = true
@@ -207,6 +211,46 @@ class MirrorSession(
         scheduler.scheduleWithFixedDelay(::bitrateTick, BITRATE_TICK_MS, BITRATE_TICK_MS, TimeUnit.MILLISECONDS)
         scheduler.scheduleWithFixedDelay(::statsTick, STATS_INTERVAL_MS, STATS_INTERVAL_MS, TimeUnit.MILLISECONDS)
         startSource(plan)
+    }
+
+    /**
+     * Ekran izni sırasında kısa bir kopma olduysa RESUME'un bitmesini bekler; ardından geçici ağ hatasında
+     * VIDEO `ATTACH` bağlantısını en fazla 2 kez kısa beklemeyle yeniden dener.
+     */
+    @Throws(IOException::class)
+    private fun attachVideoWithRetry(sendBufferBytes: Int): MediaChannel {
+        val waitDeadlineUs = MonotonicClock.nowUs() + ATTACH_WAIT_RECONNECT_MS * 1000L
+        while (!ended.get() && linkState == LinkState.RECONNECTING && MonotonicClock.nowUs() < waitDeadlineUs) {
+            try {
+                Thread.sleep(50)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw IOException("video bağlantısı iptal edildi")
+            }
+        }
+        if (ended.get()) throw IOException("oturum kapandı")
+        var lastError: IOException? = null
+        val delays = longArrayOf(0L, 250L, 500L)
+        for (delayMs in delays) {
+            if (delayMs > 0L) {
+                try {
+                    Thread.sleep(delayMs)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    throw lastError ?: IOException("video bağlantısı iptal edildi")
+                }
+            }
+            if (ended.get()) throw lastError ?: IOException("oturum kapandı")
+            try {
+                return SenderClient.attach(session, StreamKind.VIDEO, sendBufferBytes = sendBufferBytes)
+            } catch (e: io.github.ozkanceng.yansit.protocol.client.AttachRejectedException) {
+                // Oturum bilinmiyor veya kimlik hatası: tekrar deneme anlamsız.
+                throw e
+            } catch (e: IOException) {
+                lastError = e
+            }
+        }
+        throw lastError ?: IOException("video bağlantısı kurulamadı")
     }
 
     /**
@@ -435,10 +479,11 @@ class MirrorSession(
     }
 
     private fun checkLiveness() {
+        val timeoutMs = if (source == null) config.preVideoLivenessTimeoutMs else config.livenessTimeoutMs
         if (linkState == LinkState.CONNECTED &&
-            MonotonicClock.nowUs() - lastRxUs > config.livenessTimeoutMs * 1000
+            MonotonicClock.nowUs() - lastRxUs > timeoutMs * 1000
         ) {
-            linkLost(epoch.get(), IOException("tahtadan ${config.livenessTimeoutMs} ms yanıt yok"))
+            linkLost(epoch.get(), IOException("tahtadan $timeoutMs ms yanıt yok"))
         }
     }
 
@@ -798,6 +843,7 @@ class MirrorSession(
         const val STATS_INTERVAL_MS = 1000L
         const val KEYFRAME_COALESCE_US = 200_000L
         const val MAX_DRAIN_US = 250_000L
+        const val ATTACH_WAIT_RECONNECT_MS = 3000L
         const val NETWORK_PROBE_TIMEOUT_MS = 750L
     }
 }

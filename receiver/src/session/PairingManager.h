@@ -33,8 +33,10 @@ public:
         std::chrono::milliseconds tokenLifetime{std::chrono::minutes(10)};
         int maxPinFailures = 5;
         std::chrono::milliseconds pinLockout{std::chrono::seconds(30)};
-        int maxHellosPerWindow = 10;
+        int maxHellosPerWindow = 20;
         std::chrono::milliseconds helloWindow{std::chrono::seconds(10)};
+        /// Cihaz başına saklanan en fazla eşleştirme anahtarı (yeniden eşleştirme sırasında kopan WELCOME koruması).
+        int maxKeysPerDevice = 2;
     };
 
     enum class Outcome { Accepted, AuthFailed, RateLimited, LockedOut, UnsupportedMethod };

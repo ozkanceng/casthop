@@ -29,6 +29,7 @@ import io.github.ozkanceng.yansit.data.AppSettings
 import io.github.ozkanceng.yansit.data.BoardIdentity
 import io.github.ozkanceng.yansit.data.BoardStore
 import io.github.ozkanceng.yansit.data.RememberedBoard
+import io.github.ozkanceng.yansit.protocol.Bytes
 import io.github.ozkanceng.yansit.sender.StreamPlanner
 import io.github.ozkanceng.yansit.stream.AndroidEncoderCaps
 import io.github.ozkanceng.yansit.stream.BoardDiscovery
@@ -80,10 +81,61 @@ private fun YansitApp() {
     var pendingCode by remember { mutableStateOf(false) }
     var pendingManualIp by remember { mutableStateOf(false) }
     val discovery = remember { BoardDiscovery(context) }
+    val passiveDiscovery = remember { BoardDiscovery(context) }
     var discovered by remember { mutableStateOf<List<DiscoveredBoard>>(emptyList()) }
+    var onlineFingerprints by remember { mutableStateOf<Set<Bytes>>(emptySet()) }
     var discoveryFailed by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<DiscoveredBoard?>(null) }
-    DisposableEffect(Unit) { onDispose { discovery.stop() } }
+    DisposableEffect(Unit) {
+        onDispose {
+            discovery.stop()
+            passiveDiscovery.stop()
+        }
+    }
+
+    // Ana ekran boştayken hafif pasif mDNS taraması: aynı ağdaki kayıtlı tahtayı "Bu ağda" olarak işaretler
+    // ve değişen DHCP IP'sini kullanıcı tıklamadan önce sessizce günceller.
+    val passiveActive = screen == Screen.HOME &&
+        (state is MirrorState.Idle || state is MirrorState.Ended) &&
+        boards.isNotEmpty() &&
+        AppPermissions.networkGranted(context)
+    DisposableEffect(passiveActive) {
+        if (!passiveActive) {
+            passiveDiscovery.stop()
+            onDispose { }
+        } else {
+            passiveDiscovery.browse(
+                onUpdate = { found ->
+                    val currentBoards = boardStore.list()
+                    val online = HashSet<Bytes>()
+                    var hostsChanged = false
+                    for (b in currentBoards) {
+                        val hit = found.firstOrNull { BoardIdentity.matchesPrefix(b.fingerprint, it.fingerprintPrefix) }
+                        if (hit != null) {
+                            online += b.fingerprint
+                            val merged = BoardStore.mergeHosts(null, hit.hosts, b.hosts)
+                            if (merged != b.hosts || hit.port != b.port) {
+                                boardStore.updateHosts(b.fingerprint, hit.hosts, hit.port)
+                                hostsChanged = true
+                            }
+                        }
+                    }
+                    onlineFingerprints = online
+                    if (hostsChanged) boardsVersion++
+                },
+            )
+            onDispose { passiveDiscovery.stop() }
+        }
+    }
+
+    val orderedBoards = remember(boards, onlineFingerprints) {
+        if (onlineFingerprints.isEmpty()) {
+            boards
+        } else {
+            val (online, offline) = boards.partition { it.fingerprint in onlineFingerprints }
+            online + offline
+        }
+    }
 
     fun refreshDiscovery() {
         discovered = emptyList()
@@ -167,6 +219,9 @@ private fun YansitApp() {
     // Tahta kabul edince sistemin ekran paylaşımı onayı istenir (her oturumda zorunlu).
     // Yansıtma başlayınca kod/IP ekranlarından otomatik olarak canlı kontrol ekranına geçilir.
     LaunchedEffect(state) {
+        if (state !is MirrorState.AwaitingConsent && consentInFlight) {
+            consentInFlight = false
+        }
         if (state is MirrorState.AwaitingConsent && !consentInFlight) {
             consentInFlight = true
             val mpm = context.getSystemService(MediaProjectionManager::class.java)
@@ -229,7 +284,8 @@ private fun YansitApp() {
     when (screen) {
         Screen.HOME -> HomeScreen(
             state = state,
-            boards = boards,
+            boards = orderedBoards,
+            onlineFingerprints = onlineFingerprints,
             versionName = BuildConfig.VERSION_NAME,
             actions = HomeActions(
                 onScan = ::startScan,

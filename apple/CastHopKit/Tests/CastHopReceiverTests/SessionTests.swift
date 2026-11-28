@@ -89,7 +89,7 @@ final class PairingTests: XCTestCase {
     func testGlobalRateLimit() {
         let pm = PairingManager(nowMs: 0)
         let bad = hello(AuthMethod.qrToken, Data(count: 16), device: device)
-        for i in 0..<10 { XCTAssertEqual(verify(pm, bad, at: Int64(i) * 100).outcome, .authFailed) }
+        for i in 0..<20 { XCTAssertEqual(verify(pm, bad, at: Int64(i) * 50).outcome, .authFailed) }
         var v = verify(pm, hello(AuthMethod.qrToken, pm.qrToken, device: device), at: 1000)
         XCTAssertEqual(v.outcome, .rateLimited)
         XCTAssertEqual(v.retryAfterMs, 9000)
@@ -97,7 +97,7 @@ final class PairingTests: XCTestCase {
         XCTAssertEqual(v.outcome, .accepted)
     }
 
-    func testPairedSenderReconnectsWithKey() {
+    func testPairedSenderReconnectsWithKeyAndDualKeyRollover() {
         let pm = PairingManager(nowMs: 0)
         var trustedChanges = 0
         pm.onTrustedChanged = { trustedChanges += 1 }
@@ -115,11 +115,21 @@ final class PairingTests: XCTestCase {
         let stolen = hello(AuthMethod.paired, t.pairKey, device: id(1), keyId: t.keyId)
         XCTAssertEqual(verify(pm, stolen, at: 2000).outcome, .authFailed)
 
-        // A new pairing replaces the old one; a removed key is refused.
+        // Dual-key rollover keeps the previous key valid during re-pairing.
         let t2 = pm.createPairing(first)
-        XCTAssertEqual(pm.trustedSenders.count, 1)
-        XCTAssertEqual(verify(pm, again, at: 3000).outcome, .authFailed)
-        XCTAssertTrue(pm.removeTrusted(keyId: t2.keyId))
+        XCTAssertEqual(pm.trustedSenders.count, 2)
+        XCTAssertEqual(verify(pm, again, at: 3000).outcome, .accepted)
+        let again2 = hello(AuthMethod.paired, t2.pairKey, device: device, keyId: t2.keyId)
+        XCTAssertEqual(verify(pm, again2, at: 4000).outcome, .accepted)
+
+        // Third key retires the oldest key.
+        let t3 = pm.createPairing(first)
+        XCTAssertEqual(pm.trustedSenders.count, 2)
+        XCTAssertEqual(verify(pm, again, at: 5000).outcome, .authFailed)
+        XCTAssertEqual(verify(pm, again2, at: 6000).outcome, .accepted)
+
+        // Removing the device forgets all of its rollover keys.
+        XCTAssertTrue(pm.removeTrusted(keyId: t3.keyId))
         XCTAssertTrue(pm.trustedSenders.isEmpty)
     }
 
@@ -306,6 +316,31 @@ final class SessionManagerTests: XCTestCase {
         _ = try open(5, device: id(0xB))
         let a = onHello(2, hello(AuthMethod.paired, try XCTUnwrap(first.pairKey), device: id(0xA), keyId: first.keyId), at: 1000)
         guard case .pendingApproval? = a.send.first(where: { $0.0 == 2 })?.1 else { return XCTFail("no pending") }
+    }
+
+    func testSameDeviceTakesOverOwnSessionViaQrAndPinWithoutApproval() throws {
+        _ = try open(1, device: id(0xA))
+        let byQr = onHello(2, hello(AuthMethod.qrToken, pairing.qrToken, device: id(0xA), requestPairing: true), at: 1000)
+        XCTAssertEqual(bye(byQr, 1), ByeReason.takeover)
+        XCTAssertNotNil(welcome(byQr, 2))
+        XCTAssertNil(sm.pending)
+        XCTAssertTrue(sm.isControl(2))
+
+        _ = sm.onConnectionClosed(conn: 2, nowMs: 2000)
+        let byPin = onHello(3, hello(AuthMethod.pin, pinData(pairing.pin), device: id(0xA)), at: 3000)
+        XCTAssertNotNil(welcome(byPin, 3))
+        XCTAssertNil(sm.pending)
+        XCTAssertTrue(sm.isControl(3))
+    }
+
+    func testSameDeviceReplacesItsOwnStalePendingRequest() throws {
+        _ = try open(1, device: id(0xA))
+        let first = onHello(2, pinHello(device: id(0xB)), at: 0)
+        guard case .pendingApproval? = first.send.first(where: { $0.0 == 2 })?.1 else { return XCTFail("no pending") }
+        let retry = onHello(3, hello(AuthMethod.qrToken, pairing.qrToken, device: id(0xB)), at: 1000)
+        XCTAssertTrue(retry.close.contains(2))
+        guard case .pendingApproval? = retry.send.first(where: { $0.0 == 3 })?.1 else { return XCTFail("no pending") }
+        XCTAssertEqual(sm.pending?.conn, 3)
     }
 
     func testAttachValidatesProofAndKind() throws {

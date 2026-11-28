@@ -188,11 +188,9 @@ bool ReceiverService::start() {
 
     m_net = new NetInfo(this);
     connect(m_net, &NetInfo::addressesChanged, this, &ReceiverService::updateCredentials);
-    updateCredentials();
-
     // mDNS yalnız bulma kolaylığı; başarısızlığı QR akışını etkilemez.
     m_mdns = std::make_unique<net::MdnsPublisher>();
-    m_mdns->publish(m_options.name.toStdString(), m_options.port, m_identity.fingerprint);
+    updateCredentials();
 
     m_tickTimer.start();
     m_reportTimer.start();
@@ -322,6 +320,14 @@ void ReceiverService::onFirstMessage(net::Connection& c, ControlMessage&& msg) {
             c.setRole(Role::Control);
         else if (m_sessions->pending() && m_sessions->pending()->conn == id)
             c.setRole(Role::Pending);
+        else {
+            for (const auto& [targetId, reply] : a.send) {
+                if (targetId == id) {
+                    if (const auto* rej = std::get_if<Reject>(&reply))
+                        qCInfo(lcRecv) << "HELLO reddedildi: neden" << rej->reason << c.peer();
+                }
+            }
+        }
         apply(std::move(a));
     } else if (auto* resume = std::get_if<Resume>(&msg)) {
         Actions a = m_sessions->onResume(id, *resume, c.serverNonce());
@@ -571,6 +577,7 @@ void ReceiverService::updateCredentials() {
         hosts = m_net->addresses();
     while (hosts.size() > int(kMaxQrHosts))
         hosts.removeLast();
+    const bool addressesChanged = (hosts != m_addresses);
     m_addresses = hosts;
 
     QrPayload qr;
@@ -585,6 +592,10 @@ void ReceiverService::updateCredentials() {
     } catch (const std::invalid_argument& e) {
         qCWarning(lcRecv) << "QR üretilemedi:" << e.what();
         m_qrUri.clear();
+    }
+    if (m_mdns && (addressesChanged || !m_mdnsPublished)) {
+        m_mdnsPublished = true;
+        m_mdns->publish(m_options.name.toStdString(), m_options.port, m_identity.fingerprint, qr.hosts);
     }
     emit credentialsChanged();
     writePairingFile();
@@ -643,8 +654,13 @@ void ReceiverService::setReceiverName(const QString& name) {
     m_options.name = n;
     if (m_sessions)
         m_sessions->setReceiverInfo(receiverInfo());
-    if (m_mdns)
-        m_mdns->publish(n.toStdString(), m_options.port, m_identity.fingerprint);
+    if (m_mdns) {
+        std::vector<std::string> hostVec;
+        for (const QString& h : m_addresses)
+            hostVec.push_back(h.toStdString());
+        m_mdnsPublished = true;
+        m_mdns->publish(n.toStdString(), m_options.port, m_identity.fingerprint, hostVec);
+    }
     if (m_pairing)
         updateCredentials();
     emit receiverNameChanged();
@@ -662,7 +678,17 @@ QVariantList ReceiverService::trustedSenders() const {
     QVariantList out;
     if (!m_pairing)
         return out;
+    // Çift anahtarlı geçişte aynı cihaz listede tek satır olarak görünür (en güncel anahtar ile).
+    std::vector<session::TrustedSender> unique;
     for (const auto& t : m_pairing->trustedSenders()) {
+        const auto it = std::find_if(unique.begin(), unique.end(),
+                                     [&](const session::TrustedSender& u) { return u.deviceId == t.deviceId; });
+        if (it != unique.end())
+            *it = t;
+        else
+            unique.push_back(t);
+    }
+    for (const auto& t : unique) {
         QVariantMap m;
         m.insert(QStringLiteral("keyId"), hex(t.keyId));
         m.insert(QStringLiteral("name"), QString::fromStdString(t.deviceName));

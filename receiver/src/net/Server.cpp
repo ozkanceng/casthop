@@ -55,19 +55,23 @@ void Server::incomingConnection(qintptr socketDescriptor) {
         --m_handshaking;
         return true;
     };
-    const auto drop = [socket, settle] {
-        if (settle())
+    const auto drop = [socket, settle](const char* why) {
+        if (settle()) {
+            qCInfo(lcConn) << "TLS el sıkışma sonlandı (" << why << "):" << socket->peerAddress().toString()
+                           << socket->errorString();
             socket->deleteLater();
+        }
     };
 
     QTimer::singleShot(kHandshakeTimeoutMs, socket, [socket, settle] {
         if (settle()) {
+            qCInfo(lcConn) << "TLS el sıkışma zaman aşımı:" << socket->peerAddress().toString();
             socket->abort();
             socket->deleteLater();
         }
     });
-    connect(socket, &QSslSocket::disconnected, this, drop);
-    connect(socket, &QSslSocket::errorOccurred, this, drop);
+    connect(socket, &QSslSocket::disconnected, this, [drop] { drop("kapandı"); });
+    connect(socket, &QSslSocket::errorOccurred, this, [drop](QAbstractSocket::SocketError) { drop("hata"); });
     connect(socket, &QSslSocket::encrypted, this, [this, socket, settle] {
         if (!settle())
             return;

@@ -185,6 +185,7 @@ private:
     QStringList m_addresses;
     QVariantMap m_statsMap;
     bool m_hadPending = false;
+    bool m_mdnsPublished = false;
 
     // Etkin oturumun izlenen bilgileri.
     std::optional<protocol::Id16> m_sessionId;

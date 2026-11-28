@@ -101,8 +101,8 @@ class PairingManagerTest {
     fun globalRateLimit() {
         val pm = PairingManager(t0)
         val bad = hello(AuthMethod.QR_TOKEN, ByteArray(16))
-        for (i in 0 until 10) {
-            assertEquals(PairingManager.Outcome.AUTH_FAILED, pm.verifyHello(bad, nonce, certFp, t0 + i * 100L).outcome)
+        for (i in 0 until 20) {
+            assertEquals(PairingManager.Outcome.AUTH_FAILED, pm.verifyHello(bad, nonce, certFp, t0 + i * 50L).outcome)
         }
         var v = pm.verifyHello(hello(AuthMethod.QR_TOKEN, pm.qrToken.toByteArray()), nonce, certFp, t0 + 1000)
         assertEquals(PairingManager.Outcome.RATE_LIMITED, v.outcome)
@@ -112,7 +112,7 @@ class PairingManagerTest {
     }
 
     @Test
-    fun pairedSenderReconnectsWithKey() {
+    fun pairedSenderReconnectsWithKeyAndDualKeyRollover() {
         val pm = PairingManager(t0)
         var trustedChanges = 0
         pm.onTrustedChanged = { trustedChanges++ }
@@ -135,11 +135,21 @@ class PairingManagerTest {
         )
         assertEquals(PairingManager.Outcome.AUTH_FAILED, pm.verifyHello(stolen, nonce, certFp, t0 + 2000).outcome)
 
-        // Pairing again replaces the old key, and a removed key is refused.
+        // Dual-key rollover keeps the previous key valid if the new WELCOME drops in transit.
         val t2 = pm.createPairing(first)
-        assertEquals(1, pm.trustedSenders.size)
-        assertEquals(PairingManager.Outcome.AUTH_FAILED, pm.verifyHello(again, nonce, certFp, t0 + 3000).outcome)
-        assertTrue(pm.removeTrusted(t2.keyId))
+        assertEquals(2, pm.trustedSenders.size)
+        assertEquals(PairingManager.Outcome.ACCEPTED, pm.verifyHello(again, nonce, certFp, t0 + 3000).outcome)
+        val again2 = hello(AuthMethod.PAIRED, t2.pairKey.toByteArray(), t2.keyId)
+        assertEquals(PairingManager.Outcome.ACCEPTED, pm.verifyHello(again2, nonce, certFp, t0 + 4000).outcome)
+
+        // Third key retires the oldest key.
+        val t3 = pm.createPairing(first)
+        assertEquals(2, pm.trustedSenders.size)
+        assertEquals(PairingManager.Outcome.AUTH_FAILED, pm.verifyHello(again, nonce, certFp, t0 + 5000).outcome)
+        assertEquals(PairingManager.Outcome.ACCEPTED, pm.verifyHello(again2, nonce, certFp, t0 + 6000).outcome)
+
+        // Removing the device forgets all of its rollover keys.
+        assertTrue(pm.removeTrusted(t3.keyId))
         assertTrue(pm.trustedSenders.isEmpty())
     }
 

@@ -164,4 +164,20 @@ final class SharedStateTests: XCTestCase {
         XCTAssertEqual(BoardIdentity.sanitizeOtp("482 917"), "482917")
         XCTAssertEqual(BoardIdentity.sanitizeOtp("Kod: 123-4567"), "123456")
     }
+
+    func testHostMergingKeepsMultipleNetworkAddressesAndPrioritizesWinner() {
+        let s = store()
+        let b = RememberedReceiver(name: "etap", hosts: ["10.0.1.24", "192.168.1.24"], port: 47800,
+                                   fingerprint: Data(repeating: 7, count: 32),
+                                   keyId: Data(repeating: 1, count: 16), pairKey: Data(repeating: 2, count: 32), lastUsedMs: 100)
+        s.save(b)
+        // Switching to mobile hotspot must keep the school Wi-Fi IP as fallback, with hotspot first.
+        s.updateHosts(["192.168.43.88"], port: 47800, fingerprint: b.fingerprint, preferredHost: "192.168.43.88")
+        XCTAssertEqual(s.receivers().first?.hosts, ["192.168.43.88", "10.0.1.24", "192.168.1.24"])
+
+        // DiscoveryTxt `ip=` round-trip preserves valid IPv4s and ignores bad entries.
+        let txt = DiscoveryTxt.record(name: "etap", fingerprint: b.fingerprint, hosts: ["10.0.1.24", "fe80::1", "192.168.43.88"])
+        let parsed = DiscoveryTxt.parse(txt)
+        XCTAssertEqual(parsed?.hosts, ["10.0.1.24", "192.168.43.88"])
+    }
 }

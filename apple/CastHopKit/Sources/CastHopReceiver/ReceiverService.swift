@@ -249,10 +249,10 @@ public final class ReceiverService: @unchecked Sendable {
         }
     }
 
-    private func service() -> NWListener.Service? {
+    private func service(hosts: [String] = []) -> NWListener.Service? {
         guard let identity else { return nil }
         let name = DiscoveryTxt.instanceName(options.name)
-        let txt = NWTXTRecord(DiscoveryTxt.record(name: name, fingerprint: identity.fingerprint))
+        let txt = NWTXTRecord(DiscoveryTxt.record(name: name, fingerprint: identity.fingerprint, hosts: hosts))
         return NWListener.Service(name: name, type: DiscoveryTxt.serviceType, txtRecord: txt)
     }
 
@@ -441,7 +441,15 @@ public final class ReceiverService: @unchecked Sendable {
     private func publish() {
         if let pairing {
             snapshot.pin = pairing.pin
-            snapshot.trusted = pairing.trustedSenders.map { TrustedDevice(id: $0.keyId, name: $0.deviceName) }
+            var unique: [TrustedSender] = []
+            for t in pairing.trustedSenders {
+                if let idx = unique.firstIndex(where: { $0.deviceId == t.deviceId }) {
+                    unique[idx] = t
+                } else {
+                    unique.append(t)
+                }
+            }
+            snapshot.trusted = unique.map { TrustedDevice(id: $0.keyId, name: $0.deviceName) }
         }
         onChange?(snapshot)
     }
@@ -526,9 +534,13 @@ public final class ReceiverService: @unchecked Sendable {
         guard let pairing, let identity else { return }
         var hosts = options.qrHosts.isEmpty ? (netInfo?.addresses ?? []) : options.qrHosts
         hosts = Array(hosts.prefix(QrPayload.maxHosts))
+        let addressesChanged = hosts != snapshot.addresses
         snapshot.addresses = hosts
         snapshot.qrUri = hosts.isEmpty ? "" : QrPayload(hosts: hosts, port: options.port, token: pairing.qrToken,
                                                         certFingerprint: identity.fingerprint, name: options.name).toUri()
+        if addressesChanged {
+            listener?.service = service(hosts: hosts)
+        }
         writePairingFile()
         publish()
     }
@@ -576,7 +588,7 @@ public final class ReceiverService: @unchecked Sendable {
             options.name = trimmed
             snapshot.name = trimmed
             sessions?.receiverInfo = receiverInfo()
-            listener?.service = service()
+            listener?.service = service(hosts: snapshot.addresses)
             updateCredentials()
         }
     }

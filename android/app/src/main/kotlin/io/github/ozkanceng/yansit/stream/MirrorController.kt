@@ -30,14 +30,14 @@ import io.github.ozkanceng.yansit.protocol.ControlMessage
 import io.github.ozkanceng.yansit.protocol.ProtocolException
 import io.github.ozkanceng.yansit.protocol.QrPayload
 import io.github.ozkanceng.yansit.protocol.RejectReason
+import io.github.ozkanceng.yansit.protocol.client.ConnectFirstResult
 import io.github.ozkanceng.yansit.protocol.client.Credentials
 import io.github.ozkanceng.yansit.protocol.client.DeviceInfo
 import io.github.ozkanceng.yansit.protocol.client.Endpoint
 import io.github.ozkanceng.yansit.protocol.client.FingerprintMismatchException
 import io.github.ozkanceng.yansit.protocol.client.HelloOutcome
 import io.github.ozkanceng.yansit.protocol.client.IncompatibleReceiverException
-import io.github.ozkanceng.yansit.protocol.client.ReachResult
-import io.github.ozkanceng.yansit.protocol.client.Reachability
+import io.github.ozkanceng.yansit.protocol.client.PinnedTls
 import io.github.ozkanceng.yansit.protocol.client.SenderClient
 import io.github.ozkanceng.yansit.protocol.client.Session
 import io.github.ozkanceng.yansit.sender.LinkState
@@ -52,6 +52,7 @@ import io.github.ozkanceng.yansit.sender.StreamPlan
 import io.github.ozkanceng.yansit.sender.StreamPlanner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +60,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.net.Socket
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
 
 private const val TAG = "YansitMirror"
 
@@ -115,8 +119,8 @@ sealed interface MirrorState {
         /** Telefon hotspot veya 2,4 GHz Wi-Fi üzerinden mi yayın yapılıyor? */
         val onHotspot: Boolean = false,
     ) : MirrorState
-    /** Bitti; [error] `null` ise kullanıcı kendisi durdurdu. */
-    data class Ended(val board: String, val error: MirrorError?) : MirrorState
+    /** Bitti; [error] `null` ise kullanıcı kendisi durdurdu. [detail] hassas bilgi içermeyen kısa teşhis özetidir. */
+    data class Ended(val board: String, val error: MirrorError?, val detail: String? = null) : MirrorState
 }
 
 /** Bağlantı hedefi: yeni QR, hatırlanan tahta, mDNS + PIN ya da manuel IP + PIN. */
@@ -146,10 +150,42 @@ object MirrorController {
     private var boardFingerprint: Bytes? = null
     /** Her bağlantı denemesi ve durdurma bir artırır; eski denemenin geç gelen sonucu yok sayılır. */
     private var generation = 0
+    /** Aktif bağlantı denemesinin soketlerini, mDNS taramasını ve korutinini anında kesmek için tutamaç. */
+    private var activeAttempt: AttemptCanceller? = null
+    /** Bağlantı aşamasında Wi-Fi radyosunu uyku modundan çıkaran geçici kilit (`MirrorService` devralınca bırakılır). */
+    private var connectWifiLock: LowLatencyWifi? = null
     private lateinit var appContext: Context
+
+    private class AttemptCanceller {
+        val cancelled = AtomicBoolean(false)
+        private val sockets = CopyOnWriteArrayList<Socket>()
+        private val cleanups = CopyOnWriteArrayList<() -> Unit>()
+        @Volatile var job: Job? = null
+
+        fun registerSocket(socket: Socket) {
+            sockets += socket
+            if (cancelled.get()) runCatching { socket.close() }
+        }
+
+        fun registerCancel(cleanup: () -> Unit) {
+            cleanups += cleanup
+            if (cancelled.get()) runCatching { cleanup() }
+        }
+
+        fun cancel() {
+            if (!cancelled.compareAndSet(false, true)) return
+            job?.cancel()
+            for (s in sockets) runCatching { s.close() }
+            for (c in cleanups) runCatching { c() }
+            sockets.clear()
+            cleanups.clear()
+        }
+    }
 
     /** Uzun kopmada eşleştirmeyle yeniden bağlanma denemesi süresi. */
     private const val LONG_RECONNECT_WINDOW_NS = 60_000_000_000L
+    private const val TRANSIENT_RETRY_DELAY_MS = 350L
+    private const val MDNS_REDISCOVERY_TIMEOUT_MS = 3500L
 
     /** Upper limit for camera mode; the preset and the receiver can lower it. */
     private const val CAMERA_MAX_WIDTH = 1920
@@ -191,12 +227,21 @@ object MirrorController {
 
     // --- Bağlanma ---
 
-    /** Son bağlantı denemesini tek dokunuşla yeniden dener (varsa). */
+    /** Son bağlantı denemesini güncel kayıt bilgileriyle tek dokunuşla yeniden dener (varsa). */
     fun retryLast(context: Context): Boolean {
         val last = target ?: return false
         val current = _state.value
         if (current !is MirrorState.Idle && current !is MirrorState.Ended) return false
-        connect(context, last)
+        val boards = BoardStore(context.applicationContext)
+        val refreshed = when (last) {
+            is ConnectTarget.Remembered ->
+                boards.find(last.board.fingerprint)?.let { ConnectTarget.Remembered(it) } ?: last
+            // Harcanmış tek-kullanımlık QR token'ını tekrar göndermek yerine eşleştirme kaydedildiyse kayıtlı kaydı kullan.
+            is ConnectTarget.Qr ->
+                boards.find(last.payload.certFingerprint)?.let { ConnectTarget.Remembered(it) } ?: last
+            else -> last
+        }
+        connect(context, refreshed)
         return true
     }
 
@@ -213,10 +258,18 @@ object MirrorController {
             is ConnectTarget.Manual -> target.host
         }
         _state.value = MirrorState.Connecting(board, ConnectStep.SEARCHING)
-        val attempt = synchronized(lock) { ++generation }
-        scope.launch {
+        val canceller = AttemptCanceller()
+        val (attempt, prevCanceller) = synchronized(lock) {
+            val prev = activeAttempt
+            activeAttempt = canceller
+            (++generation) to prev
+        }
+        prevCanceller?.cancel()
+        acquireConnectWifi()
+        canceller.job = scope.launch {
             val result = hello(
                 target = target,
+                canceller = canceller,
                 onStep = { step ->
                     if (isCurrent(attempt)) _state.value = MirrorState.Connecting(board, step)
                 },
@@ -225,9 +278,9 @@ object MirrorController {
                 },
             )
             when (result) {
-                is HelloResult.Failed -> failIfCurrent(attempt, result.error)
+                is HelloResult.Failed -> failIfCurrent(attempt, result.error, result.detail)
                 is HelloResult.Ok -> {
-                    if (!isCurrent(attempt)) {
+                    if (!isCurrent(attempt) || canceller.cancelled.get()) {
                         // Kullanıcı bu sırada vazgeçti.
                         runCatching { result.session.control.send(ControlMessage.Bye(ByeReason.USER_STOP)) }
                         result.session.close()
@@ -251,48 +304,150 @@ object MirrorController {
 
     private sealed interface HelloResult {
         data class Ok(val session: Session) : HelloResult
-        data class Failed(val error: MirrorError) : HelloResult
+        data class Failed(val error: MirrorError, val detail: String? = null) : HelloResult
     }
 
-    /** Ulaşılabilirlik + kimlik doğrulama; QR/PIN ile ilk bağlantıda kalıcı eşleştirme istenir ve kaydedilir. */
+    /**
+     * Doğrudan Pinned-TLS yarışı + Wi-Fi ağ sabitleme + DHCP/IP çakışmasında mDNS yeniden keşfi + ARP uyanma tekrarı +
+     * QR → kayıtlı anahtar yedeği.
+     */
     private fun hello(
         target: ConnectTarget,
+        canceller: AttemptCanceller = AttemptCanceller(),
         onStep: (ConnectStep) -> Unit = {},
         onPending: (Long) -> Unit,
     ): HelloResult {
         val settings = AppSettings(appContext)
         val boards = BoardStore(appContext)
-        var (hosts, port, fp) = when (target) {
-            is ConnectTarget.Qr -> Triple(target.payload.hosts, target.payload.port, target.payload.certFingerprint)
-            is ConnectTarget.Remembered -> Triple(target.board.hosts, target.board.port, target.board.fingerprint)
+        val initialRawHosts: List<String>
+        var port: Int
+        val fp: Bytes?
+        when (target) {
+            is ConnectTarget.Qr -> {
+                initialRawHosts = target.payload.hosts
+                port = target.payload.port
+                fp = target.payload.certFingerprint
+            }
+            is ConnectTarget.Remembered -> {
+                val live = BoardDiscovery.cachedByFingerprint(target.board.fingerprint)
+                initialRawHosts = if (live != null && live.hosts.isNotEmpty()) {
+                    port = live.port
+                    BoardStore.mergeHosts(null, live.hosts, target.board.hosts)
+                } else {
+                    port = target.board.port
+                    target.board.hosts
+                }
+                fp = target.board.fingerprint
+            }
             // mDNS'te yalnız parmak izi öneki var: ilk bağlantıda öneki denetlenir, tam iz eşleştirmeyle kaydedilir.
-            is ConnectTarget.Discovered -> Triple(target.board.hosts, target.board.port, null)
-            is ConnectTarget.Manual -> Triple(listOf(target.host), target.port, null)
-        }
-        val fpPrefix = (target as? ConnectTarget.Discovered)?.board?.fingerprintPrefix
-        onStep(ConnectStep.SEARCHING)
-        var reach = Reachability.firstReachable(hosts, port)
-        // Hatırlanan tahtanın IP'si (hotspot/DHCP yüzünden) değiştiyse mDNS ile güncel adresini bul.
-        if (reach is ReachResult.Unreachable && !reach.refused && target is ConnectTarget.Remembered) {
-            val rediscovered = BoardDiscovery(appContext).findByFingerprint(target.board.fingerprint, timeoutMs = 2500L)
-            if (rediscovered != null && rediscovered.hosts.isNotEmpty()) {
-                hosts = rediscovered.hosts
-                port = rediscovered.port
-                boards.updateHosts(target.board.fingerprint, hosts, port)
-                reach = Reachability.firstReachable(hosts, port)
+            is ConnectTarget.Discovered -> {
+                initialRawHosts = target.board.hosts
+                port = target.board.port
+                fp = null
+            }
+            is ConnectTarget.Manual -> {
+                initialRawHosts = listOf(target.host)
+                port = target.port
+                fp = null
             }
         }
-        val host = when (val r = reach) {
-            is ReachResult.Reachable -> r.host
-            is ReachResult.Unreachable -> return HelloResult.Failed(
-                when {
+        var hosts = NetworkDiagnostics.prioritizeHosts(appContext, initialRawHosts)
+        val fpPrefix = (target as? ConnectTarget.Discovered)?.board?.fingerprintPrefix
+        val deviceInfo = buildDeviceInfo(settings)
+
+        fun raceTls(candidateHosts: List<String>, candidatePort: Int): ConnectFirstResult = PinnedTls.connectFirst(
+            hosts = candidateHosts,
+            port = candidatePort,
+            expectedFingerprint = fp,
+            expectedPrefix = fpPrefix,
+            socketFactoryProvider = { h -> NetworkDiagnostics.socketFactoryFor(appContext, h) },
+            cancelSignal = canceller.cancelled,
+            onRegisterSocket = canceller::registerSocket,
+        )
+
+        onStep(ConnectStep.SEARCHING)
+        Log.i(TAG, "bağlanılıyor: adaylar=$hosts port=$port tür=${target::class.simpleName}")
+        var connectResult = raceTls(hosts, port)
+        var mdnsStatus = ""
+
+        // Hatırlanan tahtanın IP'si DHCP ile değiştiyse (timeout, REFUSED veya başka tahtanın IP'si → FingerprintMismatch),
+        // mDNS üzerinden parmak izine göre güncel adresi bul.
+        if (connectResult is ConnectFirstResult.Failed &&
+            connectResult.incompatible == null &&
+            target is ConnectTarget.Remembered &&
+            !canceller.cancelled.get()
+        ) {
+            Log.i(TAG, "ilk deneme başarısız (refused=${connectResult.refused}, mismatch=${connectResult.fingerprintMismatch != null}), mDNS aranıyor")
+            val rediscovered = BoardDiscovery(appContext).findByFingerprint(
+                fingerprint = target.board.fingerprint,
+                timeoutMs = MDNS_REDISCOVERY_TIMEOUT_MS,
+                cancelSignal = canceller.cancelled,
+                onRegisterCancel = canceller::registerCancel,
+            )
+            if (rediscovered != null && rediscovered.hosts.isNotEmpty() && !canceller.cancelled.get()) {
+                val freshHosts = NetworkDiagnostics.prioritizeHosts(appContext, rediscovered.hosts)
+                hosts = BoardStore.mergeHosts(null, freshHosts, hosts)
+                port = rediscovered.port
+                boards.updateHosts(target.board.fingerprint, freshHosts, port)
+                mdnsStatus = "mDNS:${freshHosts.first()}"
+                Log.i(TAG, "mDNS taze adres buldu: $freshHosts:$port")
+                connectResult = raceTls(freshHosts, port)
+            } else {
+                mdnsStatus = "mDNS:yok"
+            }
+        }
+
+        // Ders arası soğuk ARP / Wi-Fi güç tasarrufu uyanması için geçici ağ hatasında 1 kez otomatik tekrar.
+        if (connectResult is ConnectFirstResult.Failed &&
+            connectResult.incompatible == null &&
+            connectResult.fingerprintMismatch == null &&
+            !connectResult.refused &&
+            !canceller.cancelled.get()
+        ) {
+            if (sleepCancellable(TRANSIENT_RETRY_DELAY_MS, canceller)) {
+                Log.i(TAG, "soğuk ARP/Wi-Fi uyanma tekrarı: $hosts:$port")
+                connectResult = raceTls(hosts, port)
+            }
+        }
+
+        if (canceller.cancelled.get()) return HelloResult.Failed(MirrorError.UNREACHABLE)
+
+        val connected = when (val r = connectResult) {
+            is ConnectFirstResult.Connected -> r
+            is ConnectFirstResult.Failed -> {
+                val primaryHost = hosts.firstOrNull().orEmpty()
+                val detail = buildString {
+                    if (primaryHost.isNotEmpty()) append("$primaryHost:$port")
+                    val reason = when {
+                        r.fingerprintMismatch != null -> "parmak izi uyuşmadı"
+                        r.incompatible != null -> "sürüm/TLS uyumsuz"
+                        r.refused -> "port kapalı"
+                        else -> "yanıt yok"
+                    }
+                    if (isNotEmpty()) append(" · ")
+                    append(reason)
+                    if (mdnsStatus.isNotEmpty()) append(" · $mdnsStatus")
+                }
+                val err = when {
+                    r.fingerprintMismatch != null -> MirrorError.WRONG_BOARD
+                    r.incompatible != null -> MirrorError.INCOMPATIBLE
                     r.refused -> MirrorError.REFUSED
                     NetworkDiagnostics.sharesSubnet(appContext, hosts) == false -> MirrorError.DIFFERENT_NETWORK
                     NetworkDiagnostics.sharesSubnet(appContext, hosts) == true -> MirrorError.CLIENT_ISOLATION
                     else -> MirrorError.UNREACHABLE
-                },
-            )
+                }
+                Log.w(TAG, "TLS bağlantısı başarısız ($err): $detail", r.lastError)
+                return HelloResult.Failed(err, detail)
+            }
         }
+
+        val host = connected.host
+        val socketFactory = NetworkDiagnostics.socketFactoryFor(appContext, host)
+        // QR bağlantısında TLS sertifika parmak izi doğrulandıysa, tahta zaten kayıtlıysa taze IP'yi hemen koru.
+        if (target is ConnectTarget.Qr && boards.find(target.payload.certFingerprint) != null) {
+            boards.updateHosts(target.payload.certFingerprint, target.payload.hosts, port, preferredHost = host)
+        }
+
         onStep(ConnectStep.SECURING)
         val credentials = when (target) {
             is ConnectTarget.Qr -> Credentials.QrToken(target.payload.token)
@@ -300,88 +455,162 @@ object MirrorController {
             is ConnectTarget.Discovered -> Credentials.Pin(target.pin)
             is ConnectTarget.Manual -> Credentials.Pin(target.pin)
         }
-        val outcome = try {
+        val endpoint = Endpoint(host, port, fp, fpPrefix, socketFactory)
+        var outcome = try {
             SenderClient.hello(
-                Endpoint(host, port, fp, fpPrefix),
-                credentials,
-                DeviceInfo(
-                    name = settings.deviceName,
-                    deviceId = settings.deviceId,
-                    appVersion = BuildConfig.VERSION_NAME,
-                    videoCodecs = if (settings.hevcEnabled && AndroidEncoderCaps.hevcHardwareEncoders().isNotEmpty()) {
-                        listOf(Codec.H265, Codec.H264)
-                    } else {
-                        listOf(Codec.H264)
-                    },
-                    maxWidth = 3840,
-                    maxHeight = 2160,
-                    maxFps = 60,
-                ),
+                socket = connected.socket,
+                endpoint = endpoint,
+                credentials = credentials,
+                device = deviceInfo,
                 requestPairing = target !is ConnectTarget.Remembered,
                 onPending = onPending,
             )
         } catch (e: FingerprintMismatchException) {
-            return HelloResult.Failed(MirrorError.WRONG_BOARD)
+            return HelloResult.Failed(MirrorError.WRONG_BOARD, "$host:$port · parmak izi uyuşmadı")
         } catch (e: IncompatibleReceiverException) {
-            return HelloResult.Failed(MirrorError.INCOMPATIBLE)
+            return HelloResult.Failed(MirrorError.INCOMPATIBLE, "$host:$port · sürüm uyumsuz")
         } catch (e: ProtocolException) {
             Log.w(TAG, "protokol hatası", e)
-            return HelloResult.Failed(MirrorError.INCOMPATIBLE)
+            return HelloResult.Failed(MirrorError.INCOMPATIBLE, "$host:$port · protokol hatası")
         } catch (e: IOException) {
-            Log.w(TAG, "bağlantı hatası", e)
-            return HelloResult.Failed(MirrorError.UNREACHABLE)
+            Log.w(TAG, "HELLO bağlantı hatası", e)
+            return HelloResult.Failed(MirrorError.UNREACHABLE, "$host:$port · el sıkışma koptu")
         }
-        return when (outcome) {
+
+        // QR token'ı 10 dk sınırında döndüyse veya harcandıysa, TLS parmak izi zaten doğrulanmış kayıtlı tahta için
+        // mevcut `pairKey` ile sessizce 1 kez tekrar dene.
+        var usedPairedFallback = false
+        if (outcome is HelloOutcome.Rejected &&
+            outcome.reason == RejectReason.AUTH_FAILED &&
+            target is ConnectTarget.Qr &&
+            !canceller.cancelled.get()
+        ) {
+            val saved = boards.find(target.payload.certFingerprint)
+            if (saved != null) {
+                Log.i(TAG, "QR token geçersiz; doğrulanmış parmak izi için kayıtlı anahtar ile tekrar deneniyor")
+                try {
+                    val fallbackOutcome = SenderClient.hello(
+                        endpoint = Endpoint(host, port, saved.fingerprint, null, socketFactory),
+                        credentials = Credentials.Paired(saved.keyId, saved.pairKey),
+                        device = deviceInfo,
+                        requestPairing = false,
+                        onPending = onPending,
+                    )
+                    if (fallbackOutcome is HelloOutcome.Accepted) {
+                        outcome = fallbackOutcome
+                        usedPairedFallback = true
+                    }
+                } catch (e: IOException) {
+                    Log.w(TAG, "kayıtlı anahtar yedeği başarısız", e)
+                } catch (e: ProtocolException) {
+                    Log.w(TAG, "kayıtlı anahtar yedeği protokol hatası", e)
+                }
+            }
+        }
+
+        return when (val finalOutcome = outcome) {
             is HelloOutcome.Rejected -> {
                 val isPinFlow = target is ConnectTarget.Discovered || target is ConnectTarget.Manual
-                if (isPinFlow && outcome.reason == RejectReason.AUTH_FAILED) {
+                if (isPinFlow && finalOutcome.reason == RejectReason.AUTH_FAILED) {
                     HelloResult.Failed(MirrorError.WRONG_PIN)
-                } else if (target is ConnectTarget.Remembered && outcome.reason == RejectReason.AUTH_FAILED) {
+                } else if (target is ConnectTarget.Remembered && finalOutcome.reason == RejectReason.AUTH_FAILED) {
                     // Tahta eşleştirmeyi unutmuş (silinmiş veya sertifika yenilenmiş): yeniden QR/kod gerekir.
                     boards.remove(target.board.fingerprint)
-                    HelloResult.Failed(MirrorError.BOARD_FORGOT_TABLET)
+                    HelloResult.Failed(MirrorError.BOARD_FORGOT_TABLET, "$host:$port · eşleştirme reddedildi")
                 } else {
-                    HelloResult.Failed(rejectError(outcome.reason))
+                    HelloResult.Failed(rejectError(finalOutcome.reason), "$host:$port · red (${finalOutcome.reason})")
                 }
             }
             is HelloOutcome.Accepted -> {
-                val w = outcome.session.welcome
+                val w = finalOutcome.session.welcome
                 val now = System.currentTimeMillis()
                 val keyId = w.keyId
                 val pairKey = w.pairKey
                 when (target) {
-                    is ConnectTarget.Qr -> if (keyId != null && pairKey != null) {
+                    is ConnectTarget.Qr -> if (usedPairedFallback) {
+                        boards.find(finalOutcome.session.fingerprint)?.let { existing ->
+                            boards.save(
+                                existing.copy(name = w.receiverName, hosts = target.payload.hosts, port = port, lastUsedMs = now),
+                                preferredHost = host,
+                            )
+                        }
+                    } else if (keyId != null && pairKey != null) {
                         boards.save(
                             RememberedBoard(
                                 w.receiverName, target.payload.hosts, target.payload.port,
-                                outcome.session.fingerprint, keyId, pairKey, now,
+                                finalOutcome.session.fingerprint, keyId, pairKey, now,
                             ),
+                            preferredHost = host,
                         )
                     }
                     is ConnectTarget.Discovered -> if (keyId != null && pairKey != null) {
                         boards.save(
                             RememberedBoard(
                                 w.receiverName, target.board.hosts, target.board.port,
-                                outcome.session.fingerprint, keyId, pairKey, now,
+                                finalOutcome.session.fingerprint, keyId, pairKey, now,
                                 kind = target.board.kind,
                             ),
+                            preferredHost = host,
                         )
                     }
                     is ConnectTarget.Manual -> if (keyId != null && pairKey != null) {
                         boards.save(
                             RememberedBoard(
                                 w.receiverName, listOf(host), port,
-                                outcome.session.fingerprint, keyId, pairKey, now,
+                                finalOutcome.session.fingerprint, keyId, pairKey, now,
                             ),
+                            preferredHost = host,
                         )
                     }
                     is ConnectTarget.Remembered -> boards.save(
                         target.board.copy(name = w.receiverName, hosts = hosts, port = port, lastUsedMs = now),
+                        preferredHost = host,
                     )
                 }
-                HelloResult.Ok(outcome.session)
+                HelloResult.Ok(finalOutcome.session)
             }
         }
+    }
+
+    private fun buildDeviceInfo(settings: AppSettings): DeviceInfo = DeviceInfo(
+        name = settings.deviceName,
+        deviceId = settings.deviceId,
+        appVersion = BuildConfig.VERSION_NAME,
+        videoCodecs = if (settings.hevcEnabled && AndroidEncoderCaps.hevcHardwareEncoders().isNotEmpty()) {
+            listOf(Codec.H265, Codec.H264)
+        } else {
+            listOf(Codec.H264)
+        },
+        maxWidth = 3840,
+        maxHeight = 2160,
+        maxFps = 60,
+    )
+
+    private fun sleepCancellable(ms: Long, canceller: AttemptCanceller): Boolean {
+        val step = 50L
+        var elapsed = 0L
+        while (elapsed < ms) {
+            if (canceller.cancelled.get()) return false
+            try {
+                Thread.sleep(minOf(step, ms - elapsed))
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return false
+            }
+            elapsed += step
+        }
+        return !canceller.cancelled.get()
+    }
+
+    private fun acquireConnectWifi() {
+        val lockObj = synchronized(lock) {
+            connectWifiLock ?: LowLatencyWifi(appContext).also { connectWifiLock = it }
+        }
+        lockObj.acquire()
+    }
+
+    private fun releaseConnectWifi() {
+        synchronized(lock) { connectWifiLock }?.release()
     }
 
     private fun newMirrorSession(s: Session) = MirrorSession(
@@ -422,6 +651,7 @@ object MirrorController {
 
     /** [MirrorService] is in the foreground with the camera type. */
     internal fun onCameraServiceReady(service: MirrorService) {
+        releaseConnectWifi()
         val s = synchronized(lock) {
             session?.also { capture = Capture(service, null) }
         }
@@ -474,7 +704,7 @@ object MirrorController {
             Log.i(TAG, "kamera: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName})")
         } catch (e: IOException) {
             Log.w(TAG, "video bağlantısı kurulamadı", e)
-            s.stop(ByeReason.ERROR)
+            fail(MirrorError.CONNECTION_LOST, "video kanalı kurulamadı")
         } catch (e: RuntimeException) {
             Log.e(TAG, "kodlayıcı başlatılamadı", e)
             fail(MirrorError.ENCODER_FAILED)
@@ -491,15 +721,46 @@ object MirrorController {
 
     /** [MirrorService] ön plana geçip MediaProjection'ı aldı. */
     internal fun onProjectionReady(service: MirrorService, projection: MediaProjection) {
-        val s = synchronized(lock) {
+        releaseConnectWifi()
+        val existing = synchronized(lock) {
             session?.also { capture = Capture(service, projection) }
         }
-        if (s == null) {
+        if (existing != null) {
+            scope.launch { startCapture(service, projection, existing) }
+            return
+        }
+        // Ekran paylaşım izni beklenirken kontrol bağlantısı koptuysa, alınan izinle kayıtlı anahtardan kesintisiz devam et.
+        val remembered = rememberedForCurrent()
+        if (remembered == null) {
             projection.stop()
             service.stopForegroundAndSelf()
             return
         }
-        scope.launch { startCapture(service, projection, s) }
+        val attempt = synchronized(lock) {
+            capture = Capture(service, projection)
+            generation
+        }
+        scope.launch {
+            Log.i(TAG, "izin sırasında oturum koptu; kayıtlı anahtarla yeniden bağlanılıyor")
+            when (val r = hello(ConnectTarget.Remembered(remembered)) { }) {
+                is HelloResult.Ok -> {
+                    val s = newMirrorSession(r.session)
+                    val ok = synchronized(lock) {
+                        if (attempt != generation || capture == null) false else {
+                            session = s
+                            true
+                        }
+                    }
+                    if (!ok) {
+                        r.session.close()
+                        return@launch
+                    }
+                    s.start()
+                    startCapture(service, projection, s)
+                }
+                is HelloResult.Failed -> fail(r.error, r.detail)
+            }
+        }
     }
 
     /**
@@ -595,7 +856,7 @@ object MirrorController {
             Log.i(TAG, "yansıtma: ${plan.width}x${plan.height}@${plan.fps} (${plan.encoderName}), $start, hotspot=$onHotspot")
         } catch (e: IOException) {
             Log.w(TAG, "video bağlantısı kurulamadı", e)
-            s.stop(ByeReason.ERROR)
+            fail(MirrorError.CONNECTION_LOST, "video kanalı kurulamadı")
         } catch (e: RuntimeException) {
             // MediaCodec yapılandırma hataları (IllegalStateException, CodecException...).
             Log.e(TAG, "kodlayıcı başlatılamadı", e)
@@ -804,25 +1065,34 @@ object MirrorController {
 
     /** Kullanıcı durdurdu veya bağlanmaktan vazgeçti (uygulama ya da bildirim). */
     fun stop() {
-        val s = synchronized(lock) {
+        val (s, prevCanceller) = synchronized(lock) {
             generation++
-            session
+            val prev = activeAttempt
+            activeAttempt = null
+            session to prev
         }
+        prevCanceller?.cancel()
+        releaseConnectWifi()
         if (s != null) s.stop(ByeReason.USER_STOP) else releaseCapture()
         if (_state.value !is MirrorState.Ended) _state.value = MirrorState.Ended(board, null)
     }
 
     /** Sistem yansıtmayı bitirdi (durum çubuğu çipi, ekran kilidi — RISKS R2). */
     internal fun onProjectionStopped() {
-        val s = synchronized(lock) {
+        val (s, prevCanceller) = synchronized(lock) {
             generation++
-            session
+            val prev = activeAttempt
+            activeAttempt = null
+            session to prev
         }
+        prevCanceller?.cancel()
+        releaseConnectWifi()
         if (s != null) s.stop(ByeReason.PROJECTION_STOPPED) else releaseCapture()
     }
 
     /** Hata/sonuç mesajı kapatıldı. */
     fun dismiss() {
+        releaseConnectWifi()
         if (_state.value is MirrorState.Ended) _state.value = MirrorState.Idle
     }
 
@@ -850,6 +1120,7 @@ object MirrorController {
                 return
             }
         }
+        releaseConnectWifi()
         releaseCapture()
         val error = when (end) {
             is SessionEnd.Local -> when (end.byeReason) {
@@ -900,7 +1171,7 @@ object MirrorController {
                     return
                 }
                 is HelloResult.Failed -> when (r.error) {
-                    MirrorError.UNREACHABLE, MirrorError.CLIENT_ISOLATION, MirrorError.DIFFERENT_NETWORK, MirrorError.REFUSED -> {
+                    MirrorError.UNREACHABLE, MirrorError.CLIENT_ISOLATION, MirrorError.DIFFERENT_NETWORK, MirrorError.REFUSED, MirrorError.WRONG_BOARD -> {
                         // Güncel kayıt mDNS ile yenilenmiş olabilir; yeniden oku.
                         BoardStore(appContext).find(currentBoard.fingerprint)?.let { currentBoard = it }
                         delay(backoffMs)
@@ -962,14 +1233,15 @@ object MirrorController {
             (state is MirrorState.Connecting || state is MirrorState.WaitingApproval)
     }
 
-    private fun failIfCurrent(attempt: Int, error: MirrorError) {
-        if (isCurrent(attempt)) fail(error)
+    private fun failIfCurrent(attempt: Int, error: MirrorError, detail: String? = null) {
+        if (isCurrent(attempt)) fail(error, detail)
     }
 
-    private fun fail(error: MirrorError) {
+    private fun fail(error: MirrorError, detail: String? = null) {
+        releaseConnectWifi()
         synchronized(lock) { session }?.stop(ByeReason.ERROR)
         releaseCapture()
-        _state.value = MirrorState.Ended(board, error)
+        _state.value = MirrorState.Ended(board, error, detail)
     }
 
     private fun rejectError(reason: Int): MirrorError = when (reason) {

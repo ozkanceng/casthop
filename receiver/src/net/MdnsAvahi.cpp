@@ -18,7 +18,8 @@ class MdnsPublisher::Impl {
 public:
     ~Impl() { stop(); }
 
-    void publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint);
+    void publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint,
+                 const std::vector<std::string>& hosts);
     void stop();
 
 private:
@@ -33,6 +34,7 @@ private:
     void onClientState(AvahiClient* client, int state);
     void onGroupState(AvahiEntryGroup* group, int state);
     void registerService(AvahiClient* client);
+    bool reconnectClient();
 
     AvahiThreadedPoll* m_poll = nullptr;
     AvahiClient* m_client = nullptr;
@@ -41,19 +43,44 @@ private:
     std::uint16_t m_port = 0;
     std::vector<std::string> m_txt;
     bool m_wanted = false;
+    bool m_failed = false;
 };
 
 MdnsPublisher::MdnsPublisher() : m_impl(std::make_unique<Impl>()) {}
 
 MdnsPublisher::~MdnsPublisher() = default;
 
-void MdnsPublisher::publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint) {
-    m_impl->publish(name, port, fingerprint);
+void MdnsPublisher::publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint,
+                            const std::vector<std::string>& hosts) {
+    m_impl->publish(name, port, fingerprint, hosts);
 }
 
 void MdnsPublisher::stop() { m_impl->stop(); }
 
-void MdnsPublisher::Impl::publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint) {
+bool MdnsPublisher::Impl::reconnectClient() {
+    if (!m_poll)
+        return false;
+    if (m_group) {
+        avahi_entry_group_free(m_group);
+        m_group = nullptr;
+    }
+    if (m_client) {
+        avahi_client_free(m_client);
+        m_client = nullptr;
+    }
+    int error = 0;
+    m_client = avahi_client_new(avahi_threaded_poll_get(m_poll), AVAHI_CLIENT_NO_FAIL, clientCallback, this, &error);
+    if (!m_client) {
+        qCInfo(lcMdns) << "mDNS yeniden kurulamadı (Avahi):" << avahi_strerror(error);
+        m_failed = true;
+        return false;
+    }
+    m_failed = false;
+    return true;
+}
+
+void MdnsPublisher::Impl::publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint,
+                                  const std::vector<std::string>& hosts) {
     if (!m_poll) {
         m_poll = avahi_threaded_poll_new();
         if (!m_poll) {
@@ -62,8 +89,9 @@ void MdnsPublisher::Impl::publish(const std::string& name, std::uint16_t port, c
         }
         m_instance = mdnsInstanceName(name);
         m_port = port;
-        m_txt = mdnsTxt(name, fingerprint);
+        m_txt = mdnsTxt(name, fingerprint, hosts);
         m_wanted = true;
+        m_failed = false;
         int error = 0;
         // NO_FAIL: daemon yoksa veya yeniden başlarsa istemci bekler, gelince S_RUNNING'e geçer.
         m_client = avahi_client_new(avahi_threaded_poll_get(m_poll), AVAHI_CLIENT_NO_FAIL, clientCallback, this, &error);
@@ -80,12 +108,16 @@ void MdnsPublisher::Impl::publish(const std::string& name, std::uint16_t port, c
     avahi_threaded_poll_lock(m_poll);
     m_instance = mdnsInstanceName(name);
     m_port = port;
-    m_txt = mdnsTxt(name, fingerprint);
+    m_txt = mdnsTxt(name, fingerprint, hosts);
     m_wanted = true;
-    if (m_group)
-        avahi_entry_group_reset(m_group);
-    if (m_client && avahi_client_get_state(m_client) == AVAHI_CLIENT_S_RUNNING)
-        registerService(m_client);
+    if (m_failed || !m_client || avahi_client_get_state(m_client) == AVAHI_CLIENT_FAILURE) {
+        reconnectClient();
+    } else {
+        if (m_group)
+            avahi_entry_group_reset(m_group);
+        if (avahi_client_get_state(m_client) == AVAHI_CLIENT_S_RUNNING)
+            registerService(m_client);
+    }
     avahi_threaded_poll_unlock(m_poll);
 }
 
@@ -150,9 +182,17 @@ void MdnsPublisher::Impl::onClientState(AvahiClient* client, int state) {
         if (m_group)
             avahi_entry_group_reset(m_group);
         break;
-    case AVAHI_CLIENT_FAILURE:
-        qCInfo(lcMdns) << "Avahi bağlantısı koptu; mDNS yayını yok (QR çalışır)";
+    case AVAHI_CLIENT_FAILURE: {
+        const int err = avahi_client_errno(client);
+        qCInfo(lcMdns) << "Avahi bağlantısı koptu:" << avahi_strerror(err);
+        if (err == AVAHI_ERR_DISCONNECTED && m_wanted) {
+            // avahi-daemon yeniden başladı veya uyku/ağ kesintisi oldu: NO_FAIL ile otomatik yeniden bağlan.
+            reconnectClient();
+        } else {
+            m_failed = true;
+        }
         break;
+    }
     case AVAHI_CLIENT_CONNECTING:
         break;
     }

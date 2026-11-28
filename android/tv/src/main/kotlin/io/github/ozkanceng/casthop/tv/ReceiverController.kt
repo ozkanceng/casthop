@@ -181,9 +181,10 @@ internal class ReceiverController(context: Context) {
         engine = receiver
         fingerprint = digest
         port = transport.port
+        val initialHosts = LocalAddresses.list()
         connectivity.registerDefaultNetworkCallback(networkCallback)
-        nsd.publish(receiverName, port, digest)
-        _state.update { it.copy(running = true, failure = null, hasNetwork = LocalAddresses.list().isNotEmpty()) }
+        nsd.publish(receiverName, port, digest, initialHosts)
+        _state.update { it.copy(running = true, failure = null, hasNetwork = initialHosts.isNotEmpty()) }
     }
 
     private fun close() {
@@ -202,8 +203,10 @@ internal class ReceiverController(context: Context) {
 
     private fun onNetworkChanged() {
         lifecycle.execute {
+            val hosts = LocalAddresses.list()
             engine?.refreshAddresses()
-            _state.update { it.copy(hasNetwork = LocalAddresses.list().isNotEmpty()) }
+            fingerprint?.let { digest -> if (engine != null && port > 0) nsd.publish(receiverName, port, digest, hosts) }
+            _state.update { it.copy(hasNetwork = hosts.isNotEmpty()) }
         }
     }
 
@@ -233,7 +236,7 @@ internal class ReceiverController(context: Context) {
         prefs.edit { putString(KEY_NAME, trimmed) }
         onEngine {
             it.setReceiverName(trimmed)
-            fingerprint?.let { digest -> nsd.publish(trimmed, port, digest) }
+            fingerprint?.let { digest -> nsd.publish(trimmed, port, digest, LocalAddresses.list()) }
         }
     }
 

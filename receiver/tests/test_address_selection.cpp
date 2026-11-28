@@ -58,6 +58,9 @@ TEST(SelectAddresses, SkipsDownVirtualLoopbackAndPublic) {
     const QList<AddressCandidate> in = {
         make("lo", Kind::Loopback, "127.0.0.1"),
         make("docker0", Kind::Ethernet, "172.17.0.1"),
+        make("waydroid0", Kind::Other, "192.168.240.1"),
+        make("tailscale0", Kind::Other, "100.64.10.2"),
+        make("podman0", Kind::Ethernet, "10.88.0.1"),
         make("virbr0", Kind::Other, "192.168.122.1"),
         make("br0", Kind::Virtual, "192.168.50.1"),
         make("enp3s0", Kind::Ethernet, "192.168.0.10", /*up=*/true, /*running=*/false),

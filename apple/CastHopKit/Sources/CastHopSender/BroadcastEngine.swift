@@ -1,4 +1,5 @@
 import CastHopProtocol
+import CastHopTransport
 import CoreMedia
 import CoreVideo
 import Foundation
@@ -208,6 +209,12 @@ public final class BroadcastEngine: @unchecked Sendable {
         Task {
             do {
                 try await mirror.startVideo(plan: first, source: self.encoder)
+            } catch is TransportError {
+                self.queue.async {
+                    mirror.stop(byeReason: ByeReason.error)
+                    self.finish(.connectionLost)
+                }
+                return
             } catch {
                 self.queue.async {
                     mirror.stop(byeReason: ByeReason.error)

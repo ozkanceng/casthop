@@ -97,8 +97,8 @@ TEST(Pairing, PinLockoutAfterFiveFailures) {
 TEST(Pairing, GlobalRateLimit) {
     PairingManager pm(T0);
     const Hello bad = helloWith(AuthMethod::QrToken, Id16{});
-    for (int i = 0; i < 10; ++i)
-        EXPECT_EQ(pm.verifyHello(bad, serverNonce(), certFp(), T0 + i * 100ms).outcome,
+    for (int i = 0; i < 20; ++i)
+        EXPECT_EQ(pm.verifyHello(bad, serverNonce(), certFp(), T0 + i * 50ms).outcome,
                   PairingManager::Outcome::AuthFailed);
     auto v = pm.verifyHello(helloWith(AuthMethod::QrToken, pm.qrToken()), serverNonce(), certFp(), T0 + 1s);
     EXPECT_EQ(v.outcome, PairingManager::Outcome::RateLimited);
@@ -107,7 +107,7 @@ TEST(Pairing, GlobalRateLimit) {
     EXPECT_EQ(v.outcome, PairingManager::Outcome::Accepted);
 }
 
-TEST(Pairing, PairedSenderReconnectsWithKey) {
+TEST(Pairing, PairedSenderReconnectsWithKeyAndDualKeyRollover) {
     PairingManager pm(T0);
     int trustedChanges = 0;
     pm.onTrustedChanged = [&] { ++trustedChanges; };
@@ -128,11 +128,22 @@ TEST(Pairing, PairedSenderReconnectsWithKey) {
     stolen.authProof = authProof(t.pairKey, 3, serverNonce(), stolen.clientNonce, certFp(), stolen.deviceId);
     EXPECT_EQ(pm.verifyHello(stolen, serverNonce(), certFp(), T0 + 2s).outcome, PairingManager::Outcome::AuthFailed);
 
-    // Yeniden eşleştirme eskisini değiştirir; silinen anahtar reddedilir.
+    // Yeniden eşleştirme çift anahtarlı geçiş penceresi sunar: 2. anahtar üretilince 1. anahtar da hâlâ geçerlidir
+    // (WELCOME paketi yolda düşerse tablet kilitlenmez).
     const auto t2 = pm.createPairing(first);
-    EXPECT_EQ(pm.trustedSenders().size(), 1u);
-    EXPECT_EQ(pm.verifyHello(again, serverNonce(), certFp(), T0 + 3s).outcome, PairingManager::Outcome::AuthFailed);
-    EXPECT_TRUE(pm.removeTrusted(t2.keyId));
+    EXPECT_EQ(pm.trustedSenders().size(), 2u);
+    EXPECT_EQ(pm.verifyHello(again, serverNonce(), certFp(), T0 + 3s).outcome, PairingManager::Outcome::Accepted);
+    const Hello again2 = helloWith(AuthMethod::Paired, t2.pairKey, t2.keyId);
+    EXPECT_EQ(pm.verifyHello(again2, serverNonce(), certFp(), T0 + 4s).outcome, PairingManager::Outcome::Accepted);
+
+    // 3. anahtar üretilince en eski (t) düşer, t2 ve t3 geçerli kalır.
+    const auto t3 = pm.createPairing(first);
+    EXPECT_EQ(pm.trustedSenders().size(), 2u);
+    EXPECT_EQ(pm.verifyHello(again, serverNonce(), certFp(), T0 + 5s).outcome, PairingManager::Outcome::AuthFailed);
+    EXPECT_EQ(pm.verifyHello(again2, serverNonce(), certFp(), T0 + 6s).outcome, PairingManager::Outcome::Accepted);
+
+    // Unutma cihazın tüm geçiş anahtarlarını birlikte siler.
+    EXPECT_TRUE(pm.removeTrusted(t3.keyId));
     EXPECT_TRUE(pm.trustedSenders().empty());
 }
 

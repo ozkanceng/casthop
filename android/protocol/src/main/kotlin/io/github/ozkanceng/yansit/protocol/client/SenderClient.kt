@@ -8,6 +8,7 @@ import io.github.ozkanceng.yansit.protocol.ControlMessage
 import io.github.ozkanceng.yansit.protocol.ProtocolError
 import io.github.ozkanceng.yansit.protocol.ProtocolException
 import java.io.IOException
+import javax.net.SocketFactory
 
 /**
  * Tahtanın adresi. [fingerprint] QR'dan veya kayıtlı eşleştirmeden gelir. mDNS ile bulunan tahtada tam parmak izi
@@ -18,6 +19,8 @@ public data class Endpoint(
     val port: Int,
     val fingerprint: Bytes?,
     val fingerprintPrefix: Bytes? = null,
+    /** Yerel Wi-Fi/Ethernet ağına sabitleme (Android çift ağ yönlendirmesinde mobil veriyi atlar). */
+    val socketFactory: SocketFactory? = null,
 )
 
 /** Kimlik doğrulama yöntemi (PROTOCOL.md §7.1.1). */
@@ -89,6 +92,32 @@ public object SenderClient {
         onPending: (timeoutMs: Long) -> Unit = {},
     ): HelloOutcome {
         val channel = open(endpoint)
+        return helloOver(channel, endpoint, credentials, device, requestPairing, onPending)
+    }
+
+    /** Önceden [PinnedTls.connectFirst] ile doğrulanmış TLS soketi üzerinde ikinci bağlantı açmadan HELLO yürütür. */
+    @Throws(IOException::class, ProtocolException::class)
+    public fun hello(
+        socket: PinnedSocket,
+        endpoint: Endpoint,
+        credentials: Credentials,
+        device: DeviceInfo,
+        requestPairing: Boolean = false,
+        onPending: (timeoutMs: Long) -> Unit = {},
+    ): HelloOutcome {
+        val channel = ControlChannel(socket).also { it.readTimeoutMs = FIRST_MESSAGE_TIMEOUT_MS }
+        return helloOver(channel, endpoint, credentials, device, requestPairing, onPending)
+    }
+
+    @Throws(IOException::class, ProtocolException::class)
+    private fun helloOver(
+        channel: ControlChannel,
+        endpoint: Endpoint,
+        credentials: Credentials,
+        device: DeviceInfo,
+        requestPairing: Boolean,
+        onPending: (timeoutMs: Long) -> Unit,
+    ): HelloOutcome {
         try {
             val challenge = expectChallenge(channel)
             val clientNonce = Auth.randomBytes(ControlCodec.ID_SIZE)
@@ -144,7 +173,13 @@ public object SenderClient {
     @Throws(IOException::class, ProtocolException::class)
     public fun attach(session: Session, kind: Int, sendBufferBytes: Int = 128 * 1024): MediaChannel {
         val endpoint = session.endpoint.copy(fingerprint = session.fingerprint)
-        val tls = PinnedTls.connect(endpoint.host, endpoint.port, endpoint.fingerprint, sendBufferBytes = sendBufferBytes)
+        val tls = PinnedTls.connect(
+            endpoint.host,
+            endpoint.port,
+            endpoint.fingerprint,
+            sendBufferBytes = sendBufferBytes,
+            socketFactory = endpoint.socketFactory,
+        )
         val channel = ControlChannel(tls)
         try {
             channel.readTimeoutMs = FIRST_MESSAGE_TIMEOUT_MS
@@ -191,7 +226,13 @@ public object SenderClient {
     }
 
     private fun open(endpoint: Endpoint): ControlChannel {
-        val tls = PinnedTls.connect(endpoint.host, endpoint.port, endpoint.fingerprint, sendBufferBytes = 32 * 1024)
+        val tls = PinnedTls.connect(
+            endpoint.host,
+            endpoint.port,
+            endpoint.fingerprint,
+            sendBufferBytes = 32 * 1024,
+            socketFactory = endpoint.socketFactory,
+        )
         endpoint.fingerprintPrefix?.let { prefix ->
             val seen = tls.fingerprint
             val matches = prefix.size <= seen.size && (0 until prefix.size).all { prefix[it] == seen[it] }

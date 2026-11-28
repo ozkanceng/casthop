@@ -3,6 +3,7 @@ package io.github.ozkanceng.yansit.stream
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
+import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiInfo
 import android.os.Build
@@ -10,6 +11,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import java.net.Inet4Address
 import java.net.NetworkInterface
+import javax.net.SocketFactory
 
 /** Bağlanamama nedenini sınıflandırmaya, hotspot ve pil kısıtlamasını algılamaya yardımcı ağ/sistem bilgisi. */
 object NetworkDiagnostics {
@@ -27,6 +29,68 @@ object NetworkDiagnostics {
             prefixes.any { (addr, len) -> len in 1..32 && sameSubnet(addr, h, len) }
         }
     }
+
+    /**
+     * Aday tahta IP'lerini önceliklendirir: tabletin şu an bağlı olduğu yerel alt ağla eşleşen IPv4'ler en öne alınır,
+     * geri kalanlar mevcut sırasıyla korunur.
+     */
+    fun prioritizeHosts(context: Context, hosts: List<String>): List<String> =
+        prioritizeHosts(hosts, localPrefixes(context))
+
+    internal fun prioritizeHosts(hosts: List<String>, prefixes: List<Pair<Int, Int>>): List<String> {
+        val clean = hosts.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        if (clean.size <= 1 || prefixes.isEmpty()) return clean
+        val matched = ArrayList<String>(clean.size)
+        val rest = ArrayList<String>(clean.size)
+        for (host in clean) {
+            val ip = ipv4ToInt(host)
+            val onSameSubnet = ip != null && prefixes.any { (addr, len) -> len in 1..32 && sameSubnet(addr, ip, len) }
+            if (onSameSubnet) matched += host else rest += host
+        }
+        return matched + rest
+    }
+
+    /**
+     * Hedef yerel IP için en uygun Wi-Fi veya Ethernet [Network] nesnesini seçer.
+     * - Doğrulanmamış (internetsiz/MEB filtreli) okul Wi-Fi'ı + açık mobil veri senaryosunda TCP paketlerinin
+     *   mobil veriye kaçmasını kesin olarak engeller.
+     * - Cihaz kendi hotspot'unu (soft-AP) paylaşıyorsa ve hedef IP bir istemci ağına uymuyorsa `null` döner
+     *   (sistem varsayılan soketi soft-AP arayüzüne yönlendirir).
+     */
+    fun selectLocalNetwork(context: Context, targetHost: String): Network? {
+        val cm = context.applicationContext.getSystemService(ConnectivityManager::class.java) ?: return null
+        val targetIp = ipv4ToInt(targetHost.trim())
+        val lanNetworks = cm.allNetworks.mapNotNull { n ->
+            val caps = cm.getNetworkCapabilities(n) ?: return@mapNotNull null
+            val isWifi = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+            val isEth = caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            if (!isWifi && !isEth) return@mapNotNull null
+            Triple(n, isWifi, cm.getLinkProperties(n))
+        }
+        if (lanNetworks.isEmpty()) return null
+
+        // 1) Alt ağı hedef IP ile birebir örtüşen Wi-Fi / Ethernet ağı
+        if (targetIp != null) {
+            for ((network, _, props) in lanNetworks) {
+                val addrs = props?.linkAddresses.orEmpty()
+                val matches = addrs.any { la ->
+                    val addr = la.address as? Inet4Address ?: return@any false
+                    val ip = addr.hostAddress?.let(::ipv4ToInt) ?: return@any false
+                    la.prefixLength in 1..32 && sameSubnet(ip, targetIp, la.prefixLength)
+                }
+                if (matches) return network
+            }
+        }
+
+        // 2) Kendi hotspot'umuz açıksa hedef IP soft-AP alt ağında olabilir → varsayılan soket kullan.
+        if (isHostingHotspot(context)) return null
+
+        // 3) Hotspot yok, aktif Wi-Fi/Ethernet var → mobil veriyi atlamak için yerel ağı bağla (Wi-Fi öncelikli).
+        return lanNetworks.firstOrNull { it.second }?.first ?: lanNetworks.first().first
+    }
+
+    fun socketFactoryFor(context: Context, targetHost: String): SocketFactory? =
+        selectLocalNetwork(context, targetHost)?.socketFactory
 
     /**
      * Telefon/tablet şu anda kendi Wi-Fi hotspot (mobil erişim noktası) arayüzünü paylaşıyor mu?

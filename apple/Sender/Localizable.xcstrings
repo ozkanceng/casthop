@@ -3333,6 +3333,23 @@
         }
       }
     },
+    "On this network": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On this network"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu ağda"
+          }
+        }
+      }
+    },
     "iOS ends a broadcast when the device locks. Increase the Auto-Lock time.": {
       "extractionState": "manual",
       "localizations": {

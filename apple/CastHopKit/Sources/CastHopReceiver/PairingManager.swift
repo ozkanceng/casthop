@@ -23,8 +23,10 @@ public final class PairingManager {
         public var tokenLifetimeMs: Int64 = 10 * 60 * 1000
         public var maxPinFailures = 5
         public var pinLockoutMs: Int64 = 30_000
-        public var maxHellosPerWindow = 10
+        public var maxHellosPerWindow = 20
         public var helloWindowMs: Int64 = 10_000
+        /// Dual-key rollover window: keeps the previous pairing key valid if a fresh WELCOME drops in transit.
+        public var maxKeysPerDevice = 2
 
         public init() {}
     }
@@ -154,9 +156,20 @@ public final class PairingManager {
         }
     }
 
-    /// Creates a pairing for an accepted HELLO. One key per device: a new pairing replaces the old one.
+    /// Creates a pairing for an accepted HELLO, keeping up to `maxKeysPerDevice` recent keys per device.
     public func createPairing(_ hello: Hello) -> TrustedSender {
-        trustedSenders.removeAll { $0.deviceId == hello.deviceId }
+        let keepExisting = max(0, policy.maxKeysPerDevice - 1)
+        var sameDeviceIndices: [Int] = []
+        for i in trustedSenders.indices where trustedSenders[i].deviceId == hello.deviceId {
+            trustedSenders[i].deviceName = hello.deviceName
+            sameDeviceIndices.append(i)
+        }
+        if sameDeviceIndices.count > keepExisting {
+            let dropCount = sameDeviceIndices.count - keepExisting
+            for idx in sameDeviceIndices.prefix(dropCount).reversed() {
+                trustedSenders.remove(at: idx)
+            }
+        }
         let t = TrustedSender(keyId: Auth.randomBytes(ControlCodec.idSize), pairKey: Auth.randomBytes(ControlCodec.keySize),
                               deviceId: hello.deviceId, deviceName: hello.deviceName)
         trustedSenders.append(t)
@@ -166,8 +179,9 @@ public final class PairingManager {
 
     @discardableResult
     public func removeTrusted(keyId: Data) -> Bool {
+        guard let target = trustedSenders.first(where: { $0.keyId == keyId }) else { return false }
         let before = trustedSenders.count
-        trustedSenders.removeAll { $0.keyId == keyId }
+        trustedSenders.removeAll { $0.deviceId == target.deviceId }
         guard trustedSenders.count != before else { return false }
         onTrustedChanged?()
         return true

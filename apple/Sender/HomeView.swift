@@ -69,6 +69,26 @@ struct HomeView: View {
                 model.rename(receiver, nickname: newName)
             }
         }
+        .onAppear {
+            if idle && !model.receivers.isEmpty { model.startPassivePresence() }
+        }
+        .onDisappear {
+            model.stopPassivePresence()
+        }
+        .onChange(of: idle) { _, isIdle in
+            if isIdle && !model.receivers.isEmpty {
+                model.startPassivePresence()
+            } else {
+                model.stopPassivePresence()
+            }
+        }
+        .onChange(of: model.receivers.isEmpty) { _, empty in
+            if empty {
+                model.stopPassivePresence()
+            } else if idle {
+                model.startPassivePresence()
+            }
+        }
     }
 }
 
@@ -151,9 +171,13 @@ private struct ConnectView: View {
                         .foregroundStyle(Tokens.onSurface)
                     Spacer()
                 }
-                ForEach(model.receivers) { receiver in
+                let hasOnlineInfo = !model.onlineFingerprints.isEmpty
+                ForEach(model.sortedReceivers) { receiver in
+                    let online = model.onlineFingerprints.contains(receiver.fingerprint)
                     RememberedBoardCard(
                         receiver: receiver,
+                        online: online,
+                        dimmed: hasOnlineInfo && !online,
                         onConnect: { model.connect(receiver) },
                         onToggleFavorite: { model.toggleFavorite(receiver) },
                         onRename: { onRequestRename(receiver) },
@@ -242,6 +266,8 @@ private struct ConnectView: View {
 
 private struct RememberedBoardCard: View {
     let receiver: RememberedReceiver
+    let online: Bool
+    let dimmed: Bool
     let onConnect: () -> Void
     let onToggleFavorite: () -> Void
     let onRename: () -> Void
@@ -267,6 +293,19 @@ private struct RememberedBoardCard: View {
                                 Image(systemName: "star.fill")
                                     .font(.caption)
                                     .foregroundStyle(Tokens.secondary)
+                            }
+                            if online {
+                                HStack(spacing: 4) {
+                                    Circle()
+                                        .fill(Tokens.tertiary)
+                                        .frame(width: 7, height: 7)
+                                    Text("On this network")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(Tokens.tertiary)
+                                }
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(Tokens.tertiary.opacity(0.14), in: Capsule())
                             }
                         }
                         Text(verbatim: subtitle)
@@ -314,7 +353,11 @@ private struct RememberedBoardCard: View {
             .padding(.vertical, 2)
         }
         .background(Tokens.surface, in: RoundedRectangle(cornerRadius: Tokens.radius))
-        .overlay(RoundedRectangle(cornerRadius: Tokens.radius).stroke(Tokens.outlineVariant, lineWidth: 1))
+        .overlay(
+            RoundedRectangle(cornerRadius: Tokens.radius)
+                .stroke(online ? Tokens.tertiary.opacity(0.65) : Tokens.outlineVariant, lineWidth: online ? 1.5 : 1)
+        )
+        .opacity(dimmed ? 0.78 : 1.0)
     }
 }
 

@@ -389,6 +389,7 @@ fun PinScreen(
                     if (ended?.error != null) {
                         ConnectionErrorCard(
                             error = ended.error,
+                            detail = ended.detail,
                             onRetry = {
                                 if (ended.error == MirrorError.WRONG_PIN) {
                                     pin = ""
@@ -592,6 +593,7 @@ fun ManualIpScreen(
                     if (ended?.error != null) {
                         ConnectionErrorCard(
                             error = ended.error,
+                            detail = ended.detail,
                             onRetry = {
                                 if (ended.error == MirrorError.WRONG_PIN) {
                                     pin = ""

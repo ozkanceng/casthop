@@ -156,11 +156,14 @@ public struct DiscoveryTxt: Equatable, Sendable {
     public var fingerprintPrefix: Data
     /// Nil if the receiver sends none or one this version does not know.
     public var kind: String?
+    /// Optional additive IPv4 hints (`ip=10.0.0.1,192.168.1.2`) that bypass IPv6-only mDNS and `.local` collisions.
+    public var hosts: [String]
 
-    public init(name: String?, fingerprintPrefix: Data, kind: String? = nil) {
+    public init(name: String?, fingerprintPrefix: Data, kind: String? = nil, hosts: [String] = []) {
         self.name = name
         self.fingerprintPrefix = fingerprintPrefix
         self.kind = kind
+        self.hosts = hosts
     }
 
     /// Nil for another version or a bad fingerprint prefix.
@@ -168,11 +171,19 @@ public struct DiscoveryTxt: Equatable, Sendable {
         guard attributes["v"] == "1", let fp = attributes["fp"], let prefix = Base64Url.decode(fp),
               prefix.count == prefixSize else { return nil }
         let name = attributes["name"].flatMap { $0.trimmingCharacters(in: .whitespaces).isEmpty ? nil : $0 }
-        return DiscoveryTxt(name: name, fingerprintPrefix: prefix, kind: attributes["kind"].flatMap { kinds.contains($0) ? $0 : nil })
+        let hosts: [String] = attributes["ip"]?.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter(QrPayload.isIPv4).prefix(QrPayload.maxHosts).map { $0 } ?? []
+        return DiscoveryTxt(name: name, fingerprintPrefix: prefix,
+                            kind: attributes["kind"].flatMap { kinds.contains($0) ? $0 : nil }, hosts: hosts)
     }
 
-    public static func record(name: String, fingerprint: Data, kind: String = localKind) -> [String: String] {
-        ["v": "1", "name": name, "fp": Base64Url.encode(fingerprint.prefix(prefixSize)), "kind": kind]
+    public static func record(name: String, fingerprint: Data, kind: String = localKind, hosts: [String] = []) -> [String: String] {
+        var out = ["v": "1", "name": name, "fp": Base64Url.encode(fingerprint.prefix(prefixSize)), "kind": kind]
+        let validHosts = hosts.filter(QrPayload.isIPv4).prefix(QrPayload.maxHosts)
+        if !validHosts.isEmpty {
+            out["ip"] = validHosts.joined(separator: ",")
+        }
+        return out
     }
 
     /// Cuts a service name to 63 bytes without splitting a character; an empty name becomes `CastHop`.

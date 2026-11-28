@@ -467,7 +467,10 @@ public class ReceiverEngine(
         senderName = sessions.session?.sender?.deviceName.orEmpty(),
         pendingSenderName = sessions.pending?.hello?.deviceName,
         stats = liveStats,
-        trusted = pairing.trustedSenders.map { TrustedEntry(it.keyId.toHex(), it.deviceName) },
+        trusted = pairing.trustedSenders
+            .fold(LinkedHashMap<Bytes, TrustedSender>()) { acc, t -> acc[t.deviceId] = t; acc }
+            .values
+            .map { TrustedEntry(it.keyId.toHex(), it.deviceName) },
         audioEnabled = audioOn,
     )
 

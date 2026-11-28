@@ -9,7 +9,7 @@ namespace yansit {
 
 namespace {
 
-constexpr int kPollIntervalMs = 5000;
+constexpr int kPollIntervalMs = 2000;
 
 AddressCandidate::Kind toKind(QNetworkInterface::InterfaceType type) {
     switch (type) {

@@ -94,7 +94,7 @@ public enum PinnedTLS {
             complete(accepted)
         }, queue)
 
-        let params = NWParameters(tls: tls, tcp: TLSSettings.tcp(connectTimeoutSeconds: 3))
+        let params = NWParameters(tls: tls, tcp: TLSSettings.tcp(connectTimeoutSeconds: 4))
         if interactiveVideo { params.serviceClass = .interactiveVideo }
         let connection = NWConnection(to: endpoint, using: params)
 
@@ -123,11 +123,22 @@ public enum PinnedTLS {
                     let framed = FramedConnection(connection: connection, queue: queue)
                     framed.startReading()
                     continuation.resume(returning: PinnedConnection(framed: framed, fingerprint: fp))
-                case .failed(let error), .waiting(let error):
+                case .failed(let error):
                     outcome.lock.lock()
                     let mismatch = outcome.mismatch
                     outcome.lock.unlock()
                     fail(mismatch ?? map(error))
+                case .waiting(let error):
+                    // Transient `.waiting` (ENETUNREACH/EHOSTUNREACH/ARP wake on iPad or cold Broadcast Extension)
+                    // recovers automatically as soon as Wi-Fi wakes. Only fail fast on a real peer RST or pin mismatch.
+                    outcome.lock.lock()
+                    let mismatch = outcome.mismatch
+                    outcome.lock.unlock()
+                    if let mismatch {
+                        fail(mismatch)
+                    } else if case .posix(let code) = error, code == .ECONNREFUSED {
+                        fail(TransportError.connectFailed(refused: true))
+                    }
                 case .cancelled:
                     fail(TransportError.closed)
                 default:
@@ -137,6 +148,161 @@ public enum PinnedTLS {
             connection.start(queue: queue)
             queue.asyncAfter(deadline: .now() + .milliseconds(timeoutMs)) { fail(TransportError.timeout) }
         }
+    }
+
+    public enum ConnectFirstResult: @unchecked Sendable {
+        case connected(host: String, connection: PinnedConnection)
+        case failed(refused: Bool, fingerprintMismatch: TransportError?, incompatible: Bool)
+    }
+
+    private final class FirstRace: @unchecked Sendable {
+        let lock = NSLock()
+        var pending: Int
+        var refused = false
+        var mismatch: TransportError?
+        var incompatible = false
+        var done = false
+        var tasks: [Task<Void, Never>] = []
+        var continuation: CheckedContinuation<ConnectFirstResult, Never>?
+
+        init(pending: Int) { self.pending = pending }
+
+        func win(host: String, connection: PinnedConnection) -> Bool {
+            lock.lock()
+            guard !done else {
+                lock.unlock()
+                return false
+            }
+            done = true
+            let c = continuation
+            let running = tasks
+            continuation = nil
+            lock.unlock()
+            running.forEach { $0.cancel() }
+            c?.resume(returning: .connected(host: host, connection: connection))
+            return true
+        }
+
+        func failOne(_ error: Error) {
+            lock.lock()
+            if case TransportError.fingerprintMismatch = error, mismatch == nil {
+                mismatch = error as? TransportError
+            } else if case TransportError.incompatibleReceiver = error {
+                incompatible = true
+            } else if case TransportError.connectFailed(refused: true) = error {
+                refused = true
+            }
+            pending -= 1
+            let shouldFinish = pending <= 0 && !done
+            let r = refused
+            let m = mismatch
+            let inc = incompatible
+            let c = shouldFinish ? continuation : nil
+            if shouldFinish {
+                done = true
+                continuation = nil
+            }
+            lock.unlock()
+            c?.resume(returning: .failed(refused: r, fingerprintMismatch: m, incompatible: inc))
+        }
+    }
+
+    /// Races direct TLS 1.3 + fingerprint-pinned connections across all candidate hosts (no raw TCP probe).
+    public static func connectFirst(
+        hosts: [String],
+        port: UInt16,
+        expected: Data?,
+        expectedPrefix: Data? = nil,
+        queue: DispatchQueue,
+        timeoutMs: Int = 5000
+    ) async -> ConnectFirstResult {
+        var unique: [String] = []
+        var seen = Set<String>()
+        for h in hosts {
+            let trimmed = h.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty && seen.insert(trimmed).inserted { unique.append(trimmed) }
+        }
+        guard !unique.isEmpty, let nwPort = NWEndpoint.Port(rawValue: port) else {
+            return .failed(refused: false, fingerprintMismatch: nil, incompatible: false)
+        }
+        let race = FirstRace(pending: unique.count)
+        return await withCheckedContinuation { continuation in
+            race.lock.lock()
+            race.continuation = continuation
+            for host in unique {
+                let endpoint = NWEndpoint.hostPort(host: NWEndpoint.Host(host), port: nwPort)
+                let t = Task {
+                    do {
+                        let pinned = try await connect(to: endpoint, expected: expected, queue: queue, timeoutMs: timeoutMs)
+                        if let prefix = expectedPrefix, !pinned.fingerprint.starts(with: prefix) {
+                            pinned.framed.abort()
+                            race.failOne(TransportError.fingerprintMismatch(expected: prefix, actual: pinned.fingerprint))
+                            return
+                        }
+                        if !race.win(host: host, connection: pinned) {
+                            pinned.framed.abort()
+                        }
+                    } catch {
+                        race.failOne(error)
+                    }
+                }
+                race.tasks.append(t)
+            }
+            race.lock.unlock()
+        }
+    }
+
+    /// Orders candidate IPv4 hosts so addresses on any active local Wi-Fi/Ethernet subnet come first.
+    public static func prioritizeHosts(_ hosts: [String]) -> [String] {
+        var unique: [String] = []
+        var seen = Set<String>()
+        for h in hosts {
+            let trimmed = h.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty && seen.insert(trimmed).inserted { unique.append(trimmed) }
+        }
+        guard unique.count > 1 else { return unique }
+        let subnets = localIpv4Subnets()
+        guard !subnets.isEmpty else { return unique }
+        var same: [String] = []
+        var rest: [String] = []
+        for host in unique {
+            if let ip = ipv4Value(host), subnets.contains(where: { ($0.address & $0.mask) == (ip & $0.mask) }) {
+                same.append(host)
+            } else {
+                rest.append(host)
+            }
+        }
+        return same + rest
+    }
+
+    private static func localIpv4Subnets() -> [(address: UInt32, mask: UInt32)] {
+        var head: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&head) == 0 else { return [] }
+        defer { freeifaddrs(head) }
+        var out: [(UInt32, UInt32)] = []
+        var cursor = head
+        while let entry = cursor {
+            defer { cursor = entry.pointee.ifa_next }
+            let flags = Int32(entry.pointee.ifa_flags)
+            guard flags & IFF_UP != 0, flags & IFF_RUNNING != 0, flags & IFF_LOOPBACK == 0,
+                  let sa = entry.pointee.ifa_addr, sa.pointee.sa_family == UInt8(AF_INET),
+                  let nm = entry.pointee.ifa_netmask, nm.pointee.sa_family == UInt8(AF_INET) else { continue }
+            let ip = sa.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { UInt32(bigEndian: $0.pointee.sin_addr.s_addr) }
+            let mask = nm.withMemoryRebound(to: sockaddr_in.self, capacity: 1) { UInt32(bigEndian: $0.pointee.sin_addr.s_addr) }
+            out.append((ip, mask))
+        }
+        return out
+    }
+
+    private static func ipv4Value(_ text: String) -> UInt32? {
+        let parts = text.split(separator: ".")
+        guard parts.count == 4 else { return nil }
+        var v: UInt32 = 0
+        for p in parts {
+            guard let n = UInt32(p), n <= 255 else { return nil }
+            v = (v << 8) | n
+        }
+        return v
     }
 
     private static func map(_ error: NWError) -> TransportError {
@@ -188,7 +354,7 @@ public enum Reachability {
         }
     }
 
-    public static func firstReachable(hosts: [String], port: UInt16, timeoutMs: Int = 2000) async -> Result {
+    public static func firstReachable(hosts: [String], port: UInt16, timeoutMs: Int = 4000) async -> Result {
         guard !hosts.isEmpty, let nwPort = NWEndpoint.Port(rawValue: port) else {
             return .unreachable(refused: false)
         }
@@ -197,20 +363,36 @@ public enum Reachability {
         return await withCheckedContinuation { continuation in
             race.continuation = continuation
             for host in hosts {
-                let params = NWParameters(tls: nil, tcp: TLSSettings.tcp(connectTimeoutSeconds: 2))
+                let params = NWParameters(tls: nil, tcp: TLSSettings.tcp(connectTimeoutSeconds: 4))
                 let c = NWConnection(host: NWEndpoint.Host(host), port: nwPort, using: params)
                 race.connections.append(c)
-                var failed = false
+                let failedLock = NSLock()
+                final class OnceFlag: @unchecked Sendable {
+                    var value = false
+                }
+                let failed = OnceFlag()
                 c.stateUpdateHandler = { state in
                     switch state {
                     case .ready:
                         race.finish(.reachable(host))
-                    case .failed(let e), .waiting(let e):
-                        guard !failed else { return }
-                        failed = true
+                    case .failed(let e):
+                        failedLock.lock()
+                        let already = failed.value
+                        failed.value = true
+                        failedLock.unlock()
+                        guard !already else { return }
                         var refused = false
                         if case .posix(let code) = e, code == .ECONNREFUSED { refused = true }
                         race.failed(refused: refused)
+                    case .waiting(let e):
+                        if case .posix(let code) = e, code == .ECONNREFUSED {
+                            failedLock.lock()
+                            let already = failed.value
+                            failed.value = true
+                            failedLock.unlock()
+                            guard !already else { return }
+                            race.failed(refused: true)
+                        }
                     default:
                         break
                     }

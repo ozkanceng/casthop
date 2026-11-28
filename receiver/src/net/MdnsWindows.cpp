@@ -98,7 +98,8 @@ class MdnsPublisher::Impl {
 public:
     ~Impl() { stop(); }
 
-    void publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint) {
+    void publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint,
+                 const std::vector<std::string>& hosts) {
         stop();
         if (!api().available()) {
             qCInfo(lcMdns) << "mDNS yayını yok: bu Windows sürümünde DnsServiceRegister bulunmuyor (QR çalışır)";
@@ -107,7 +108,7 @@ public:
 
         std::vector<std::wstring> keys;
         std::vector<std::wstring> values;
-        for (const std::string& entry : mdnsTxt(name, fingerprint)) {
+        for (const std::string& entry : mdnsTxt(name, fingerprint, hosts)) {
             const std::size_t split = entry.find('=');
             keys.push_back(QString::fromStdString(entry.substr(0, split)).toStdWString());
             values.push_back(QString::fromStdString(entry.substr(split + 1)).toStdWString());
@@ -181,8 +182,9 @@ MdnsPublisher::MdnsPublisher() : m_impl(std::make_unique<Impl>()) {}
 
 MdnsPublisher::~MdnsPublisher() = default;
 
-void MdnsPublisher::publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint) {
-    m_impl->publish(name, port, fingerprint);
+void MdnsPublisher::publish(const std::string& name, std::uint16_t port, const protocol::Key32& fingerprint,
+                            const std::vector<std::string>& hosts) {
+    m_impl->publish(name, port, fingerprint, hosts);
 }
 
 void MdnsPublisher::stop() { m_impl->stop(); }

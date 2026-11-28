@@ -18,6 +18,7 @@ Connection::Connection(session::ConnId id, QSslSocket* socket, std::string recei
       m_serverNonce(randomArray<16>()) {
     socket->setParent(this);
     socket->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+    socket->setSocketOption(QAbstractSocket::KeepAliveOption, 1);
     m_peer = socket->peerAddress().toString();
 
     connect(socket, &QSslSocket::readyRead, this, &Connection::onReadyRead);

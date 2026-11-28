@@ -182,6 +182,29 @@ public final class ControlChannel: @unchecked Sendable {
 
     public func send(_ msg: ControlMessage) { framed.send(control: msg) }
 
+    /// Sends a control message and waits (at most `timeoutMs`) for the network stack to accept it before closing.
+    public func sendAndWait(_ msg: ControlMessage, timeoutMs: Int = 250) async {
+        final class Gate: @unchecked Sendable {
+            private let lock = NSLock()
+            private var done = false
+            func tryComplete() -> Bool {
+                lock.lock()
+                defer { lock.unlock() }
+                if done { return false }
+                done = true
+                return true
+            }
+        }
+        let gate = Gate()
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            let finish: @Sendable () -> Void = {
+                if gate.tryComplete() { c.resume() }
+            }
+            framed.send(control: msg) { _ in finish() }
+            framed.queue.asyncAfter(deadline: .now() + .milliseconds(timeoutMs)) { finish() }
+        }
+    }
+
     /// Sends the last message and closes when it has left.
     public func close() {
         lock.lock()
@@ -260,6 +283,22 @@ public enum SenderClient {
                              requestPairing: Bool = false,
                              onPending: @Sendable (UInt32) -> Void = { _ in }) async throws -> HelloOutcome {
         let channel = try await open(endpoint)
+        return try await helloOver(channel: channel, endpoint: endpoint, credentials: credentials, device: device,
+                                   requestPairing: requestPairing, onPending: onPending)
+    }
+
+    /// Reuses an already established `PinnedConnection` (from `PinnedTLS.connectFirst`) without opening a second socket.
+    public static func hello(connection: PinnedConnection, endpoint: ReceiverEndpoint, credentials: Credentials,
+                             device: DeviceInfo, requestPairing: Bool = false,
+                             onPending: @Sendable (UInt32) -> Void = { _ in }) async throws -> HelloOutcome {
+        let channel = ControlChannel(connection)
+        return try await helloOver(channel: channel, endpoint: endpoint, credentials: credentials, device: device,
+                                   requestPairing: requestPairing, onPending: onPending)
+    }
+
+    private static func helloOver(channel: ControlChannel, endpoint: ReceiverEndpoint, credentials: Credentials,
+                                  device: DeviceInfo, requestPairing: Bool,
+                                  onPending: @Sendable (UInt32) -> Void) async throws -> HelloOutcome {
         do {
             let challenge = try await expectChallenge(channel)
             let clientNonce = Auth.randomBytes(ControlCodec.idSize)
