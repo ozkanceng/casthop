@@ -48,4 +48,18 @@
     <string name="error_port_in_use">Bağlantı noktası kullanımda. CastHop\'un başka bir kopyası açık olabilir.</string>
     <string name="error_identity">Güvenlik sertifikası oluşturulamadı.</string>
     <string name="error_no_decoder">Bu cihazda H.264 görüntü çözücü bulunamadı.</string>
+    <string name="update_pill">Yeni sürüm: v%1$s</string>
+    <string name="update_dialog_title">Yeni CastHop güncellemesi hazır</string>
+    <string name="update_qr_desc">Güncelleme indirme bağlantısı QR kodu</string>
+    <string name="update_scan_hint">İndirme sayfasını açmak için telefonunuzla QR kodu okutun.</string>
+    <string name="update_open_browser">Tarayıcıda aç</string>
+    <string name="update_later">Sonra hatırlat</string>
+    <string name="update_skip_version">Bu sürümü atla</string>
+    <string name="settings_auto_updates">Güncellemeleri denetle</string>
+    <string name="settings_auto_updates_hint">Günde en fazla bir kez yeni sürüm kontrolü yapar.</string>
+    <string name="update_check_now">Şimdi denetle</string>
+    <string name="update_checking">Denetleniyor…</string>
+    <string name="update_status_available">Yeni sürüm hazır: v%1$s</string>
+    <string name="update_status_up_to_date">CastHop güncel (v%1$s).</string>
+    <string name="update_status_failed">Güncellemeler denetlenemedi.</string>
 </resources>

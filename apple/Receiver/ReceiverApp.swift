@@ -54,6 +54,19 @@ struct RootView: View {
                     .environment(\.theme, theme)
                     .environmentObject(model)
             }
+            .sheet(isPresented: $model.showingUpdateSheet) {
+                if let release = model.availableUpdate {
+                    UpdateSheet(
+                        release: release,
+                        onSkip: { model.skipAvailableUpdate() },
+                        onLater: { model.dismissUpdateForSession() }
+                    )
+                    .environment(\.theme, theme)
+                }
+            }
+            .onChange(of: showsVideo) { _, active in
+                if active { model.showingUpdateSheet = false }
+            }
         }
         .preferredColorScheme(model.darkTheme ? .dark : .light)
     }

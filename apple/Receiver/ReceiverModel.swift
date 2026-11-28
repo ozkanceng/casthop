@@ -1,4 +1,5 @@
 import AVFoundation
+import CastHopProtocol
 import CastHopReceiver
 import SwiftUI
 #if os(macOS)
@@ -93,6 +94,9 @@ final class ReceiverModel: ObservableObject {
         static let audio = "audioEnabled"
         static let picture = "pictureMode"
         static let dark = "darkTheme"
+        static let autoUpdates = "autoCheckUpdates"
+        static let skippedUpdate = "skippedUpdateVersion"
+        static let lastUpdateCheck = "lastUpdateCheck"
     }
 
     @Published private(set) var snapshot = ReceiverSnapshot()
@@ -102,7 +106,17 @@ final class ReceiverModel: ObservableObject {
     @Published var darkTheme: Bool {
         didSet { defaults.set(darkTheme, forKey: Key.dark) }
     }
+    @Published var autoCheckUpdates: Bool {
+        didSet { defaults.set(autoCheckUpdates, forKey: Key.autoUpdates) }
+    }
     @Published var showingSettings = false
+    @Published var showingUpdateSheet = false
+    @Published private(set) var availableUpdate: UpdateRelease?
+    @Published private(set) var checkingUpdates = false
+    @Published private(set) var updateStatusMessage: String?
+    @Published private var updateSessionDismissed = false
+
+    var visibleUpdate: UpdateRelease? { updateSessionDismissed ? nil : availableUpdate }
 
     let display = DisplayOutput()
     private let launch = LaunchOptions(arguments: ProcessInfo.processInfo.arguments)
@@ -117,7 +131,15 @@ final class ReceiverModel: ObservableObject {
     init() {
         pictureMode = PictureMode(rawValue: defaults.string(forKey: Key.picture) ?? "") ?? .fit
         darkTheme = defaults.object(forKey: Key.dark) as? Bool ?? true
+        autoCheckUpdates = defaults.object(forKey: Key.autoUpdates) as? Bool ?? true
         start()
+        if launch.pairingFile == nil, launch.statsFile == nil,
+           ProcessInfo.processInfo.environment["YANSIT_NO_UPDATE_CHECK"] != "1" {
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(3))
+                await self?.checkForUpdatesIfDue()
+            }
+        }
     }
 
     private static var deviceName: String {
@@ -208,5 +230,62 @@ final class ReceiverModel: ObservableObject {
     func setAudio(_ on: Bool) {
         defaults.set(on, forKey: Key.audio)
         service?.setAudioEnabled(on)
+    }
+
+    // MARK: Updates
+
+    func checkForUpdatesIfDue() async {
+        guard autoCheckUpdates, snapshot.state == .waiting else { return }
+        let overrideUrl = ProcessInfo.processInfo.environment["YANSIT_UPDATE_URL"]
+        let now = Date().timeIntervalSince1970
+        let last = defaults.double(forKey: Key.lastUpdateCheck)
+        if overrideUrl == nil, last > 0, (now - last) < UpdateClient.checkIntervalSeconds { return }
+        await performUpdateCheck(manual: false)
+    }
+
+    func checkForUpdatesNow() {
+        guard !checkingUpdates else { return }
+        Task { await performUpdateCheck(manual: true) }
+    }
+
+    private func performUpdateCheck(manual: Bool) async {
+        guard !checkingUpdates, let current = SemVer.parse(version) else { return }
+        checkingUpdates = true
+        if manual { updateStatusMessage = String(localized: "Checking for updates…") }
+        defer { checkingUpdates = false }
+
+        let preferTr = Locale.preferredLanguages.first?.lowercased().hasPrefix("tr") ?? true
+        let manifestURL = ProcessInfo.processInfo.environment["YANSIT_UPDATE_URL"].flatMap(URL.init(string:))
+            ?? UpdateClient.defaultManifestURL
+        guard let release = await UpdateClient.fetchManifestRelease(channel: "macos", currentVersion: version,
+                                                                    preferTurkish: preferTr, manifestURL: manifestURL) else {
+            if manual { updateStatusMessage = String(localized: "Could not check for updates. Check the internet connection.") }
+            return
+        }
+        defaults.set(Date().timeIntervalSince1970, forKey: Key.lastUpdateCheck)
+        if let candidate = SemVer.parse(release.latestVersion), candidate.isNewer(than: current) {
+            let skipped = !manual && defaults.string(forKey: Key.skippedUpdate) == release.latestVersion
+            if manual {
+                defaults.removeObject(forKey: Key.skippedUpdate)
+                updateSessionDismissed = false
+            }
+            availableUpdate = skipped ? nil : release
+            updateStatusMessage = String(localized: "Update available: v\(release.latestVersion)")
+        } else {
+            availableUpdate = nil
+            if manual { updateStatusMessage = String(localized: "CastHop is up to date (v\(version)).") }
+        }
+    }
+
+    func dismissUpdateForSession() {
+        updateSessionDismissed = true
+    }
+
+    func skipAvailableUpdate() {
+        if let v = availableUpdate?.latestVersion {
+            defaults.set(v, forKey: Key.skippedUpdate)
+        }
+        availableUpdate = nil
+        updateSessionDismissed = true
     }
 }

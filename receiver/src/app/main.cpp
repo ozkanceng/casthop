@@ -5,14 +5,17 @@
 #include "app/ReceiverService.h"
 #include "app/ReceiverSettings.h"
 #include "app/ScreenshotTool.h"
+#include "app/UpdateChecker.h"
 #include "media/CpuVideoItem.h"
 #include "media/VideoPipeline.h"
 #include "protocol/Control.h"
 
 #include <gst/gst.h>
 
+#include <QClipboard>
 #include <QCommandLineParser>
 #include <QCoreApplication>
+#include <QDesktopServices>
 #include <QDir>
 #include <QGuiApplication>
 #include <QHostInfo>
@@ -297,6 +300,13 @@ int runGui(int argc, char* argv[]) {
             settings.setCompatibleVideo(true);
     });
     yansit::ScreenshotTool screenshots;
+    yansit::UpdateChecker updater(
+        settings, QCoreApplication::applicationVersion(), lang == QLatin1String("tr"),
+        [](const QUrl& url) { return QDesktopServices::openUrl(url); },
+        [](const QString& text) {
+            if (QClipboard* cb = QGuiApplication::clipboard())
+                cb->setText(text);
+        });
 
     qmlRegisterType<yansit::media::CpuVideoItem>("Yansit.Video", 1, 0, "CpuVideoItem");
 
@@ -309,7 +319,8 @@ int runGui(int argc, char* argv[]) {
     engine->setInitialProperties({{QStringLiteral("startFullScreen"), !parser.isSet(o.windowed)},
                                   {QStringLiteral("receiver"), QVariant::fromValue(&service)},
                                   {QStringLiteral("settings"), QVariant::fromValue(&settings)},
-                                  {QStringLiteral("screenshots"), QVariant::fromValue(&screenshots)}});
+                                  {QStringLiteral("screenshots"), QVariant::fromValue(&screenshots)},
+                                  {QStringLiteral("updater"), QVariant::fromValue(&updater)}});
     QObject::connect(
         engine.get(), &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); },
         Qt::QueuedConnection);
@@ -326,6 +337,9 @@ int runGui(int argc, char* argv[]) {
     // Arayüz yüklendikten sonra dinlemeye başla: el sıkışmaları yükleme sırasında bekletilmesin.
     // Hata olsa da arayüz açık kalır ve sorunu anlaşılır biçimde gösterir.
     service.start();
+    // Otomatik testlerde (--exit-after / --pairing-file) dış ağ isteği yapılmaz; normal açılışta 3 sn sonra denetle.
+    if (!parser.isSet(o.exitAfter) && !parser.isSet(o.pairingFile))
+        QTimer::singleShot(3000, &updater, &yansit::UpdateChecker::checkIfDue);
     const int rc = QGuiApplication::exec();
     renderCheck.reset();
 

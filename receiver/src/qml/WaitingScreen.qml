@@ -8,12 +8,14 @@ Rectangle {
     id: root
 
     required property QtObject receiver
+    required property QtObject updater
     property bool connecting: false
     property bool fullScreen: true
 
     signal toggleFullScreen
     signal quitRequested
     signal settingsRequested
+    signal updateRequested
 
     readonly property bool failed: receiver.stateName === "failed"
     readonly property bool hasQr: receiver.qrImageSource !== ""
@@ -69,6 +71,92 @@ Rectangle {
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontCaption
                         font.weight: Font.DemiBold
+                    }
+                }
+            }
+
+            // Zarif güncelleme hapı: QR ve PIN'i asla engellemeden yeni sürümü bildirir.
+            Rectangle {
+                id: updatePill
+                readonly property bool shown: !root.failed && !root.connecting && root.updater.updateAvailable
+                visible: shown
+                opacity: shown ? 1.0 : 0.0
+                radius: height / 2
+                color: Theme.primarySubtle
+                border.width: Math.max(1, Math.round(1.5 * Theme.scale))
+                border.color: Theme.primary
+                Layout.preferredHeight: Math.max(statusRow.implicitHeight + Theme.space1 * 2, Math.round(52 * Theme.scale))
+                Layout.preferredWidth: updatePillRow.implicitWidth + Theme.space2 * 2
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                }
+
+                MouseArea {
+                    id: pillArea
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.updateRequested()
+                }
+
+                RowLayout {
+                    id: updatePillRow
+                    anchors.centerIn: parent
+                    spacing: Theme.space1
+
+                    Rectangle {
+                        Layout.preferredWidth: Math.round(28 * Theme.scale)
+                        Layout.preferredHeight: Layout.preferredWidth
+                        radius: Layout.preferredWidth / 2
+                        color: Theme.primary
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "↑"
+                            color: Theme.primaryForeground
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Math.round(16 * Theme.scale)
+                            font.weight: Font.Bold
+                        }
+                    }
+
+                    Text {
+                        text: qsTr("New update: v%1").arg(root.updater.latestVersion)
+                        color: Theme.text
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontCaption
+                        font.weight: Font.DemiBold
+                    }
+
+                    Text {
+                        text: qsTr("Details ›")
+                        color: Theme.primary
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontCaption
+                        font.weight: Font.Bold
+                    }
+
+                    Rectangle {
+                        Layout.preferredWidth: Math.round(32 * Theme.scale)
+                        Layout.preferredHeight: Layout.preferredWidth
+                        radius: Layout.preferredWidth / 2
+                        color: dismissArea.pressed ? Theme.border : "transparent"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "×"
+                            color: Theme.textMuted
+                            font.family: Theme.fontFamily
+                            font.pixelSize: Math.round(20 * Theme.scale)
+                            font.weight: Font.Bold
+                        }
+
+                        MouseArea {
+                            id: dismissArea
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.updater.dismissForSession()
+                        }
                     }
                 }
             }

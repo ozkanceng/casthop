@@ -109,6 +109,30 @@
         <source>Network port (applies after restart)</source>
         <translation>Ağ portu (yeniden başlatınca geçerli)</translation>
     </message>
+    <message>
+        <source>Updates</source>
+        <translation>Güncellemeler</translation>
+    </message>
+    <message>
+        <source>Check for updates automatically</source>
+        <translation>Güncellemeleri otomatik denetle</translation>
+    </message>
+    <message>
+        <source>Checking…</source>
+        <translation>Denetleniyor…</translation>
+    </message>
+    <message>
+        <source>Check now</source>
+        <translation>Şimdi denetle</translation>
+    </message>
+    <message>
+        <source>Update to v%1</source>
+        <translation>v%1 sürümüne güncelle</translation>
+    </message>
+    <message>
+        <source>Current version: v%1</source>
+        <translation>Mevcut sürüm: v%1</translation>
+    </message>
 </context>
 <context>
     <name>StreamOverlay</name>
@@ -202,6 +226,80 @@
     <message>
         <source>Offline</source>
         <translation>Çevrimdışı</translation>
+    </message>
+    <message>
+        <source>New update: v%1</source>
+        <translation>Yeni sürüm: v%1</translation>
+    </message>
+    <message>
+        <source>Details ›</source>
+        <translation>İncele ›</translation>
+    </message>
+</context>
+<context>
+    <name>UpdateDialog</name>
+    <message>
+        <source>New CastHop update available</source>
+        <translation>Yeni CastHop güncellemesi hazır</translation>
+    </message>
+    <message>
+        <source>What&apos;s new</source>
+        <translation>Bu sürümdeki yenilikler</translation>
+    </message>
+    <message>
+        <source>Terminal command (portable install)</source>
+        <translation>Terminal komutu (taşınabilir kurulum)</translation>
+    </message>
+    <message>
+        <source>Terminal command (Pardus / Debian)</source>
+        <translation>Terminal komutu (Pardus / Debian)</translation>
+    </message>
+    <message>
+        <source>Copied</source>
+        <translation>Kopyalandı</translation>
+    </message>
+    <message>
+        <source>Download new installer</source>
+        <translation>Yeni kurucuyu indir</translation>
+    </message>
+    <message>
+        <source>Open download page</source>
+        <translation>İndirme sayfasını aç</translation>
+    </message>
+    <message>
+        <source>Copy command</source>
+        <translation>Komutu kopyala</translation>
+    </message>
+    <message>
+        <source>Skip this version</source>
+        <translation>Bu sürümü atla</translation>
+    </message>
+    <message>
+        <source>Remind me later</source>
+        <translation>Sonra hatırlat</translation>
+    </message>
+</context>
+<context>
+    <name>yansit::UpdateChecker</name>
+    <message>
+        <source>Checking for updates…</source>
+        <translation>Güncellemeler denetleniyor…</translation>
+    </message>
+    <message>
+        <source>Could not check for updates. Check the internet connection.</source>
+        <translation>Güncellemeler denetlenemedi. İnternet bağlantısını kontrol edin.</translation>
+    </message>
+    <message>
+        <source>Could not read update information.</source>
+        <translation>Güncelleme bilgisi okunamadı.</translation>
+    </message>
+    <message>
+        <source>Update available: v%1</source>
+        <translation>Yeni sürüm hazır: v%1</translation>
+    </message>
+    <message>
+        <source>CastHop is up to date (v%1).</source>
+        <translation>CastHop güncel (v%1).</translation>
     </message>
 </context>
 <context>

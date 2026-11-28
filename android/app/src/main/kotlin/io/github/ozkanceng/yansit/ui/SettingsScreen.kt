@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +35,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import io.github.ozkanceng.yansit.R
+import io.github.ozkanceng.yansit.data.UpdateBannerInfo
+import io.github.ozkanceng.yansit.data.UpdateStatusUi
 import io.github.ozkanceng.yansit.sender.Preset
 import io.github.ozkanceng.yansit.sender.StreamOverrides
 import io.github.ozkanceng.yansit.stream.NetworkDiagnostics
@@ -59,11 +62,20 @@ fun SettingsScreen(
     onLatency: () -> Unit,
     onBack: () -> Unit,
     mirroring: Boolean = false,
+    versionName: String = "",
+    autoCheckUpdates: Boolean = true,
+    onAutoCheckUpdatesChange: (Boolean) -> Unit = {},
+    checkingUpdates: Boolean = false,
+    updateStatus: UpdateStatusUi? = null,
+    availableUpdate: UpdateBannerInfo? = null,
+    onCheckUpdatesNow: () -> Unit = {},
+    onOpenUpdate: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var audio by remember { mutableStateOf(audioEnabled) }
     var hevc by remember { mutableStateOf(hevcEnabled) }
+    var autoUpdates by remember { mutableStateOf(autoCheckUpdates) }
     var current by remember { mutableStateOf(preset) }
     var adv by remember { mutableStateOf(overrides) }
     var batteryUnrestricted by remember { mutableStateOf(NetworkDiagnostics.isIgnoringBatteryOptimizations(context)) }
@@ -148,6 +160,47 @@ fun SettingsScreen(
                 adv.maxBitrateBps,
                 { stringResourceFor(R.string.option_mbps, (it / 1_000_000).toInt()) },
             ) { update(o = adv.copy(maxBitrateBps = it)) }
+        }
+        SectionCard(stringResource(R.string.settings_updates), Modifier.fillMaxWidth()) {
+            SwitchRow(R.string.settings_auto_updates, R.string.settings_auto_updates_desc, autoUpdates) {
+                autoUpdates = it
+                onAutoCheckUpdatesChange(it)
+            }
+            val statusLine = when (updateStatus) {
+                UpdateStatusUi.Checking -> stringResource(R.string.update_checking)
+                is UpdateStatusUi.Available -> stringResource(R.string.update_status_available, updateStatus.version)
+                is UpdateStatusUi.UpToDate -> stringResource(R.string.update_status_up_to_date, updateStatus.version)
+                UpdateStatusUi.Failed -> stringResource(R.string.update_status_failed)
+                null -> versionName.takeIf { it.isNotBlank() }?.let { stringResource(R.string.home_version, it) }
+            }
+            if (!statusLine.isNullOrBlank()) {
+                Text(
+                    text = statusLine,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (availableUpdate != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedButton(
+                    onClick = onCheckUpdatesNow,
+                    enabled = !checkingUpdates,
+                    modifier = Modifier.heightIn(min = 52.dp),
+                ) {
+                    Text(stringResource(if (checkingUpdates) R.string.update_checking else R.string.update_check_now))
+                }
+                if (availableUpdate != null) {
+                    Button(
+                        onClick = onOpenUpdate,
+                        modifier = Modifier.heightIn(min = 52.dp),
+                    ) {
+                        Text(
+                            stringResource(
+                                if (availableUpdate.fromPlayStore) R.string.update_action_play else R.string.update_action_download,
+                            ),
+                        )
+                    }
+                }
+            }
         }
         SectionCard(stringResource(R.string.settings_latency), Modifier.fillMaxWidth()) {
             Text(

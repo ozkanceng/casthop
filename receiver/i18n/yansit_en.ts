@@ -109,6 +109,30 @@
         <source>Network port (applies after restart)</source>
         <translation>Network port (applies after restart)</translation>
     </message>
+    <message>
+        <source>Updates</source>
+        <translation>Updates</translation>
+    </message>
+    <message>
+        <source>Check for updates automatically</source>
+        <translation>Check for updates automatically</translation>
+    </message>
+    <message>
+        <source>Checking…</source>
+        <translation>Checking…</translation>
+    </message>
+    <message>
+        <source>Check now</source>
+        <translation>Check now</translation>
+    </message>
+    <message>
+        <source>Update to v%1</source>
+        <translation>Update to v%1</translation>
+    </message>
+    <message>
+        <source>Current version: v%1</source>
+        <translation>Current version: v%1</translation>
+    </message>
 </context>
 <context>
     <name>StreamOverlay</name>
@@ -202,6 +226,80 @@
     <message>
         <source>Offline</source>
         <translation>Offline</translation>
+    </message>
+    <message>
+        <source>New update: v%1</source>
+        <translation>New update: v%1</translation>
+    </message>
+    <message>
+        <source>Details ›</source>
+        <translation>Details ›</translation>
+    </message>
+</context>
+<context>
+    <name>UpdateDialog</name>
+    <message>
+        <source>New CastHop update available</source>
+        <translation>New CastHop update available</translation>
+    </message>
+    <message>
+        <source>What&apos;s new</source>
+        <translation>What&apos;s new</translation>
+    </message>
+    <message>
+        <source>Terminal command (portable install)</source>
+        <translation>Terminal command (portable install)</translation>
+    </message>
+    <message>
+        <source>Terminal command (Pardus / Debian)</source>
+        <translation>Terminal command (Pardus / Debian)</translation>
+    </message>
+    <message>
+        <source>Copied</source>
+        <translation>Copied</translation>
+    </message>
+    <message>
+        <source>Download new installer</source>
+        <translation>Download new installer</translation>
+    </message>
+    <message>
+        <source>Open download page</source>
+        <translation>Open download page</translation>
+    </message>
+    <message>
+        <source>Copy command</source>
+        <translation>Copy command</translation>
+    </message>
+    <message>
+        <source>Skip this version</source>
+        <translation>Skip this version</translation>
+    </message>
+    <message>
+        <source>Remind me later</source>
+        <translation>Remind me later</translation>
+    </message>
+</context>
+<context>
+    <name>yansit::UpdateChecker</name>
+    <message>
+        <source>Checking for updates…</source>
+        <translation>Checking for updates…</translation>
+    </message>
+    <message>
+        <source>Could not check for updates. Check the internet connection.</source>
+        <translation>Could not check for updates. Check the internet connection.</translation>
+    </message>
+    <message>
+        <source>Could not read update information.</source>
+        <translation>Could not read update information.</translation>
+    </message>
+    <message>
+        <source>Update available: v%1</source>
+        <translation>Update available: v%1</translation>
+    </message>
+    <message>
+        <source>CastHop is up to date (v%1).</source>
+        <translation>CastHop is up to date (v%1).</translation>
     </message>
 </context>
 <context>

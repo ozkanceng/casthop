@@ -48,7 +48,7 @@ Depends: ${shlibs:Depends},
          gstreamer1.0-pulseaudio | gstreamer1.0-pipewire | gstreamer1.0-alsa,
          fonts-noto-core,
          fonts-noto-mono
-Recommends: va-driver-all, avahi-daemon
+Recommends: va-driver-all, avahi-daemon, ca-certificates
 Description: Wireless screen mirroring receiver for interactive whiteboards
  CastHop receives the screen and audio of an Android tablet over the local
  network and shows it full screen on a Pardus ETAP interactive whiteboard.

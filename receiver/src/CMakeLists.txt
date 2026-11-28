@@ -56,6 +56,8 @@ add_library(yansit_core STATIC
     app/ReceiverService.h
     app/ReceiverSettings.cpp
     app/ReceiverSettings.h
+    app/UpdateChecker.cpp
+    app/UpdateChecker.h
     common/Clock.h
     media/AudioPipeline.cpp
     media/AudioPipeline.h
@@ -99,6 +101,7 @@ set(YANSIT_QML_FILES
     qml/StreamOverlay.qml
     qml/Theme.qml
     qml/TouchButton.qml
+    qml/UpdateDialog.qml
     qml/VideoView.qml
     qml/WaitingScreen.qml
 )

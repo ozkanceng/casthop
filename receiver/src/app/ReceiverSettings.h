@@ -19,6 +19,7 @@ class ReceiverSettings : public QObject {
     Q_PROPERTY(bool autostart READ autostart WRITE setAutostart NOTIFY changed)
     Q_PROPERTY(int port READ port WRITE setPort NOTIFY changed)
     Q_PROPERTY(bool compatibleVideo READ compatibleVideo WRITE setCompatibleVideo NOTIFY changed)
+    Q_PROPERTY(bool autoCheckUpdates READ autoCheckUpdates WRITE setAutoCheckUpdates NOTIFY changed)
 
 public:
     explicit ReceiverSettings(QObject* parent = nullptr);
@@ -46,6 +47,14 @@ public:
     /// Draws video on the CPU, for boards where GL rendering is broken.
     bool compatibleVideo() const;
     void setCompatibleVideo(bool on);
+
+    /// Yeni sürüm bildirimlerini günde en fazla bir kez arka planda kontrol et.
+    bool autoCheckUpdates() const;
+    void setAutoCheckUpdates(bool on);
+    QString skippedUpdateVersion() const;
+    void setSkippedUpdateVersion(const QString& version);
+    qint64 lastUpdateCheckEpoch() const;
+    void setLastUpdateCheckEpoch(qint64 epochSecs);
 
     /// Moves menu and autostart entries left by earlier versions (platform::migrateLegacyEntries).
     void migrateLegacyEntries();

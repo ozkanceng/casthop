@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "latest": "0.4.2",
+  "publishedAt": "2026-11-28",
+  "releaseUrl": "https://github.com/ozkanceng/casthop/releases/latest",
+  "siteUrl": "https://ozkanceng.github.io/casthop/",
+  "notes": {
+    "tr": "Bağlantı kararlılığı güçlendirildi, otomatik yeniden keşif ve ana ekranda canlı 'Bu ağda' durumu eklendi.",
+    "en": "Hardened connection reliability with automatic rediscovery and live 'On this network' board status."
+  },
+  "channels": {
+    "pardus": {
+      "version": "0.4.2",
+      "url": "https://ozkanceng.github.io/casthop/#board"
+    },
+    "windows": {
+      "version": "0.4.2",
+      "url": "https://github.com/ozkanceng/casthop/releases/latest/download/casthop-setup-x86_64.exe"
+    },
+    "macos": {
+      "version": "0.4.2",
+      "url": "https://github.com/ozkanceng/casthop/releases/latest/download/casthop-mac.dmg"
+    },
+    "androidApk": {
+      "version": "0.4.2",
+      "url": "https://github.com/ozkanceng/casthop/releases/latest"
+    },
+    "androidPlay": {
+      "version": "0.4.2",
+      "url": "https://play.google.com/store/apps/details?id=com.sorumatik.casthop"
+    },
+    "androidTv": {
+      "version": "0.4.2",
+      "url": "https://github.com/ozkanceng/casthop/releases/latest"
+    }
+  }
+}

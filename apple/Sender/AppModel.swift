@@ -64,6 +64,21 @@ final class AppModel: ObservableObject {
     private var passiveBrowser: ReceiverBrowser?
     /// Remembered receiver fingerprints currently visible on the active local network via passive Bonjour.
     @Published private(set) var onlineFingerprints: Set<Data> = []
+    @Published private(set) var availableUpdate: UpdateRelease?
+    @Published private(set) var checkingUpdates = false
+    @Published private(set) var updateStatusMessage: String?
+    @Published var autoCheckUpdates: Bool {
+        didSet { UserDefaults.standard.set(autoCheckUpdates, forKey: UpdateKey.auto) }
+    }
+    @Published private var updateSessionDismissed = false
+
+    private enum UpdateKey {
+        static let auto = "casthop_auto_check_updates"
+        static let skipped = "casthop_skipped_update_version"
+        static let lastCheck = "casthop_last_update_check"
+    }
+
+    var visibleUpdate: UpdateRelease? { updateSessionDismissed ? nil : availableUpdate }
 
     var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "" }
     var storeAvailable: Bool { store != nil }
@@ -73,11 +88,78 @@ final class AppModel: ObservableObject {
         let store = SharedStore.shared()
         self.store = store
         settings = store?.settings ?? SenderSettings()
+        autoCheckUpdates = UserDefaults.standard.object(forKey: UpdateKey.auto) as? Bool ?? true
         reload()
         statusObservation = DarwinNotifier.observe(.status) { [weak self] in
             Task { @MainActor in self?.statusChanged() }
         }
         statusChanged()
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3))
+            await self?.checkForUpdatesIfDue()
+        }
+    }
+
+    // MARK: Updates
+
+    func checkForUpdatesIfDue() async {
+        guard autoCheckUpdates, phase == .idle else { return }
+        let defaults = UserDefaults.standard
+        let now = Date().timeIntervalSince1970
+        let last = defaults.double(forKey: UpdateKey.lastCheck)
+        if last > 0, (now - last) < UpdateClient.checkIntervalSeconds { return }
+        await performUpdateCheck(manual: false)
+    }
+
+    func checkForUpdatesNow() {
+        guard !checkingUpdates else { return }
+        Task { await performUpdateCheck(manual: true) }
+    }
+
+    private func performUpdateCheck(manual: Bool) async {
+        guard !checkingUpdates else { return }
+        guard let current = SemVer.parse(version) else { return }
+        checkingUpdates = true
+        if manual { updateStatusMessage = String(localized: "Checking for updates…") }
+        defer { checkingUpdates = false }
+
+        let bundleId = Bundle.main.bundleIdentifier ?? "com.sorumatik.casthop"
+        let region = Locale.current.region?.identifier ?? "TR"
+        guard let release = await UpdateClient.fetchAppStoreRelease(bundleId: bundleId, currentVersion: version, countryCode: region) else {
+            if manual { updateStatusMessage = String(localized: "Could not check for updates. Check the internet connection.") }
+            return
+        }
+        let defaults = UserDefaults.standard
+        defaults.set(Date().timeIntervalSince1970, forKey: UpdateKey.lastCheck)
+        if let candidate = SemVer.parse(release.latestVersion), candidate.isNewer(than: current) {
+            let skipped = !manual && defaults.string(forKey: UpdateKey.skipped) == release.latestVersion
+            if manual {
+                defaults.removeObject(forKey: UpdateKey.skipped)
+                updateSessionDismissed = false
+            }
+            availableUpdate = skipped ? nil : release
+            updateStatusMessage = String(localized: "Update available: v\(release.latestVersion)")
+        } else {
+            availableUpdate = nil
+            if manual { updateStatusMessage = String(localized: "CastHop is up to date (v\(version)).") }
+        }
+    }
+
+    func dismissUpdateForSession() {
+        updateSessionDismissed = true
+    }
+
+    func skipAvailableUpdate() {
+        if let v = availableUpdate?.latestVersion {
+            UserDefaults.standard.set(v, forKey: UpdateKey.skipped)
+        }
+        availableUpdate = nil
+        updateSessionDismissed = true
+    }
+
+    func openUpdateURL() {
+        guard let url = availableUpdate?.url else { return }
+        UIApplication.shared.open(url)
     }
 
     private func reload() { receivers = store?.receivers() ?? [] }

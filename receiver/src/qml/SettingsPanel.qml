@@ -10,7 +10,10 @@ Item {
 
     required property QtObject receiver
     required property QtObject settings
+    required property QtObject updater
     property bool open: false
+
+    signal updateRequested
 
     visible: open
 
@@ -175,6 +178,44 @@ Item {
                             Accessible.name: qsTr("Forget %1").arg(modelData.name)
                             onClicked: root.receiver.forgetSender(modelData.keyId)
                         }
+                    }
+                }
+
+                SectionLabel { text: qsTr("Updates") }
+                SettingSwitch {
+                    label: qsTr("Check for updates automatically")
+                    checked: root.settings.autoCheckUpdates
+                    onToggled: root.settings.autoCheckUpdates = checked
+                }
+                RowLayout {
+                    spacing: Theme.space2
+                    Layout.fillWidth: true
+
+                    TouchButton {
+                        text: root.updater.checking ? qsTr("Checking…") : qsTr("Check now")
+                        enabled: !root.updater.checking
+                        onClicked: root.updater.checkNow()
+                    }
+
+                    TouchButton {
+                        visible: root.updater.updateAvailable
+                        primary: true
+                        text: qsTr("Update to v%1").arg(root.updater.latestVersion)
+                        onClicked: {
+                            root.open = false
+                            root.updateRequested()
+                        }
+                    }
+
+                    Text {
+                        text: root.updater.statusMessage !== ""
+                              ? root.updater.statusMessage
+                              : qsTr("Current version: v%1").arg(root.updater.currentVersion)
+                        color: root.updater.updateAvailable ? Theme.primary : Theme.textMuted
+                        wrapMode: Text.WordWrap
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontLabel
+                        Layout.fillWidth: true
                     }
                 }
 

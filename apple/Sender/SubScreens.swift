@@ -939,6 +939,34 @@ struct SettingsView: View {
                 choiceRow("Maximum bitrate", values: AppModel.bitrateOptions, selected: model.settings.overrides.maxBitrateBps,
                           format: { "\($0 / 1_000_000) Mbps" }) { model.settings.overrides.maxBitrateBps = $0 }
             }
+            SectionCard(title: "Updates", icon: "arrow.down.circle") {
+                toggleRow("Check for updates automatically",
+                          "Quietly notifies you on the home screen when a newer release is available; sends no personal data.",
+                          isOn: $model.autoCheckUpdates)
+                if let status = model.updateStatusMessage {
+                    Text(status)
+                        .font(.subheadline)
+                        .foregroundStyle(model.availableUpdate != nil ? Tokens.primary : Tokens.onSurfaceVariant)
+                } else {
+                    Text("Version \(model.version)")
+                        .font(.subheadline)
+                        .foregroundStyle(Tokens.onSurfaceVariant)
+                }
+                HStack(spacing: Tokens.space2) {
+                    Button(model.checkingUpdates ? "Checking…" : "Check now") {
+                        model.checkForUpdatesNow()
+                    }
+                    .buttonStyle(OutlineButtonStyle())
+                    .disabled(model.checkingUpdates)
+
+                    if model.availableUpdate != nil {
+                        Button("Update on App Store") {
+                            model.openUpdateURL()
+                        }
+                        .buttonStyle(FilledButtonStyle())
+                    }
+                }
+            }
         }
     }
 }

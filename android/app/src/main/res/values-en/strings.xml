@@ -275,4 +275,21 @@
     <string name="scanner_or_ip">By IP</string>
     <string name="state_live">Live</string>
     <string name="board_online_badge">On this network</string>
+    <string name="update_banner_title">New update available</string>
+    <string name="update_sheet_title">CastHop update available</string>
+    <string name="update_whats_new">What\'s new</string>
+    <string name="update_action_play">Update on Play Store</string>
+    <string name="update_action_download">Download update</string>
+    <string name="update_action_details">Details</string>
+    <string name="update_skip_version">Skip this version</string>
+    <string name="update_later">Remind me later</string>
+    <string name="update_dismiss">Dismiss update banner</string>
+    <string name="settings_updates">Updates</string>
+    <string name="settings_auto_updates">Check for updates automatically</string>
+    <string name="settings_auto_updates_desc">Quietly notifies you on the home screen when a newer release is available; sends no personal data.</string>
+    <string name="update_check_now">Check now</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_status_available">Update available: v%1$s</string>
+    <string name="update_status_up_to_date">CastHop is up to date (v%1$s).</string>
+    <string name="update_status_failed">Could not check for updates. Check the internet connection.</string>
 </resources>

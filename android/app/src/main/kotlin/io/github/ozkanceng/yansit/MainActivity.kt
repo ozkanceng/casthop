@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -28,7 +29,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.ozkanceng.yansit.data.AppSettings
 import io.github.ozkanceng.yansit.data.BoardIdentity
 import io.github.ozkanceng.yansit.data.BoardStore
+import io.github.ozkanceng.yansit.data.ManualCheckResult
 import io.github.ozkanceng.yansit.data.RememberedBoard
+import io.github.ozkanceng.yansit.data.UpdateBannerInfo
+import io.github.ozkanceng.yansit.data.UpdateChecker
+import io.github.ozkanceng.yansit.data.UpdateStatusUi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import io.github.ozkanceng.yansit.protocol.Bytes
 import io.github.ozkanceng.yansit.sender.StreamPlanner
 import io.github.ozkanceng.yansit.stream.AndroidEncoderCaps
@@ -73,6 +80,19 @@ private fun YansitApp() {
     var consentInFlight by rememberSaveable { mutableStateOf(false) }
     val settings = remember { AppSettings(context) }
     val boardStore = remember { BoardStore(context) }
+    val scope = rememberCoroutineScope()
+    var updateInfo by remember { mutableStateOf<UpdateBannerInfo?>(null) }
+    var updateDismissed by rememberSaveable { mutableStateOf(false) }
+    var checkingUpdates by remember { mutableStateOf(false) }
+    var updateStatus by remember { mutableStateOf<UpdateStatusUi?>(null) }
+
+    // Başlangıçtan 3 sn sonra arka planda günde en fazla 1 kez sürüm denetimi (yansıtmayı geciktirmez).
+    LaunchedEffect(Unit) {
+        delay(3000)
+        if (MirrorController.state.value is MirrorState.Idle) {
+            UpdateChecker.checkIfDue(context, settings)?.let { updateInfo = it }
+        }
+    }
     // Durum her değiştiğinde (ör. yeni eşleştirme kaydedildi) liste yeniden okunur.
     var boardsVersion by remember { mutableIntStateOf(0) }
     val boards = remember(state, boardsVersion) { boardStore.list() }
@@ -287,6 +307,14 @@ private fun YansitApp() {
             boards = orderedBoards,
             onlineFingerprints = onlineFingerprints,
             versionName = BuildConfig.VERSION_NAME,
+            updateInfo = if (updateDismissed) null else updateInfo,
+            onUpdateNow = { updateInfo?.let { UpdateChecker.openUpdateDestination(context, it) } },
+            onUpdateSkip = {
+                updateInfo?.let { settings.skippedUpdateVersion = it.latestVersion }
+                updateInfo = null
+                updateDismissed = true
+            },
+            onUpdateDismiss = { updateDismissed = true },
             actions = HomeActions(
                 onScan = ::startScan,
                 onCode = ::startCode,
@@ -443,6 +471,36 @@ private fun YansitApp() {
                 },
                 onBack = { screen = Screen.HOME },
                 mirroring = state is MirrorState.Mirroring,
+                versionName = BuildConfig.VERSION_NAME,
+                autoCheckUpdates = settings.autoCheckUpdates,
+                onAutoCheckUpdatesChange = { settings.autoCheckUpdates = it },
+                checkingUpdates = checkingUpdates,
+                updateStatus = updateStatus,
+                availableUpdate = updateInfo,
+                onCheckUpdatesNow = {
+                    if (!checkingUpdates) {
+                        checkingUpdates = true
+                        updateStatus = UpdateStatusUi.Checking
+                        scope.launch {
+                            when (val res = UpdateChecker.checkNow(context, settings)) {
+                                is ManualCheckResult.Available -> {
+                                    updateInfo = res.info
+                                    updateDismissed = false
+                                    updateStatus = UpdateStatusUi.Available(res.info.latestVersion)
+                                }
+                                is ManualCheckResult.UpToDate -> {
+                                    updateInfo = null
+                                    updateStatus = UpdateStatusUi.UpToDate(res.currentVersion)
+                                }
+                                ManualCheckResult.Failed -> {
+                                    updateStatus = UpdateStatusUi.Failed
+                                }
+                            }
+                            checkingUpdates = false
+                        }
+                    }
+                },
+                onOpenUpdate = { updateInfo?.let { UpdateChecker.openUpdateDestination(context, it) } },
             )
         }
     }

@@ -276,4 +276,21 @@
     <string name="scanner_or_ip">IP ile</string>
     <string name="state_live">Canlı</string>
     <string name="board_online_badge">Bu ağda</string>
+    <string name="update_banner_title">Yeni güncelleme hazır</string>
+    <string name="update_sheet_title">CastHop güncellemesi hazır</string>
+    <string name="update_whats_new">Bu sürümdeki yenilikler</string>
+    <string name="update_action_play">Play Store\'da güncelle</string>
+    <string name="update_action_download">Güncellemeyi indir</string>
+    <string name="update_action_details">Detaylar</string>
+    <string name="update_skip_version">Bu sürümü atla</string>
+    <string name="update_later">Sonra hatırlat</string>
+    <string name="update_dismiss">Güncelleme uyarısını kapat</string>
+    <string name="settings_updates">Güncellemeler</string>
+    <string name="settings_auto_updates">Güncellemeleri otomatik denetle</string>
+    <string name="settings_auto_updates_desc">Yeni sürüm çıktığında ana ekranda sessizce haber verir; kişisel veri göndermez.</string>
+    <string name="update_check_now">Şimdi denetle</string>
+    <string name="update_checking">Denetleniyor…</string>
+    <string name="update_status_available">Yeni sürüm hazır: v%1$s</string>
+    <string name="update_status_up_to_date">CastHop güncel (v%1$s).</string>
+    <string name="update_status_failed">Güncellemeler denetlenemedi. İnternet bağlantısını kontrol edin.</string>
 </resources>

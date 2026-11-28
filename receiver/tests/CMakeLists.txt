@@ -18,6 +18,7 @@ add_executable(yansit_tests
     test_pairing.cpp
     test_platform.cpp
     test_session.cpp
+    test_update_checker.cpp
     test_vectors.cpp
 )
 target_compile_definitions(yansit_tests PRIVATE YANSIT_VECTORS_DIR="${YANSIT_VECTORS_DIR}")

@@ -25,12 +25,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -41,12 +43,17 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.ozkanceng.casthop.tv.R
 import io.github.ozkanceng.casthop.tv.ReceiverController
+import io.github.ozkanceng.casthop.tv.TvManualCheckResult
 import io.github.ozkanceng.casthop.tv.TvState
+import io.github.ozkanceng.casthop.tv.TvUpdateChecker
+import io.github.ozkanceng.casthop.tv.TvUpdateInfo
+import io.github.ozkanceng.casthop.tv.TvUpdateStatus
 import io.github.ozkanceng.casthop.tv.ui.theme.LocalTvTokens
 import io.github.ozkanceng.casthop.tv.ui.theme.TvColors
 import io.github.ozkanceng.yansit.receiver.LiveStats
 import io.github.ozkanceng.yansit.receiver.ReceiverPhase
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * The video surface always exists, at the bottom, so a decoder never waits for one. Everything else is drawn over it,
@@ -58,9 +65,27 @@ internal fun CastHopTvScreen(
     localNetworkDenied: Boolean,
     onRequestLocalNetwork: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val state by controller.state.collectAsStateWithLifecycle()
     var showSettings by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf<TvUpdateInfo?>(null) }
+    var autoUpdates by remember { mutableStateOf(TvUpdateChecker.autoCheckEnabled(context)) }
+    var checkingUpdates by remember { mutableStateOf(false) }
+    var updateStatus by remember { mutableStateOf<TvUpdateStatus?>(null) }
     val phase = state.receiver.phase
+
+    LaunchedEffect(Unit) {
+        delay(3000)
+        if (controller.state.value.receiver.phase == ReceiverPhase.WAITING) {
+            TvUpdateChecker.checkIfDue(context)?.let { updateInfo = it }
+        }
+    }
+    LaunchedEffect(phase) {
+        if (phase != ReceiverPhase.WAITING) showUpdateDialog = false
+    }
+
     Box(modifier = Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
         VideoSurface(state, controller)
         when {
@@ -72,15 +97,68 @@ internal fun CastHopTvScreen(
                 onAudioChanged = controller::setAudioEnabled,
                 onForget = controller::forgetSender,
                 onClose = { showSettings = false },
+                autoCheckUpdates = autoUpdates,
+                onAutoCheckUpdatesChanged = { on ->
+                    autoUpdates = on
+                    TvUpdateChecker.setAutoCheckEnabled(context, on)
+                },
+                checkingUpdates = checkingUpdates,
+                updateStatus = updateStatus,
+                availableUpdate = updateInfo,
+                onCheckUpdatesNow = {
+                    if (!checkingUpdates) {
+                        checkingUpdates = true
+                        updateStatus = TvUpdateStatus.Checking
+                        scope.launch {
+                            when (val res = TvUpdateChecker.checkNow(context)) {
+                                is TvManualCheckResult.Available -> {
+                                    updateInfo = res.info
+                                    updateStatus = TvUpdateStatus.Available(res.info.latestVersion)
+                                }
+                                is TvManualCheckResult.UpToDate -> {
+                                    updateInfo = null
+                                    updateStatus = TvUpdateStatus.UpToDate(res.currentVersion)
+                                }
+                                TvManualCheckResult.Failed -> {
+                                    updateStatus = TvUpdateStatus.Failed
+                                }
+                            }
+                            checkingUpdates = false
+                        }
+                    }
+                },
+                onOpenUpdate = {
+                    showSettings = false
+                    showUpdateDialog = true
+                },
             )
             phase == ReceiverPhase.WAITING -> WaitingScreen(
                 state = state,
                 localNetworkDenied = localNetworkDenied,
                 onRequestLocalNetwork = onRequestLocalNetwork,
                 onOpenSettings = { showSettings = true },
+                updateInfo = updateInfo,
+                onOpenUpdate = { showUpdateDialog = true },
             )
             phase == ReceiverPhase.STREAMING && !state.videoFailed -> StreamingOverlay(state, controller::stopSession)
             else -> StatusScreen(state, controller::stopSession)
+        }
+    }
+    if (showUpdateDialog && phase == ReceiverPhase.WAITING) {
+        updateInfo?.let { info ->
+            TvUpdateDialog(
+                info = info,
+                onOpenBrowser = {
+                    TvUpdateChecker.openInBrowser(context, info.url)
+                    showUpdateDialog = false
+                },
+                onSkip = {
+                    TvUpdateChecker.skipVersion(context, info.latestVersion)
+                    updateInfo = null
+                    showUpdateDialog = false
+                },
+                onDismiss = { showUpdateDialog = false },
+            )
         }
     }
     state.receiver.pendingSenderName?.let { pending ->

@@ -92,7 +92,7 @@ keyPassword=...
 
 ## 4. Sürüm yayımlama
 
-1. `CHANGELOG.md`'de `[Yayımlanmamış]` bölümünü `[X.Y.Z] - YYYY-AA-GG` yapın, commit edin.
+1. `CHANGELOG.md`'de `[Yayımlanmamış]` bölümünü `[X.Y.Z] - YYYY-AA-GG` yapın, `site/version.json` içindeki sürüm ve TR/EN yenilik özetini güncelleyin ve commit edin.
 2. Etiketleyin ve gönderin:
    ```bash
    git tag -a vX.Y.Z -m "CastHop X.Y.Z"

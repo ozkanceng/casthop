@@ -40,6 +40,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import io.github.ozkanceng.casthop.tv.BuildConfig
 import io.github.ozkanceng.casthop.tv.R
+import io.github.ozkanceng.casthop.tv.TvUpdateInfo
+import io.github.ozkanceng.casthop.tv.TvUpdateStatus
 import io.github.ozkanceng.casthop.tv.ui.theme.LocalTvTokens
 import io.github.ozkanceng.casthop.tv.ui.theme.TvColors
 import io.github.ozkanceng.yansit.receiver.TrustedEntry
@@ -53,6 +55,13 @@ internal fun SettingsScreen(
     onAudioChanged: (Boolean) -> Unit,
     onForget: (String) -> Unit,
     onClose: () -> Unit,
+    autoCheckUpdates: Boolean = true,
+    onAutoCheckUpdatesChanged: (Boolean) -> Unit = {},
+    checkingUpdates: Boolean = false,
+    updateStatus: TvUpdateStatus? = null,
+    availableUpdate: TvUpdateInfo? = null,
+    onCheckUpdatesNow: () -> Unit = {},
+    onOpenUpdate: () -> Unit = {},
 ) {
     val tokens = LocalTvTokens.current
     var renaming by remember { mutableStateOf(false) }
@@ -87,6 +96,33 @@ internal fun SettingsScreen(
                 onClick = { onAudioChanged(!audioEnabled) },
                 primary = audioEnabled,
             )
+        }
+        val updateDetail = when (updateStatus) {
+            TvUpdateStatus.Checking -> stringResource(R.string.update_checking)
+            is TvUpdateStatus.Available -> stringResource(R.string.update_status_available, updateStatus.version)
+            is TvUpdateStatus.UpToDate -> stringResource(R.string.update_status_up_to_date, updateStatus.version)
+            TvUpdateStatus.Failed -> stringResource(R.string.update_status_failed)
+            null -> stringResource(R.string.settings_auto_updates_hint)
+        }
+        SettingRow(stringResource(R.string.settings_auto_updates), updateDetail) {
+            Row(horizontalArrangement = Arrangement.spacedBy(tokens.gapSmall)) {
+                TvButton(
+                    text = stringResource(if (autoCheckUpdates) R.string.settings_on else R.string.settings_off),
+                    onClick = { onAutoCheckUpdatesChanged(!autoCheckUpdates) },
+                    primary = autoCheckUpdates,
+                )
+                TvButton(
+                    text = stringResource(if (checkingUpdates) R.string.update_checking else R.string.update_check_now),
+                    onClick = onCheckUpdatesNow,
+                )
+                if (availableUpdate != null) {
+                    TvButton(
+                        text = stringResource(R.string.update_pill, availableUpdate.latestVersion),
+                        onClick = onOpenUpdate,
+                        primary = true,
+                    )
+                }
+            }
         }
         Text(
             text = stringResource(R.string.settings_trusted),

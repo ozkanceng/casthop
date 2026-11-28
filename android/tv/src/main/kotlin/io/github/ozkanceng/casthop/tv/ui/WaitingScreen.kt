@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import io.github.ozkanceng.casthop.tv.Failure
 import io.github.ozkanceng.casthop.tv.R
 import io.github.ozkanceng.casthop.tv.TvState
+import io.github.ozkanceng.casthop.tv.TvUpdateInfo
 import io.github.ozkanceng.casthop.tv.ui.theme.LocalTvTokens
 import io.github.ozkanceng.casthop.tv.ui.theme.TvColors
 
@@ -37,6 +38,8 @@ internal fun WaitingScreen(
     localNetworkDenied: Boolean,
     onRequestLocalNetwork: () -> Unit,
     onOpenSettings: () -> Unit,
+    updateInfo: TvUpdateInfo? = null,
+    onOpenUpdate: () -> Unit = {},
 ) {
     val tokens = LocalTvTokens.current
     val settingsFocus = remember { FocusRequester() }
@@ -59,6 +62,13 @@ internal fun WaitingScreen(
                     onClick = onOpenSettings,
                     modifier = Modifier.focusRequester(settingsFocus),
                 )
+                if (updateInfo != null) {
+                    TvButton(
+                        text = stringResource(R.string.update_pill, updateInfo.latestVersion),
+                        onClick = onOpenUpdate,
+                        primary = true,
+                    )
+                }
             }
         }
         val details: @Composable () -> Unit = { Details(state, localNetworkDenied, onRequestLocalNetwork) }

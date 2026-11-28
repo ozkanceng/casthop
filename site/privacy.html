@@ -79,10 +79,10 @@ footer a { color: var(--primary); }
   <article class="card doc">
     <p><a href="./" data-i18n="back">← Kurulum sayfası</a></p>
     <h2 class="title" data-i18n="h1">Gizlilik politikası</h2>
-    <p class="note" data-i18n="updated">Son güncelleme: 5 Kasım 2026. Bu politika CastHop Android uygulaması (paket adı <strong>com.sorumatik.casthop</strong>) için geçerlidir.</p>
+    <p class="note" data-i18n="updated">Son güncelleme: 28 Kasım 2026. Bu politika CastHop uygulamaları (Android/iOS paket adı <strong>com.sorumatik.casthop</strong>, Android TV, Pardus, Windows ve macOS alıcıları) için geçerlidir.</p>
 
     <h3 data-i18n="s1_h">Özet</h3>
-    <p data-i18n="s1_p">CastHop kişisel veri <strong>toplamaz</strong>, saklamaz, satmaz ve üçüncü kişilerle paylaşmaz. Hesap, reklam, analiz ve izleme yoktur. Geliştiricinin sunucusu yoktur; uygulamanın ağ trafiği yalnızca sizin seçtiğiniz ekrana, yerel ağınız içinde gider.</p>
+    <p data-i18n="s1_p">CastHop kişisel veri <strong>toplamaz</strong>, saklamaz, satmaz ve üçüncü kişilerle paylaşmaz. Hesap, reklam, analiz ve izleme yoktur. Ekran ve ses akışı yalnızca sizin seçtiğiniz ekrana, yerel ağınız içinde gider. Uygulama yeni bir sürüm olup olmadığını bildirmek için günde en fazla bir kez anonim olarak herkese açık sürüm bilgisini kontrol edebilir; bu kontrol <strong>Ayarlar</strong> üzerinden kapatılabilir.</p>
 
     <h3 data-i18n="s2_h">Yansıtırken ne olur?</h3>
     <p data-i18n="s2_p">Siz başlattığınızda tabletinizin ekranı, uygulama sesi, isteğe bağlı olarak kamera görüntüsü ve mikrofon sesi, seçtiğiniz alıcı ekrana (akıllı tahta, TV veya bilgisayar) gönderilir. Veri yalnızca yerel ağda dolaşır, TLS 1.3 ile şifrelenir ve internete çıkmaz. Uygulama bu görüntü ve sesi kaydetmez; yansıtmayı durdurduğunuzda gönderim biter.</p>
@@ -95,7 +95,7 @@ footer a { color: var(--primary); }
       <li data-i18n="p_screen"><strong>Ekran yakalama:</strong> yalnızca siz başlattığınızda ekranı yansıtmak için. Android her seferinde onay ister.</li>
       <li data-i18n="p_camera"><strong>Kamera:</strong> eşleştirme QR kodunu okumak ve isteğe bağlı kamera yansıtma için.</li>
       <li data-i18n="p_mic"><strong>Mikrofon:</strong> yalnızca ses yansıtmayı seçtiğinizde.</li>
-      <li data-i18n="p_net"><strong>Yerel ağ ve ağ erişimi:</strong> aynı ağdaki ekranı bulmak ve ona bağlanmak için. Uygulama internet üzerindeki hiçbir sunucuya istek göndermez.</li>
+      <li data-i18n="p_net"><strong>Yerel ağ ve ağ erişimi:</strong> aynı ağdaki ekranı bulmak ve ona bağlanmak için. Ek olarak, Ayarlar'da açık olduğu sürece yeni sürüm olup olmadığını öğrenmek için günde en fazla bir kez hiçbir cihaz veya kullanıcı kimliği göndermeden herkese açık sürüm bilgisini (GitHub Pages / App Store) okuyabilir.</li>
       <li data-i18n="p_notif"><strong>Bildirimler ve ön plan hizmeti:</strong> yansıtma sürerken bildirim göstermek ve yansıtmanın arka planda kesilmemesi için.</li>
     </ul>
 
@@ -118,9 +118,9 @@ const EN = {
   "description": "Privacy policy of the CastHop Android app: it collects no data and has no accounts, ads or tracking.",
   "back": "← Setup page",
   "h1": "Privacy policy",
-  "updated": "Last updated: 5 November 2026. This policy covers the CastHop Android app (package name <strong>com.sorumatik.casthop</strong>).",
+  "updated": "Last updated: 28 November 2026. This policy covers the CastHop apps (Android/iOS package <strong>com.sorumatik.casthop</strong>, Android TV, Pardus, Windows and macOS receivers).",
   "s1_h": "Summary",
-  "s1_p": "CastHop does <strong>not collect</strong>, store, sell or share personal data. There are no accounts, ads, analytics or tracking. The developer runs no server; the app's network traffic goes only to the screen you choose, inside your local network.",
+  "s1_p": "CastHop does <strong>not collect</strong>, store, sell or share personal data. There are no accounts, ads, analytics or tracking. Screen and audio traffic travels only to the screen you choose, inside your local network. To let you know when a newer version is available, the app may anonymously read public release metadata at most once per day without sending any device or user identifier; this check can be turned off in <strong>Settings</strong>.",
   "s2_h": "What happens while you mirror",
   "s2_p": "When you start mirroring, your tablet's screen, the app's audio and, if you choose, the camera picture and microphone sound are sent to the receiver you picked (smart board, TV or computer). The data travels only over your local network, is encrypted with TLS 1.3 and never goes to the internet. The app does not record this picture or sound; sending stops when you stop mirroring.",
   "s3_h": "What is stored on your device",
@@ -129,7 +129,7 @@ const EN = {
   "p_screen": "<strong>Screen capture:</strong> only to mirror the screen when you start it. Android asks for your approval each time.",
   "p_camera": "<strong>Camera:</strong> to scan the pairing QR code and for optional camera mirroring.",
   "p_mic": "<strong>Microphone:</strong> only when you choose to mirror audio.",
-  "p_net": "<strong>Local network and network access:</strong> to find and connect to the screen on the same network. The app sends no requests to any server on the internet.",
+  "p_net": "<strong>Local network and network access:</strong> to find and connect to the screen on the same network. Additionally, while enabled in Settings, the app may read public version metadata (GitHub Pages / App Store) at most once a day with no device or user identifier to notify you about updates.",
   "p_notif": "<strong>Notifications and foreground service:</strong> to show a notification while mirroring and keep it from being cut off in the background.",
   "s5_h": "Third parties",
   "s5_p": "The app contains no ads, analytics, crash reporting or tracking components. No data is shared with third parties.",

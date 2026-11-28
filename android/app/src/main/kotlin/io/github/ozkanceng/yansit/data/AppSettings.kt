@@ -64,6 +64,18 @@ class AppSettings(context: Context) {
             putLong(KEY_MAX_BITRATE, value.maxBitrateBps ?: 0)
         }
 
+    var autoCheckUpdates: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_CHECK_UPDATES, true)
+        set(value) = prefs.edit { putBoolean(KEY_AUTO_CHECK_UPDATES, value) }
+
+    var skippedUpdateVersion: String
+        get() = prefs.getString(KEY_SKIPPED_UPDATE_VERSION, "").orEmpty()
+        set(value) = prefs.edit { putString(KEY_SKIPPED_UPDATE_VERSION, value.trim()) }
+
+    var lastUpdateCheckMs: Long
+        get() = prefs.getLong(KEY_LAST_UPDATE_CHECK_MS, 0L)
+        set(value) = prefs.edit { putLong(KEY_LAST_UPDATE_CHECK_MS, value) }
+
     private companion object {
         const val KEY_DEVICE_ID = "device_id"
         const val KEY_PRESET = "preset"
@@ -75,5 +87,8 @@ class AppSettings(context: Context) {
         const val KEY_LONG_SIDE = "override_long_side"
         const val KEY_FPS = "override_fps"
         const val KEY_MAX_BITRATE = "override_max_bitrate"
+        const val KEY_AUTO_CHECK_UPDATES = "auto_check_updates"
+        const val KEY_SKIPPED_UPDATE_VERSION = "skipped_update_version"
+        const val KEY_LAST_UPDATE_CHECK_MS = "last_update_check_ms"
     }
 }

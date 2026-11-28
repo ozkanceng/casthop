@@ -15,6 +15,13 @@
     <!-- A TV on a cable has no Wi-Fi: the low latency lock is simply skipped there. -->
     <uses-feature android:name="android.hardware.wifi" android:required="false" />
 
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <application
         android:name=".CastHopTvApp"
         android:allowBackup="false"

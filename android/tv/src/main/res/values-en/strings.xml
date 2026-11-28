@@ -47,4 +47,18 @@
     <string name="error_port_in_use">The port is in use. Another copy of CastHop may be open.</string>
     <string name="error_identity">The security certificate could not be created.</string>
     <string name="error_no_decoder">No H.264 video decoder was found on this device.</string>
+    <string name="update_pill">New update: v%1$s</string>
+    <string name="update_dialog_title">New CastHop update available</string>
+    <string name="update_qr_desc">Update download page QR code</string>
+    <string name="update_scan_hint">Scan the QR code with your phone to open the download page.</string>
+    <string name="update_open_browser">Open in browser</string>
+    <string name="update_later">Remind me later</string>
+    <string name="update_skip_version">Skip this version</string>
+    <string name="settings_auto_updates">Check for updates</string>
+    <string name="settings_auto_updates_hint">Checks for a new release at most once a day.</string>
+    <string name="update_check_now">Check now</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_status_available">Update available: v%1$s</string>
+    <string name="update_status_up_to_date">CastHop is up to date (v%1$s).</string>
+    <string name="update_status_failed">Could not check for updates.</string>
 </resources>

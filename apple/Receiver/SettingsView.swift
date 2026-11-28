@@ -48,6 +48,28 @@ struct SettingsView: View {
                 heading("Theme")
                 choices(selected: model.darkTheme, first: ("Dark", true), second: ("Light", false)) { model.darkTheme = $0 }
 
+                heading("Updates")
+                choices(selected: model.autoCheckUpdates, first: ("On", true), second: ("Off", false)) { model.autoCheckUpdates = $0 }
+                HStack(spacing: theme.space2) {
+                    Button(model.checkingUpdates ? "Checking…" : "Check now") {
+                        model.checkForUpdatesNow()
+                    }
+                    .buttonStyle(BoardButtonStyle())
+                    .disabled(model.checkingUpdates)
+
+                    if let release = model.availableUpdate {
+                        Button("Update to v\(release.latestVersion)") {
+                            dismiss()
+                            model.showingUpdateSheet = true
+                        }
+                        .buttonStyle(BoardButtonStyle(kind: .primary))
+                    }
+
+                    Text(model.updateStatusMessage ?? String(localized: "Version \(model.version)"))
+                        .font(.system(size: max(theme.fontLabel * 0.85, 16)))
+                        .foregroundStyle(model.availableUpdate != nil ? theme.primary : theme.textMuted)
+                }
+
                 heading("Paired tablets")
                 if snapshot.trusted.isEmpty {
                     Text("No paired tablets yet. Tablets that connect with the QR code are remembered.")

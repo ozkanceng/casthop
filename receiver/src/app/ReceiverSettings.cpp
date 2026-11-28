@@ -65,6 +65,23 @@ void ReceiverSettings::setPort(int port) {
 bool ReceiverSettings::compatibleVideo() const { return m_settings.value(QStringLiteral("compatibleVideo"), false).toBool(); }
 void ReceiverSettings::setCompatibleVideo(bool on) { write(QStringLiteral("compatibleVideo"), on); }
 
+bool ReceiverSettings::autoCheckUpdates() const { return m_settings.value(QStringLiteral("autoCheckUpdates"), true).toBool(); }
+void ReceiverSettings::setAutoCheckUpdates(bool on) { write(QStringLiteral("autoCheckUpdates"), on); }
+
+QString ReceiverSettings::skippedUpdateVersion() const {
+    return m_settings.value(QStringLiteral("skippedUpdateVersion")).toString().trimmed();
+}
+void ReceiverSettings::setSkippedUpdateVersion(const QString& version) {
+    write(QStringLiteral("skippedUpdateVersion"), version.trimmed());
+}
+
+qint64 ReceiverSettings::lastUpdateCheckEpoch() const {
+    return m_settings.value(QStringLiteral("lastUpdateCheckEpoch"), 0).toLongLong();
+}
+void ReceiverSettings::setLastUpdateCheckEpoch(qint64 epochSecs) {
+    write(QStringLiteral("lastUpdateCheckEpoch"), epochSecs);
+}
+
 bool ReceiverSettings::autostart() const { return platform::autostartEnabled(); }
 
 void ReceiverSettings::setAutostart(bool on) {

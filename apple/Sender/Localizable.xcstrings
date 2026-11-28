@@ -477,6 +477,40 @@
         }
       }
     },
+    "CastHop is up to date (v%@).": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CastHop is up to date (v%@)."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CastHop güncel (v%@)."
+          }
+        }
+      }
+    },
+    "CastHop update available": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CastHop update available"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CastHop güncellemesi hazır"
+          }
+        }
+      }
+    },
     "CastHop was closed on the board.": {
       "extractionState": "manual",
       "localizations": {
@@ -524,6 +558,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Değişiklikler bir sonraki yansıtmada geçerli olur."
+          }
+        }
+      }
+    },
+    "Check for updates automatically": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check for updates automatically"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncellemeleri otomatik denetle"
+          }
+        }
+      }
+    },
+    "Check now": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check now"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Şimdi denetle"
           }
         }
       }
@@ -579,6 +647,40 @@
         }
       }
     },
+    "Checking for updates…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking for updates…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncellemeler denetleniyor…"
+          }
+        }
+      }
+    },
+    "Checking…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Checking…"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Denetleniyor…"
+          }
+        }
+      }
+    },
     "Choose \"Balanced\" or \"Weak network\" in Settings and try again.": {
       "extractionState": "manual",
       "localizations": {
@@ -626,6 +728,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Temizle"
+          }
+        }
+      }
+    },
+    "Close": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kapat"
           }
         }
       }
@@ -902,6 +1021,23 @@
         }
       }
     },
+    "Could not check for updates. Check the internet connection.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not check for updates. Check the internet connection."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncellemeler denetlenemedi. İnternet bağlantısını kontrol edin."
+          }
+        }
+      }
+    },
     "Could not open the camera": {
       "extractionState": "manual",
       "localizations": {
@@ -932,6 +1068,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Veri hızı"
+          }
+        }
+      }
+    },
+    "Details": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detaylar"
+          }
+        }
+      }
+    },
+    "Dismiss update banner": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss update banner"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncelleme uyarısını kapat"
           }
         }
       }
@@ -1582,6 +1752,23 @@
         }
       }
     },
+    "New update available": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New update available"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni güncelleme hazır"
+          }
+        }
+      }
+    },
     "Nickname": {
       "extractionState": "manual",
       "localizations": {
@@ -1748,6 +1935,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tablette \"Ekrana Bağlan\"a dokunun (kayıtlı ekran varsa \"QR ile yeni ekran\"a)."
+          }
+        }
+      }
+    },
+    "On this network": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On this network"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu ağda"
           }
         }
       }
@@ -2024,6 +2228,23 @@
         }
       }
     },
+    "Quietly notifies you on the home screen when a newer release is available; sends no personal data.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quietly notifies you on the home screen when a newer release is available; sends no personal data."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni sürüm çıktığında ana ekranda sessizce haber verir; kişisel veri göndermez."
+          }
+        }
+      }
+    },
     "Recent addresses": {
       "extractionState": "manual",
       "localizations": {
@@ -2088,6 +2309,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hatırlanan ekranlar"
+          }
+        }
+      }
+    },
+    "Remind me later": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remind me later"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonra hatırlat"
           }
         }
       }
@@ -2309,6 +2547,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ayarlar"
+          }
+        }
+      }
+    },
+    "Skip this version": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip this version"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu sürümü atla"
           }
         }
       }
@@ -3027,6 +3282,40 @@
         }
       }
     },
+    "Update available: v%@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update available: v%@"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yeni sürüm hazır: v%@"
+          }
+        }
+      }
+    },
+    "Update on App Store": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update on App Store"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Store'da güncelle"
+          }
+        }
+      }
+    },
     "Update the tablet app and CastHop on the board.": {
       "extractionState": "manual",
       "localizations": {
@@ -3040,6 +3329,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tablet uygulamasını ve karşı cihazdaki CastHop'u güncelleyin."
+          }
+        }
+      }
+    },
+    "Updates": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updates"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Güncellemeler"
           }
         }
       }
@@ -3231,6 +3537,23 @@
         }
       }
     },
+    "What's new": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What's new"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu sürümdeki yenilikler"
+          }
+        }
+      }
+    },
     "Where is the 6-digit code?": {
       "extractionState": "manual",
       "localizations": {
@@ -3329,23 +3652,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Durum çubuğundan veya bu ekrandan durdurabilirsiniz."
-          }
-        }
-      }
-    },
-    "On this network": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "On this network"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bu ağda"
           }
         }
       }

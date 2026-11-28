@@ -91,6 +91,7 @@ import io.github.ozkanceng.yansit.R
 import io.github.ozkanceng.yansit.data.AppSettings
 import io.github.ozkanceng.yansit.data.BoardIdentity
 import io.github.ozkanceng.yansit.data.RememberedBoard
+import io.github.ozkanceng.yansit.data.UpdateBannerInfo
 import io.github.ozkanceng.yansit.protocol.Bytes
 import io.github.ozkanceng.yansit.sender.ConnectionQuality
 import io.github.ozkanceng.yansit.sender.MirrorStats
@@ -131,9 +132,29 @@ fun HomeScreen(
     versionName: String,
     actions: HomeActions,
     onlineFingerprints: Set<Bytes> = emptySet(),
+    updateInfo: UpdateBannerInfo? = null,
+    onUpdateNow: () -> Unit = {},
+    onUpdateSkip: () -> Unit = {},
+    onUpdateDismiss: () -> Unit = {},
 ) {
     val idle = state is MirrorState.Idle || state is MirrorState.Ended
     var renaming by remember { mutableStateOf<RememberedBoard?>(null) }
+    var showingUpdateSheet by remember { mutableStateOf(false) }
+
+    if (showingUpdateSheet && updateInfo != null) {
+        UpdateDetailsSheet(
+            info = updateInfo,
+            onUpdateNow = {
+                showingUpdateSheet = false
+                onUpdateNow()
+            },
+            onSkipVersion = {
+                showingUpdateSheet = false
+                onUpdateSkip()
+            },
+            onDismiss = { showingUpdateSheet = false },
+        )
+    }
 
     renaming?.let { board ->
         RenameBoardDialog(
@@ -182,6 +203,10 @@ fun HomeScreen(
                     actions = actions,
                     onRequestRename = { renaming = it },
                     wide = maxWidth >= WideLayoutWidth,
+                    updateInfo = updateInfo,
+                    onOpenUpdateDetails = { showingUpdateSheet = true },
+                    onUpdateNow = onUpdateNow,
+                    onUpdateDismiss = onUpdateDismiss,
                 )
             } else {
                 SessionView(state, actions)
@@ -200,8 +225,20 @@ private fun ConnectView(
     actions: HomeActions,
     onRequestRename: (RememberedBoard) -> Unit,
     wide: Boolean,
+    updateInfo: UpdateBannerInfo? = null,
+    onOpenUpdateDetails: () -> Unit = {},
+    onUpdateNow: () -> Unit = {},
+    onUpdateDismiss: () -> Unit = {},
 ) {
     val ended = state as? MirrorState.Ended
+    val updateBanner: @Composable () -> Unit = {
+        UpdateBanner(
+            info = updateInfo,
+            onOpenDetails = onOpenUpdateDetails,
+            onUpdateNow = onUpdateNow,
+            onDismiss = onUpdateDismiss,
+        )
+    }
     val hero: @Composable () -> Unit = { Hero() }
     val choices: @Composable () -> Unit = {
         if (ended != null) {
@@ -247,6 +284,7 @@ private fun ConnectView(
     if (wide) {
         Row(Modifier.widthIn(max = 1120.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                updateBanner()
                 hero()
                 guideLink()
             }
@@ -266,6 +304,7 @@ private fun ConnectView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            updateBanner()
             // Hata varken önce çözüm görünsün.
             if (ended?.error == null) hero()
             choices()

@@ -10,9 +10,15 @@ ApplicationWindow {
     required property QtObject receiver
     required property QtObject settings
     required property QtObject screenshots
+    required property QtObject updater
 
     readonly property string state: receiver.stateName
     readonly property bool showingVideo: state === "streaming" || state === "paused" || state === "reconnecting"
+
+    onShowingVideoChanged: {
+        if (showingVideo)
+            updateDialog.open = false
+    }
 
     width: 1280
     height: 720
@@ -60,11 +66,13 @@ ApplicationWindow {
         anchors.fill: parent
         visible: !window.showingVideo
         receiver: window.receiver
+        updater: window.updater
         connecting: window.state === "connecting"
         fullScreen: window.visibility === Window.FullScreen
         onToggleFullScreen: window.visibility = window.visibility === Window.FullScreen ? Window.Windowed : Window.FullScreen
         onQuitRequested: Qt.quit()
         onSettingsRequested: settingsPanel.open = true
+        onUpdateRequested: updateDialog.open = true
     }
 
     StreamOverlay {
@@ -83,6 +91,14 @@ ApplicationWindow {
         anchors.fill: parent
         receiver: window.receiver
         settings: window.settings
+        updater: window.updater
+        onUpdateRequested: updateDialog.open = true
+    }
+
+    UpdateDialog {
+        id: updateDialog
+        anchors.fill: parent
+        updater: window.updater
     }
 
     ApprovalDialog {

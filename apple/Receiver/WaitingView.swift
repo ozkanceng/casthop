@@ -81,6 +81,15 @@ struct WaitingView: View {
                             in: Capsule())
                 .overlay(Capsule().stroke(theme.border, lineWidth: 1))
             }
+
+            if snapshot.failure == nil, !connecting, let update = model.visibleUpdate {
+                UpdatePill(
+                    version: update.latestVersion,
+                    onTap: { model.showingUpdateSheet = true },
+                    onDismiss: { model.dismissUpdateForSession() }
+                )
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }
     }
 

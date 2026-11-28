@@ -25,6 +25,7 @@ private struct BroadcastPicker: UIViewRepresentable {
 struct HomeView: View {
     @EnvironmentObject private var model: AppModel
     @State private var renaming: RememberedReceiver?
+    @State private var showingUpdateSheet = false
 
     private var idle: Bool {
         switch model.phase {
@@ -38,7 +39,9 @@ struct HomeView: View {
             ScrollView {
                 Group {
                     if idle {
-                        ConnectView(wide: geometry.size.width >= Tokens.wideLayout) { renaming = $0 }
+                        ConnectView(wide: geometry.size.width >= Tokens.wideLayout,
+                                    onRequestRename: { renaming = $0 },
+                                    onOpenUpdateDetails: { showingUpdateSheet = true })
                     } else {
                         SessionView().frame(maxWidth: Tokens.contentWidth)
                     }
@@ -69,6 +72,15 @@ struct HomeView: View {
                 model.rename(receiver, nickname: newName)
             }
         }
+        .sheet(isPresented: $showingUpdateSheet) {
+            if let release = model.availableUpdate {
+                UpdateDetailSheet(
+                    release: release,
+                    onUpdateNow: { model.openUpdateURL() },
+                    onSkipVersion: { model.skipAvailableUpdate() }
+                )
+            }
+        }
         .onAppear {
             if idle && !model.receivers.isEmpty { model.startPassivePresence() }
         }
@@ -96,6 +108,7 @@ struct HomeView: View {
 private struct ConnectView: View {
     let wide: Bool
     let onRequestRename: (RememberedReceiver) -> Void
+    let onOpenUpdateDetails: () -> Void
     @EnvironmentObject private var model: AppModel
 
     private var ended: (failure: MirrorFailure?, shown: Bool) {
@@ -234,10 +247,23 @@ private struct ConnectView: View {
             .foregroundStyle(Tokens.onSurfaceVariant)
     }
 
+    @ViewBuilder private var updateBanner: some View {
+        if let release = model.visibleUpdate {
+            UpdateBanner(
+                release: release,
+                onOpenDetails: onOpenUpdateDetails,
+                onUpdateNow: { model.openUpdateURL() },
+                onDismiss: { model.dismissUpdateForSession() }
+            )
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+
     var body: some View {
         if wide {
             HStack(alignment: .top, spacing: Tokens.space5 + Tokens.space2) {
                 VStack(spacing: Tokens.space5) {
+                    updateBanner
                     hero
                     guideLink
                 }
@@ -252,6 +278,7 @@ private struct ConnectView: View {
             .frame(maxWidth: 1120)
         } else {
             VStack(spacing: Tokens.space4) {
+                updateBanner
                 // With an error, the way out comes first.
                 if ended.failure == nil { hero }
                 choices
