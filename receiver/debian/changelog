@@ -1,3 +1,11 @@
+casthop (0.4.3) unstable; urgency=medium
+
+  * Release 0.4.3 (cross-platform update notifications across Pardus,
+    Windows, macOS/tvOS, Android, Android TV, and iOS; static CDN
+    version manifest; privacy policy transparency update).
+
+ -- CastHop Authors <casthop@users.noreply.github.com>  Sat, 28 Nov 2026 17:32:00 +0300
+
 casthop (0.4.2) unstable; urgency=medium
 
   * Release 0.4.2 (harden connection reliability across Pardus/Windows/

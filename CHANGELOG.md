@@ -4,6 +4,18 @@ Biçim [Keep a Changelog](https://keepachangelog.com/tr-TR/1.1.0/) esaslıdır; 
 
 ## [Yayımlanmamış / Unreleased]
 
+## [0.4.3] - 2026-11-28
+
+### Eklendi / Added
+- **Tüm platformlarda modern sürüm güncelleme bildirimi (Pardus ETAP, Windows, macOS/iPadOS/tvOS, Android, Android TV, iOS):**
+  - **Okul ağına uygun statik sürüm manifestosu (`site/version.json`):** MEB/FATİH ortak NAT ağlarında GitHub API hız sınırına takılmayan, kanal bazlı ve TR/EN yenilik özetli statik CDN manifestosu eklendi; kişisel veri göndermez, günde en fazla bir kez arka planda denetler ve çevrimdışı sınıflarda sessiz kalır.
+  - **Pardus ETAP & Windows alıcı (`WaitingScreen`, `UpdateDialog`, `SettingsPanel`):** Bekleme ekranı üst şeridinde QR ve 6 haneli PIN'i engellemeyen animasyonlu güncelleme hapı, sürüm geçiş çipli (`v0.4.2 → v0.4.3`) detay kartı, Pardus `.deb` / taşınabilir kurulum için tek tıkla kopyalanabilir terminal komutu ve Ayarlar'da otomatik/elle denetim eklendi.
+  - **Android gönderici ve Android TV:** Play Store kurulumlarında yalnız Play Store'a, GitHub APK kurulumlarında Releases sayfasına yönlendiren Material 3 gradyanlı `UpdateBanner` + `UpdateDetailsSheet`; Android TV için D-Pad odak dostu QR indirme kodlu `TvUpdateDialog` eklendi.
+  - **iOS / iPadOS ve macOS / tvOS:** iOS gönderici için Apple iTunes Lookup API üzerinden yalnız App Store'da yayına girmiş sürümleri gösteren SwiftUI `UpdateBanner` + `UpdateDetailSheet`; macOS/iPadOS/tvOS alıcı için üst şerit güncelleme hapı ve `UpdateSheet` eklendi.
+
+### Değiştirildi / Changed
+- **Gizlilik politikası (`site/privacy.html`):** Kişisel veri toplamadan günde en fazla bir kez yapılan anonim sürüm denetimi ve Ayarlar'daki kapatma seçeneği TR/EN olarak belgelendi.
+
 ## [0.4.2] - 2026-11-28
 
 ### Düzeltildi / Fixed
